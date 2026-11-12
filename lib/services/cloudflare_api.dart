@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart' show MediaType;
 
 import '../models/settings.dart';
+import 'cloudflare_client.dart';
 
 class CloudflareException implements Exception {
   final String message;
@@ -89,7 +90,7 @@ class CloudflareApi {
   final String token;
   final http.Client _client;
 
-  CloudflareApi(String token, {http.Client? client}) : token = normalizeToken(token), _client = client ?? http.Client();
+  CloudflareApi(String token, {http.Client? client}) : token = normalizeToken(token), _client = client ?? CloudflareClient();
 
   void close() => _client.close();
 

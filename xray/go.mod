@@ -3,12 +3,15 @@ module bpb/xray
 go 1.27
 
 require (
+	bpb/networking v0.0.0
 	bpb/scanner v0.0.0
 	github.com/xtls/xray-core v1.260327.1-0.20261109052709-676eaf66f8f0
 	golang.org/x/mobile v0.0.0-20260908204917-8b95e45f8d3e
 )
 
 replace bpb/scanner => ../scanner
+
+replace bpb/networking => ../networking
 
 require (
 	github.com/apernet/quic-go v0.61.1-0.20260806010916-184d081eef3e // indirect

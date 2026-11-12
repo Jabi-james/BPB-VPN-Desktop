@@ -290,6 +290,11 @@ class MainActivity : FlutterActivity() {
             "setupTorStatus" -> result.success(
                 mapOf("progress" to SetupTor.progress, "running" to SetupTor.running, "error" to SetupTor.error),
             )
+            "startEchGateway" -> runInBackground(result) {
+                val error = Xray.startEchGateway()
+                if (error.isNotEmpty()) throw IllegalStateException(error)
+                null
+            }
             "stopSetupTor" -> runInBackground(result) {
                 SetupTor.stop()
                 null

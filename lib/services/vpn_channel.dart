@@ -137,6 +137,9 @@ class VpnChannel {
 
   static Future<void> stopSetupTor() => _methods.invokeMethod('stopSetupTor');
 
+  /// Starts the local ECH gateway (networking/), used when Cloudflare can't be reached directly.
+  static Future<void> startEchGateway() => _methods.invokeMethod('startEchGateway');
+
   /// Opens [url] in the browser; false if nothing could handle it.
   static Future<bool> openUrl(String url) async {
     try {

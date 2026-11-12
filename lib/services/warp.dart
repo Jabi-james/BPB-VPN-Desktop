@@ -1,12 +1,10 @@
 import 'dart:convert';
-import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
-import 'package:http/io_client.dart';
 
-import 'local_proxy.dart';
+import 'cloudflare_client.dart';
 
 /// A WARP (WireGuard) account registered with Cloudflare.
 ///
@@ -75,16 +73,11 @@ typedef WarpRegistration = ({WarpAccount account, List<String> endpoints});
 class WarpRegistrar {
   static const _endpoint = 'https://api.cloudflareclient.com/v0a4005/reg';
 
-  /// When set, requests go through this local HTTP proxy (the running tunnel).
-  final int? proxyPort;
-
-  const WarpRegistrar({this.proxyPort});
+  const WarpRegistrar();
 
   /// Registers one WARP account.
   Future<WarpRegistration> register() async {
-    final inner = HttpClient()..connectionTimeout = const Duration(seconds: 15);
-    if (proxyPort != null) LocalProxy.apply(inner, port: proxyPort!);
-    final client = IOClient(inner);
+    final client = CloudflareClient();
     try {
       return await _register(client);
     } finally {

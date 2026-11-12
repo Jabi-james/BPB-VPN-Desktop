@@ -7,6 +7,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../models/cf_account.dart';
 import '../models/settings.dart';
 import '../services/cloudflare_api.dart';
+import '../services/cloudflare_client.dart';
 import '../services/net_errors.dart';
 import '../services/vpn_channel.dart';
 import '../state/app_state.dart';
@@ -529,7 +530,7 @@ class _InstallStepState extends State<_InstallStep> {
       if (e.value.status == _Status.failed) e.key,
   ];
 
-  Future<void> _install(_Item item, {int? proxyPort}) async {
+  Future<void> _install(_Item item) async {
     final row = _rows[item]!;
     final state = AppScope.read(context);
     setState(() {
@@ -547,12 +548,11 @@ class _InstallStepState extends State<_InstallStep> {
             accountId: _account.id,
             type: type,
             uuid: _uuid,
-            proxyPort: proxyPort,
           );
         case _Item.warp:
-          await state.renewWarpAccount(proxyPort: proxyPort);
+          await state.renewWarpAccount();
         case _Item.masque:
-          await state.renewMasqueAccount(proxyPort: proxyPort);
+          await state.renewMasqueAccount();
       }
       row.status = _Status.done;
     } catch (e) {
@@ -565,7 +565,7 @@ class _InstallStepState extends State<_InstallStep> {
   }
 
   /// Installs [items] side by side; when nothing failed, moves on.
-  Future<void> _run(Iterable<_Item> items, {int? proxyPort}) async {
+  Future<void> _run(Iterable<_Item> items) async {
     if (!_started) {
       _started = true;
       widget.onStarted();
@@ -573,7 +573,7 @@ class _InstallStepState extends State<_InstallStep> {
       if (!widget.addingAccount) AppScope.read(context).setSetupInProgress(true);
     }
     setState(() => _busy = true);
-    await Future.wait([for (final item in items.toList()) _install(item, proxyPort: proxyPort)]);
+    await Future.wait([for (final item in items.toList()) _install(item)]);
     if (!mounted) return;
     // The account is added only with both its workers deployed.
     if (!_saved && _deployed.length == WorkerType.values.length) {
@@ -624,7 +624,7 @@ class _InstallStepState extends State<_InstallStep> {
         }
       }
       setState(() => _torProgress = null);
-      await _run(_failed, proxyPort: port);
+      await CloudflareClient.viaTor(port, () => _run(_failed));
     } catch (e) {
       if (mounted) {
         setState(() {

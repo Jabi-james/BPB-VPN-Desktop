@@ -24,6 +24,7 @@
 !/assets/icons/**
 !/assets/scanner/**
 !/scanner/**
+!/networking/**
 
 # Android
 !/android/build.gradle.kts

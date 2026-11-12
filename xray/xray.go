@@ -23,6 +23,7 @@ import (
 	"sync"
 	"time"
 
+	"bpb/networking"
 	"bpb/scanner"
 	applog "github.com/xtls/xray-core/app/log"
 	commlog "github.com/xtls/xray-core/common/log"
@@ -161,6 +162,15 @@ const (
 func InitEnv(dir string) {
 	os.Setenv(envAsset, dir)
 	os.Setenv(envCert, dir)
+}
+
+// StartEchGateway starts the local ECH gateway for the app's Cloudflare API calls (see
+// networking/); it returns an error message, or "" when it runs.
+func StartEchGateway() string {
+	if err := networking.Start(networking.DefaultAddress); err != nil {
+		return err.Error()
+	}
+	return ""
 }
 
 // Version is Xray-core's version, e.g. 26.10.21.

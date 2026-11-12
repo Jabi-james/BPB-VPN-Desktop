@@ -76,8 +76,8 @@ String countryFlag(String code) => String.fromCharCodes(
 );
 
 /// HTTP client that goes through the tunnel when [proxyPort] is set.
-http.Client proxiedClient(int? proxyPort) {
-  final inner = HttpClient()..connectionTimeout = const Duration(seconds: 15);
+http.Client proxiedClient(int? proxyPort, {Duration connectTimeout = const Duration(seconds: 15)}) {
+  final inner = HttpClient()..connectionTimeout = connectTimeout;
   if (proxyPort != null) LocalProxy.apply(inner, port: proxyPort);
   return IOClient(inner);
 }

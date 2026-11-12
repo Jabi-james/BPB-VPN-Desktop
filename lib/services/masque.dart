@@ -1,12 +1,10 @@
 import 'dart:convert';
-import 'dart:io';
 import 'dart:math';
 
 import 'package:http/http.dart' as http;
-import 'package:http/io_client.dart';
 
 import 'der.dart';
-import 'local_proxy.dart';
+import 'cloudflare_client.dart';
 
 /// A WARP account enrolled for MASQUE (Xray's masque outbound, CONNECT-IP over HTTP/2 or 3),
 /// separate from the WireGuard one: enrolling replaces an account's key.
@@ -69,15 +67,10 @@ class MasqueRegistrar {
     'Content-Type': 'application/json; charset=UTF-8',
   };
 
-  /// When set, requests go through this local HTTP proxy (the running tunnel).
-  final int? proxyPort;
-
-  const MasqueRegistrar({this.proxyPort});
+  const MasqueRegistrar();
 
   Future<MasqueRegistration> register() async {
-    final inner = HttpClient()..connectionTimeout = const Duration(seconds: 15);
-    if (proxyPort != null) LocalProxy.apply(inner, port: proxyPort!);
-    final client = IOClient(inner);
+    final client = CloudflareClient();
     try {
       return await _register(client);
     } finally {

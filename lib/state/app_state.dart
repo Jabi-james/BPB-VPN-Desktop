@@ -7,7 +7,6 @@ import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/cf_account.dart';
@@ -18,6 +17,7 @@ import '../services/geo_assets.dart';
 import '../services/local_proxy.dart';
 import '../services/masque.dart';
 import '../services/mitm_ca.dart';
+import '../services/cloudflare_client.dart';
 import '../services/my_ip.dart';
 import '../services/net_errors.dart';
 import '../services/tor_bridges.dart';
@@ -330,6 +330,7 @@ class AppState extends ChangeNotifier {
     _applyDeviceSideEffects();
 
     _stateSub = VpnChannel.states.listen(_onVpnState);
+    CloudflareClient.tunnelPort = () => isConnected ? LocalProxy.port : null;
     notifyListeners();
     _redeployDue();
     unawaited(refreshUsage());
@@ -650,16 +651,13 @@ class AppState extends ChangeNotifier {
 
   bool renewingWarp = false;
 
-  /// Registers a fresh WARP account. Goes through the tunnel when connected, since the WARP
-  /// API may be filtered, or through [proxyPort] (the setup wizard's Tor).
-  Future<void> renewWarpAccount({int? proxyPort}) async {
+  /// Registers a fresh WARP account.
+  Future<void> renewWarpAccount() async {
     if (renewingWarp) return;
     renewingWarp = true;
     notifyListeners();
     try {
-      final reg = await WarpRegistrar(
-        proxyPort: proxyPort ?? (isConnected ? LocalProxy.port : null),
-      ).register();
+      final reg = await const WarpRegistrar().register();
       write('warp.account', reg.account.toJson());
       // Its endpoints: the v4 / v6 addresses Cloudflare offered, on each port (Best Ping picks).
       write('warp.endpoints', reg.endpoints);
@@ -674,14 +672,12 @@ class AppState extends ChangeNotifier {
   bool renewingMasque = false;
 
   /// Registers a fresh WARP account enrolled for MASQUE, like [renewWarpAccount].
-  Future<void> renewMasqueAccount({int? proxyPort}) async {
+  Future<void> renewMasqueAccount() async {
     if (renewingMasque) return;
     renewingMasque = true;
     notifyListeners();
     try {
-      final reg = await MasqueRegistrar(
-        proxyPort: proxyPort ?? (isConnected ? LocalProxy.port : null),
-      ).register();
+      final reg = await const MasqueRegistrar().register();
       write('masque.account', reg.account.toJson());
       write('masque.endpoints', reg.endpoints);
     } on MasqueException catch (e) {
@@ -805,28 +801,16 @@ class AppState extends ChangeNotifier {
 
   // region Cloudflare API access
 
-  /// Runs [action] with the API: directly first, then through the tunnel when connected
-  /// (api.cloudflare.com may be filtered; the app itself is outside the VPN).
+  /// Runs [action] with the API (routing and fallbacks are [CloudflareClient]'s).
   Future<T> _withApi<T>(
     String token,
     Future<T> Function(CloudflareApi api) action,
   ) async {
-    Future<T> attempt(http.Client? client) async {
-      final api = CloudflareApi(token, client: client);
-      try {
-        return await action(api);
-      } finally {
-        api.close();
-      }
-    }
-
+    final api = CloudflareApi(token);
     try {
-      return await attempt(null);
-    } on CloudflareException {
-      rethrow; // Reached Cloudflare: the error is real, not the network.
-    } catch (_) {
-      if (!isConnected) rethrow;
-      return attempt(proxiedClient(LocalProxy.port));
+      return await action(api);
+    } finally {
+      api.close();
     }
   }
 
@@ -1064,26 +1048,19 @@ class AppState extends ChangeNotifier {
   }
 
   /// Deploys a fresh [type] worker in [accountId] with [uuid] in its ENV; nothing is saved (see
-  /// [addCfAccount]). Through [proxyPort] (the setup wizard's Tor) when set, else through the
-  /// tunnel when connected. Network failures throw [NetworkStateError].
+  /// [addCfAccount]). Through Network failures throw [NetworkStateError].
   Future<Deployment> deployFresh({
     required String token,
     required String accountId,
     required WorkerType type,
     required String uuid,
-    int? proxyPort,
   }) async {
     final env = CloudflareApi.encodeEnv(
       uuid: uuid,
       proxyIps: const [],
       fallbackUrl: '',
     );
-    final api = CloudflareApi(
-      token,
-      client: proxiedClient(
-        proxyPort ?? (isConnected ? LocalProxy.port : null),
-      ),
-    );
+    final api = CloudflareApi(token);
     try {
       final name = await api.freeName(accountId, type);
       final host = type == WorkerType.pages
@@ -1140,19 +1117,13 @@ class AppState extends ChangeNotifier {
 
   /// Deletes [deployments] of [accountId] from Cloudflare, custom domains first (see
   /// CloudflareApi.deleteDeployment). The setup wizard uses it for a half-deployed account it
-  /// skips. Through [proxyPort] when set.
+  /// skips.
   Future<void> deleteFresh({
     required String token,
     required String accountId,
     required List<Deployment> deployments,
-    int? proxyPort,
   }) async {
-    final api = CloudflareApi(
-      token,
-      client: proxiedClient(
-        proxyPort ?? (isConnected ? LocalProxy.port : null),
-      ),
-    );
+    final api = CloudflareApi(token);
     try {
       for (final d in deployments) {
         await api.deleteDeployment(

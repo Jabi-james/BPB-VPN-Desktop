@@ -21,6 +21,7 @@ BPB is now equipped with specific Cloudflare scanners for all protocol! The scan
 - Updated the routing rules to block Iran firewall IPs by default.
 - Updated Xray-core to v26.11.9
 - Updated Tor to v4.9.16
+- Added ECH retries to Cloudflare API calls.
 - Fixed the BPB quick settings tile bug #9
 
 ![GitHub Downloads (all assets, specific tag)](https://img.shields.io/github/downloads/bia-pain-bache/BPB-VPN/v1.1.0/total)
