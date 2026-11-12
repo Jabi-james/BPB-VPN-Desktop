@@ -256,7 +256,7 @@ class _InfoCard extends StatelessWidget {
       color: theme.colorScheme.surfaceContainer,
       elevation: 0,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

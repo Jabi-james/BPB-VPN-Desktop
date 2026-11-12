@@ -63,7 +63,7 @@ ThemeData _buildTheme(ColorScheme scheme) {
   return ThemeData(
     colorScheme: scheme,
     useMaterial3: true,
-    fontFamily: 'OpenSans',
+    fontFamily: 'UbuntuSans',
     listTileTheme: const ListTileThemeData(contentPadding: EdgeInsets.symmetric(horizontal: 20)),
     // Superellipse corners for every card and dialog.
     cardTheme: CardThemeData(shape: roundedShape(kSmallCardRadius)),
