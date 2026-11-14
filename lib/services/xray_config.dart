@@ -1300,12 +1300,6 @@ class XrayConfigBuilder {
     }
     // Domain Fronting with an exit: no DNS module tag (its local DNS is localhost, not routed).
     if (!_frontedExit) add(inboundTag: ['dns'], outbound: 'direct');
-    add(
-      ip: ['10.10.34.34/24', '2001:4188:2:600:10:10:34:34/112'],
-      outbound: 'block',
-    );
-    add(domain: ['geosite:private'], outbound: 'direct');
-    add(ip: ['geoip:private'], outbound: 'direct');
     // BitTorrent direct, matched by Xray's sniffers (TCP and uTP, whatever destOverride is), and
     // before the UDP block so its UDP (uTP, DHT) goes direct too.
     if (profile.routing.bypass.isOn('bittorrent')) {
@@ -1321,39 +1315,37 @@ class XrayConfigBuilder {
     ];
     if (blockDomains.isNotEmpty) add(domain: blockDomains, outbound: 'block');
 
-    final blockIps = [
-      ...geo.where((g) => g.isBlock && g.geoip != null).map((g) => g.geoip!),
-      ...routing.block.ips,
-    ];
-    if (blockIps.isNotEmpty) add(ip: blockIps, outbound: 'block');
-
     final bypassDomains = [
+      'geosite:private',
       ...geo
           .where((g) => !g.isBlock && g.dns != _GeoDns.antiSanction)
           .map((g) => g.geosite),
       ...routing.bypass.domains.map((d) => 'domain:$d'),
+      if (_antiSanction)
+        ...geo
+            .where((g) => g.dns == _GeoDns.antiSanction)
+            .map((g) => g.geosite),
+      if (_antiSanction)
+        ...routing.sanctionBypass.domains.map((d) => 'domain:$d'),
     ];
-    if (bypassDomains.isNotEmpty) {
-      add(domain: bypassDomains, outbound: 'direct');
-    }
+    add(domain: bypassDomains, outbound: 'direct');
+
+    final blockIps = [
+      '10.10.34.34/24',
+      '2001:4188:2:600:10:10:34:34/112',
+      ...geo.where((g) => g.isBlock && g.geoip != null).map((g) => g.geoip!),
+      ...routing.block.ips,
+    ];
+    add(ip: blockIps, outbound: 'block');
 
     final bypassIps = [
+      'geoip:private',
       ...geo.where((g) => !g.isBlock && g.geoip != null).map((g) => g.geoip!),
       ...routing.bypass.ips,
     ];
-    if (bypassIps.isNotEmpty) add(ip: bypassIps, outbound: 'direct');
-
-    // Sanction rules: also direct, but kept apart since they resolve via the anti-sanction DNS.
-    final sanctionDomains = [
-      ...geo.where((g) => g.dns == _GeoDns.antiSanction).map((g) => g.geosite),
-      ...routing.sanctionBypass.domains.map((d) => 'domain:$d'),
-    ];
-    if (_antiSanction && sanctionDomains.isNotEmpty) {
-      add(domain: sanctionDomains, outbound: 'direct');
-    }
+    add(ip: bypassIps, outbound: 'direct');
 
     if (_hasExit) rules.insertAll(0, exitWorkerlessRules);
-
     // The worker and Tor only carry TCP (the worker also DNS); refuse other UDP so apps fall
     // back to TCP fast. Psiphon carries UDP (over its udpgw), and the chain proxy is the exit
     // for everything, UDP included.
@@ -1784,10 +1776,7 @@ class XrayConfigBuilder {
           'spiderX': p['spx'],
           'show': false,
         },
-      'sockopt': _sockopt(
-        domainStrategy: 'UseIPv4',
-        dialerProxy: 'exit-dialer',
-      ),
+      'sockopt': _sockopt(domainStrategy: 'UseIP', dialerProxy: 'exit-dialer'),
     };
     final enableMux =
         !(security == 'reality' || type == 'grpc' || type == 'xhttp');
@@ -1908,7 +1897,7 @@ class XrayConfigBuilder {
     if (happyEyeballs)
       'happyEyeballs': {
         'tryDelayMs': 250,
-        'prioritizeIPv6': false,
+        'prioritizeIPv6': _general.preferIpv6,
         'interleave': 2,
         'maxConcurrentTry': 4,
       },

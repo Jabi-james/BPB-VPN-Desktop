@@ -413,12 +413,14 @@ class GeneralSettings {
   final String antiSanctionDns;
   final bool enableFakeDns;
   final bool enableIpv6;
+  final bool preferIpv6;
 
   const GeneralSettings({
     this.localDns = '8.8.8.8',
     this.antiSanctionDns = '178.22.122.100',
     this.enableFakeDns = false,
     this.enableIpv6 = false,
+    this.preferIpv6 = false,
   });
 
   static GeneralSettings parse(Object? v) {
@@ -434,6 +436,7 @@ class GeneralSettings {
       ),
       enableFakeDns: _bool(j['enableFakeDns'], d.enableFakeDns),
       enableIpv6: _bool(j['enableIpv6'], d.enableIpv6),
+      preferIpv6: _bool(j['preferIpv6'], d.preferIpv6),
     );
   }
 
@@ -442,6 +445,7 @@ class GeneralSettings {
     'antiSanctionDns': antiSanctionDns,
     'enableFakeDns': enableFakeDns,
     'enableIpv6': enableIpv6,
+    'preferIpv6': preferIpv6,
   };
 }
 

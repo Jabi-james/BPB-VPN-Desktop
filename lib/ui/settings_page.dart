@@ -144,6 +144,12 @@ class SettingsPage extends StatelessWidget {
                 subtitle: 'Enable it based on your ISP',
               ),
               const SwitchPref(
+                'general.preferIpv6',
+                'Prefer IPv6',
+                icon: Symbols.counter_6_rounded,
+                subtitle: 'Enable it based on your ISP',
+              ),
+              const SwitchPref(
                 'device.lanSharing.enabled',
                 'Share over LAN',
                 icon: Symbols.lan_rounded,

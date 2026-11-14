@@ -35,7 +35,7 @@ class BpbVpnService : VpnService() {
 
         private const val TUN_IPV4 = "10.10.14.1"
         private const val TUN_IPV6 = "fd66:b9b:10:14::1"
-        private const val TUN_DNS = "1.1.1.1"
+        private const val TUN_DNS = "10.10.14.2"
         private const val LOCAL_HTTP_PROXY_PORT = 10808
 
         fun start(context: Context) {
