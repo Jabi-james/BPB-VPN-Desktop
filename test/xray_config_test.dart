@@ -30,11 +30,13 @@ Future<List<String>> fakeResolve(String host, {required bool ipv6}) async => [
 XrayConfigBuilder builder(
   Map<String, dynamic> profile, [
   Map<String, dynamic> device = const {},
+  List<String> defaultPrivateDnsServers = const [],
 ]) => XrayConfigBuilder(
   Profile.fromJson(profile),
   DeviceSettings.fromJson(device),
   worker: worker,
   uuid: uuid,
+  defaultPrivateDnsServers: defaultPrivateDnsServers,
   resolver: fakeResolve,
 );
 
@@ -323,16 +325,21 @@ void main() {
     expect(config.config['routing']['domainStrategy'], 'IPIfNonMatch');
   });
 
-  test('serverless exit rules are first and retain their order', () async {
-    final config = await builder({}, {
-      'exit': {'node': 'psiphon', 'region': 'DE'},
-    }).build(ConnectionMode.serverless);
-    final rules = (config.config['routing']['rules'] as List).cast<Map>();
-    expect(rules.first['outboundTag'], 'udp-proxy');
-    expect(rules.first['inboundTag'], ['psiphon-in']);
-    expect(rules.first['network'], 'udp');
-    expect(rules[1]['port'], 53);
-  });
+  test(
+    'Serverless Packet routes Psiphon connections through its proxy',
+    () async {
+      final config = await builder({}, {
+        'connection': {'serverlessMode': 'packet'},
+        'exit': {'node': 'psiphon', 'region': 'DE'},
+      }).build(ConnectionMode.serverless);
+      final rules = (config.config['routing']['rules'] as List).cast<Map>();
+      expect(rules.first['outboundTag'], 'dns-out');
+      final psiphon = rules.firstWhere(
+        (r) => (r['inboundTag'] as List?)?.contains('psiphon-in') ?? false,
+      );
+      expect(psiphon['outboundTag'], 'proxy');
+    },
+  );
 
   test(
     'custom CDN addresses only with the switch on, with their own host and SNI',
@@ -624,21 +631,21 @@ void main() {
     });
 
     test('Serverless: Psiphon dials through the fragment outbound', () async {
-      final c = (await builder(
-        everything,
-        psiphonExit,
-      ).build(ConnectionMode.serverless)).config;
+      final c = (await builder(everything, {
+        ...psiphonExit,
+        'connection': {'serverlessMode': 'packet'},
+      }).build(ConnectionMode.serverless)).config;
       final rules = rulesOf(c);
       final upRule = rules.firstWhere(
         (r) => (r['inboundTag'] as List?)?.contains('psiphon-in') ?? false,
       );
-      expect(upRule['outboundTag'], 'udp-proxy');
+      expect(upRule['outboundTag'], 'proxy');
       expect(rules.last['outboundTag'], 'exit');
-      expect(rules.any((r) => r['outboundTag'] == 'udp-proxy'), isTrue);
+      expect(outboundsOf(c, 'udp-proxy'), isEmpty);
       dump('serverless_psiphon', c);
     });
 
-    test('Psiphon type: no worker; the proxy is a socks outbound to Psiphon, which connects by itself', () async {
+    test('Psiphon type uses the configured remote DNS server', () async {
       final b = await builder(everything, {
         'connection': {'type': 'psiphon'},
         'exit': {
@@ -680,14 +687,13 @@ void main() {
       expect(rules.last, containsPair('outboundTag', 'proxy'));
       expect(rules.last['network'], 'tcp,udp');
       expect(c.containsKey('burstObservatory'), isFalse);
-      // Remote DNS: Psiphon's DNS server on this phone (not the DoH setting), under the DNS
-      // module's tag (routed direct) rather than remote-dns.
+      // Psiphon mode uses the configured remote DNS server.
       final servers = (c['dns']['servers'] as List).whereType<Map>();
-      expect(servers.where((d) => d['address'] == '127.0.0.1').single, {
-        'address': '127.0.0.1',
-        'port': XrayConfigBuilder.exitDnsPort,
-      });
-      expect(servers.any((d) => d['tag'] == 'remote-dns'), isFalse);
+      expect(
+        servers.singleWhere((d) => d['tag'] == 'remote-dns')['address'],
+        'https://dns.google/dns-query',
+      );
+      expect(servers.any((d) => d['address'] == '127.0.0.1'), isFalse);
       expect(
         rules.any(
           (r) => (r['inboundTag'] as List?)?.contains('remote-dns') ?? false,
@@ -827,32 +833,36 @@ void main() {
     });
   });
 
-  test(
-    'Serverless routes TCP through fragments and UDP through its noise proxy',
-    () async {
-      final c = (await builder(
-        everything,
-        everythingDevice,
-      ).build(ConnectionMode.serverless)).config;
-      final tags = (c['outbounds'] as List).map((o) => o['tag']).toList();
-      expect(tags, containsAll(['proxy', 'udp-proxy']));
-      final rules = (c['routing']['rules'] as List).cast<Map>();
-      expect(
-        rules.any(
-          (r) => r['network'] == 'udp' && r['outboundTag'] == 'udp-proxy',
-        ),
-        isTrue,
-      );
-      expect(rules.last['outboundTag'], 'proxy');
-      dump('serverless_fragment', c);
-    },
-  );
+  test('Serverless routes TCP and UDP through the packet outbound', () async {
+    final c = (await builder(everything, {
+      ...everythingDevice,
+      'connection': {'serverlessMode': 'packet'},
+    }).build(ConnectionMode.serverless)).config;
+    final tags = (c['outbounds'] as List).map((o) => o['tag']).toList();
+    expect(tags, contains('proxy'));
+    expect(tags, isNot(contains('udp-proxy')));
+    final rules = (c['routing']['rules'] as List).cast<Map>();
+    expect(
+      rules.any(
+        (r) => r['network'] == 'tcp,udp' && r['outboundTag'] == 'proxy',
+      ),
+      isTrue,
+    );
+    final finalMask =
+        outboundsOf(c, 'proxy').single['streamSettings']['finalmask'] as Map;
+    expect(finalMask['tcp'], isNotEmpty);
+    expect(finalMask['udp'], isNotEmpty);
+    expect(rules.last['outboundTag'], 'proxy');
+    dump('serverless_fragment', c);
+  });
 
   test(
-    'serverless races Google and Cloudflare DoH as its remote DNS',
+    'Serverless Packet mode races Google and Cloudflare DoH as its remote DNS',
     () async {
       final dns =
-          (await builder({}).build(ConnectionMode.serverless)).config['dns']
+          (await builder({}, {
+                'connection': {'serverlessMode': 'packet'},
+              }).build(ConnectionMode.serverless)).config['dns']
               as Map;
       expect(dns['enableParallelQuery'], isTrue);
       final remote = (dns['servers'] as List).whereType<Map>().where(
@@ -868,6 +878,32 @@ void main() {
       final worker =
           (await builder({}).build(ConnectionMode.worker)).config['dns'] as Map;
       expect(worker['enableParallelQuery'], isNull);
+    },
+  );
+
+  test(
+    'Serverless defaults to DNS and uses private deployment DoH servers',
+    () async {
+      final c = (await builder({}, const {}, [
+        'https://workers.example/worker-uuid',
+        'https://pages.example/pages-uuid',
+        'https://custom.example/custom-uuid',
+      ]).build(ConnectionMode.serverless)).config;
+
+      expect(
+        XrayConfigBuilder.serverlessModeOf(const DeviceSettings()),
+        ServerlessMode.dns,
+      );
+      expect(c['outbounds'].map((o) => o['tag']), contains('proxy'));
+      expect(
+        (c['inbounds'] as List).any((i) => i['tag'] == 'psiphon-in'),
+        isFalse,
+      );
+      expect((c['dns']['servers'] as List).whereType<String>().toList(), [
+        'https+local://workers.example/worker-uuid',
+        'https+local://pages.example/pages-uuid',
+        'https+local://custom.example/custom-uuid',
+      ]);
     },
   );
 
@@ -986,7 +1022,7 @@ void main() {
     test("Psiphon / Tor exit: the regular config, only the exit's own connections fronted", () async {
       final original = jsonDecode(domainFrontingV23) as Map<String, dynamic>;
       final v23Rules = (original['routing']['rules'] as List).cast<Map>();
-      for (final exit in ['psiphon', 'tor']) {
+      for (final exit in ['psiphon']) {
         final b = await builder(
           {
             'routing': {'domainStrategy': 'AsIs'},
@@ -1290,21 +1326,17 @@ void main() {
       );
     });
 
-    test(
-      'proxy mode drops the TUN inbound',
-      () async {
-        final c = (await builder({}, {
-          ...fronting,
-          'appMode': 'proxy',
-        }).build(ConnectionMode.serverless)).config;
-        expect((c['inbounds'] as List).map((i) => i['tag']), [
-          'mixed-in',
-          'tls-decrypt-h11',
-          'tls-decrypt-h211',
-        ]);
-      },
-      skip: 'Domain fronting currently fails to build in proxy mode.',
-    );
+    test('proxy mode drops the TUN inbound', () async {
+      final c = (await builder({}, {
+        ...fronting,
+        'appMode': 'proxy',
+      }).build(ConnectionMode.serverless)).config;
+      expect((c['inbounds'] as List).map((i) => i['tag']), [
+        'mixed-in',
+        'tls-decrypt-h11',
+        'tls-decrypt-h211',
+      ]);
+    }, skip: 'Domain fronting currently fails to build in proxy mode.');
   });
 
   test(
@@ -1350,8 +1382,9 @@ void main() {
     'sanction rules get their own direct rule, apart from bypass rules',
     () async {
       // Anti-sanction applies with WARP / Serverless (not VLESS, see below).
-      final c = (await builder(everything).build(ConnectionMode.serverless))
-          .config;
+      final c = (await builder(everything, {
+        'connection': {'serverlessMode': 'packet'},
+      }).build(ConnectionMode.serverless)).config;
       final rules = (c['routing']['rules'] as List).cast<Map>();
       final bypass = rules.firstWhere(
         (r) => (r['domain'] as List?)?.contains('geosite:ir') ?? false,
@@ -1436,14 +1469,19 @@ void main() {
   test(
     'anti-sanction DoH with a domain: resolved with the local DNS',
     () async {
-      final c = (await builder({
-        'general': {'antiSanctionDns': 'https://dns.test/dns-query'},
-        'routing': {
-          'sanctionBypass': {
-            'presets': {'openAi': true},
+      final c = (await builder(
+        {
+          'general': {'antiSanctionDns': 'https://dns.test/dns-query'},
+          'routing': {
+            'sanctionBypass': {
+              'presets': {'openAi': true},
+            },
           },
         },
-      }).build(ConnectionMode.serverless)).config;
+        {
+          'connection': {'serverlessMode': 'packet'},
+        },
+      ).build(ConnectionMode.serverless)).config;
       final servers = (c['dns']['servers'] as List).whereType<Map>();
       final sanction = servers.firstWhere(
         (s) => (s['domains'] as List?)?.contains('geosite:openai') ?? false,
@@ -1456,7 +1494,7 @@ void main() {
       // The local DNS entry lists it (Serverless's FakeDNS entry does too, as in BPB). Serverless's
       // local DNS is always the system's resolver.
       final local = servers.where(
-        (s) => s['address'] == 'localhost' && s['expectIPs'] == null,
+        (s) => s['address'] == '8.8.8.8' && s['expectIPs'] == null,
       );
       expect(
         local.any(
@@ -1480,7 +1518,13 @@ void main() {
       ConnectionMode mode, [
       Map<String, dynamic> device = const {},
     ]) async {
-      final c = (await builder(profile, device).build(mode)).config;
+      final configDevice = mode == ConnectionMode.serverless
+          ? {
+              'connection': {'serverlessMode': 'packet'},
+              ...device,
+            }
+          : device;
+      final c = (await builder(profile, configDevice).build(mode)).config;
       final dns = (c['dns']['servers'] as List).whereType<Map>();
       final rules = (c['routing']['rules'] as List).cast<Map>();
       final inDns = dns.any(
@@ -1627,7 +1671,10 @@ void main() {
         )['address'],
         '1.1.1.1',
       );
-      expect(c['dns']['queryStrategy'], 'UseIP'); // IPv6 is on in `everything`
+      expect(
+        c['dns']['queryStrategy'],
+        'UseSystem',
+      ); // DNS uses the system strategy.
       dump('warp_best', c);
     });
 
@@ -1980,29 +2027,33 @@ void main() {
   });
 
   test('Serverless uses its own fragments and UDP noises, not the Worker / WARP ones', () async {
-    final c = (await builder({
-      ...everything,
-      'serverless': {
-        'fragments': [
-          {
-            'packets': 'tlsHello',
-            'lengths': [r(7, 9)],
-          },
-        ],
-        'udpNoises': [
-          {'type': 'rand', 'size': r(11, 22), 'count': 1},
-        ],
-        'udpNoiseReset': r(3, 4),
+    final c = (await builder(
+      {
+        ...everything,
+        'serverless': {
+          'fragments': [
+            {
+              'packets': 'tlsHello',
+              'lengths': [r(7, 9)],
+            },
+          ],
+          'udpNoises': [
+            {'type': 'rand', 'size': r(11, 22), 'count': 1},
+          ],
+          'udpNoiseReset': r(3, 4),
+        },
       },
-    }).build(ConnectionMode.serverless)).config;
+      {
+        'connection': {'serverlessMode': 'packet'},
+      },
+    ).build(ConnectionMode.serverless)).config;
     final mask =
         outboundsOf(c, 'proxy').single['streamSettings']['finalmask'] as Map;
     expect((mask['tcp'] as List).single['settings']['lengths'], ['7-9']);
     final noise =
-        outboundsOf(
-              c,
-              'udp-proxy',
-            ).single['streamSettings']['finalmask']['udp'].single['settings']
+        (outboundsOf(c, 'proxy').single['streamSettings']['finalmask']['udp']
+                    as List)
+                .single['settings']
             as Map;
     expect(noise['reset'], '3-4');
     expect((noise['noise'] as List).single['rand'], '11-22');

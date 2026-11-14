@@ -45,16 +45,19 @@ class ConnectionCard extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final exit = state.exitNode;
+    final isServerlessDns =
+        state.mode == ConnectionMode.serverless &&
+        state.serverlessMode == ServerlessMode.dns;
     // The Psiphon and Tor types have no exit node to choose: only the region can change.
     final hasExitNode =
         state.mode != ConnectionMode.psiphon &&
-        state.mode != ConnectionMode.tor;
+        state.mode != ConnectionMode.tor &&
+        !isServerlessDns;
     final nodes = switch (state.mode) {
-      ConnectionMode.serverless => [
-        ExitNode.worker,
-        ExitNode.psiphon,
-        ExitNode.tor,
-      ],
+      ConnectionMode.serverless => state.serverlessMode ==
+              ServerlessMode.domainFronting
+          ? [ExitNode.worker, ExitNode.psiphon]
+          : [ExitNode.worker, ExitNode.psiphon, ExitNode.tor],
       // The chain proxy is an exit node once there's one the type can carry (Settings → Chain proxies).
       _ => [
         for (final n in ExitNode.values)
@@ -125,7 +128,8 @@ class ConnectionCard extends StatelessWidget {
               duration: _rowAnimation,
               curve: Curves.easeInOut,
               alignment: Alignment.topCenter,
-              child: exit == ExitNode.psiphon || exit == ExitNode.tor
+              child: !isServerlessDns &&
+                      (exit == ExitNode.psiphon || exit == ExitNode.tor)
                   ? _Row(
                       icon: Symbols.location_on_rounded,
                       label: 'Region',

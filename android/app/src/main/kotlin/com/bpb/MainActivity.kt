@@ -295,6 +295,14 @@ class MainActivity : FlutterActivity() {
                 if (error.isNotEmpty()) throw IllegalStateException(error)
                 null
             }
+            "checkDns" -> {
+                val request = call.arguments as? String
+                if (request.isNullOrBlank()) {
+                    result.error("ARG", "DNS test request is required", null)
+                    return
+                }
+                runInBackground(result) { Xray.checkDNSJSON(request) }
+            }
             "stopSetupTor" -> runInBackground(result) {
                 SetupTor.stop()
                 null

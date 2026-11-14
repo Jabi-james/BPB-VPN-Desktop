@@ -97,6 +97,27 @@ class VpnChannel {
     'verifyConnection': verifyConnection,
   });
 
+  /// Tests a DNS server through the Go networking module. Latency is the DNS lookup time;
+  /// null latency means the server failed its DNS lookup or HTTP 204 validation.
+  static Future<({bool ok, double? latency})> checkDns(
+    Map<String, dynamic> request,
+  ) async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+      throw UnsupportedError(
+        'DNS server testing is currently available on Android only.',
+      );
+    }
+    final raw = await _methods.invokeMethod<String>(
+      'checkDns',
+      jsonEncode(request),
+    );
+    if (raw == null) throw StateError('DNS test returned no result.');
+    final response = Map<String, dynamic>.from(jsonDecode(raw) as Map);
+    final ok = response['ok'] == true;
+    final latency = response['latency'];
+    return (ok: ok, latency: ok && latency is num ? latency.toDouble() : null);
+  }
+
   /// The end of Xray's log for the current/last connection.
   static Future<String> readLog({String log = 'xray'}) async =>
       await _methods.invokeMethod<String>('readLog', {'log': log}) ?? '';

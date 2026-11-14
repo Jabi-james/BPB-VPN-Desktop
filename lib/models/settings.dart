@@ -148,6 +148,116 @@ class DnsServer {
   };
 }
 
+/// A custom DNS server for DNS mode with a friendly name, server address, and optional bootstrap IPs.
+class CustomDnsServer {
+  final String name;
+  final String server;
+  final List<String> bootstrapIps;
+
+  const CustomDnsServer(this.name, this.server, [this.bootstrapIps = const []]);
+
+  static CustomDnsServer parse(Object? v) {
+    if (v is! Map) return const CustomDnsServer('', '');
+    return CustomDnsServer(
+      _str(v['name'], ''),
+      _str(v['server'], ''),
+      _strList(v['bootstrapIps'], const []),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'name': name,
+    'server': server,
+    'bootstrapIps': bootstrapIps,
+  };
+
+  @override
+  bool operator ==(Object other) =>
+      other is CustomDnsServer &&
+      other.name == name &&
+      other.server == server &&
+      other.bootstrapIps == bootstrapIps;
+
+  @override
+  int get hashCode => Object.hash(name, server, bootstrapIps);
+}
+
+/// A selected DNS endpoint already normalized for Xray, with the IPs needed to
+/// resolve its hostname when applicable.
+class SelectedDnsServer {
+  final List<String> addresses;
+  final List<String> bootstraps;
+
+  const SelectedDnsServer({
+    required this.addresses,
+    this.bootstraps = const [],
+  });
+
+  static SelectedDnsServer parse(Object? value) {
+    if (value is! Map) return const SelectedDnsServer(addresses: []);
+    return SelectedDnsServer(
+      addresses: _strList(value['addresses'], const []),
+      bootstraps: _strList(value['bootstraps'], const []),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'addresses': addresses,
+    if (bootstraps.isNotEmpty) 'bootstraps': bootstraps,
+  };
+}
+
+/// DNS mode settings: the selected DNS type and custom servers.
+class ServerlessDnsSettings {
+  static const defaultTestUrl = 'http://cp.cloudflare.com/generate_204';
+
+  /// DNS type: 'udp', 'tcp', 'doh', 'doq'
+  final String dnsType;
+
+  /// URL whose DNS lookup latency is measured by the DNS server test.
+  final String testUrl;
+
+  /// Custom DNS servers added by the user
+  final List<CustomDnsServer> customServers;
+
+  /// Server addresses for the active DNS configuration. An empty list keeps the
+  /// built-in defaults.
+  final List<SelectedDnsServer> servers;
+
+  const ServerlessDnsSettings({
+    this.dnsType = 'doh',
+    this.testUrl = defaultTestUrl,
+    this.customServers = const [],
+    this.servers = const [],
+  });
+
+  static ServerlessDnsSettings parse(Object? v) {
+    if (v is! Map) return const ServerlessDnsSettings();
+    final j = _map(v);
+    const d = ServerlessDnsSettings();
+    return ServerlessDnsSettings(
+      dnsType: _choice(j['dnsType'], {'udp', 'tcp', 'doh', 'doq'}, d.dnsType),
+      testUrl: _str(j['testUrl'], d.testUrl),
+      customServers: j['customServers'] is List
+          ? (j['customServers'] as List).map(CustomDnsServer.parse).toList()
+          : d.customServers,
+      servers: j['servers'] is List
+          ? (j['servers'] as List)
+                .map(SelectedDnsServer.parse)
+                .where((server) => server.addresses.isNotEmpty)
+                .toList()
+          : d.servers,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'dnsType': dnsType,
+    'testUrl': testUrl,
+    'customServers': customServers.map((s) => s.toJson()).toList(),
+    'servers': servers.map((server) => server.toJson()).toList(),
+  };
+}
+
 /// Which packets a fragment card splits: the TLS ClientHello or the first N packets.
 enum FragmentPackets {
   tlsHello('tlsHello', 'tlshello'),
@@ -527,7 +637,7 @@ class WarpSettings {
 
 /// The MASQUE type: WARP over CONNECT-IP (HTTP/2 or 3), with its own transport setting, account,
 /// fragments and UDP noises (defaults like the profile's).
-/// Serverless's own fragments and UDP noises (defaults like the profile's).
+/// Serverless's own fragments, UDP noises (defaults like the profile's), and DNS-only mode settings.
 class ServerlessSettings {
   final List<Fragment> fragments;
   final List<UdpNoise> udpNoises;
@@ -535,10 +645,14 @@ class ServerlessSettings {
   /// How often (seconds, random within the range) the UDP noises are sent again.
   final Range udpNoiseReset;
 
+  /// DNS mode configuration
+  final ServerlessDnsSettings dnsSettings;
+
   const ServerlessSettings({
     this.fragments = const [Fragment()],
     this.udpNoises = Profile.defaultUdpNoises,
     this.udpNoiseReset = Profile.defaultUdpNoiseReset,
+    this.dnsSettings = const ServerlessDnsSettings(),
   });
 
   static ServerlessSettings parse(Object? v) {
@@ -558,6 +672,7 @@ class ServerlessSettings {
                 .toList()
           : d.udpNoises,
       udpNoiseReset: Range.parse(j['udpNoiseReset'], d.udpNoiseReset),
+      dnsSettings: ServerlessDnsSettings.parse(j['dnsSettings']),
     );
   }
 
@@ -565,6 +680,7 @@ class ServerlessSettings {
     'fragments': fragments.map((f) => f.toJson()).toList(),
     'udpNoises': udpNoises.map((n) => n.toJson()).toList(),
     'udpNoiseReset': udpNoiseReset.toJson(),
+    'dnsSettings': dnsSettings.toJson(),
   };
 }
 
@@ -1053,7 +1169,7 @@ class DeviceSettings {
     this.workerVariant = 'normal',
     this.warpVariant = 'normal',
     this.masqueVariant = 'normal',
-    this.serverlessMode = 'packet',
+    this.serverlessMode = 'dns',
     this.torBridge = 'snowflake-amp',
     this.exitNode = ExitNode.worker,
     this.exitNodes = const {},

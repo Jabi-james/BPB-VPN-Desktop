@@ -14,6 +14,72 @@ void main() {
     link: 'wireguard://cHJpdmF0ZQ%3D%3D@192.0.2.2:51820?publickey=cHVibGlj&address=10.0.0.2%2F32#WG',
   );
 
+  test('Serverless defaults to its first mode, DNS', () {
+    expect(const DeviceSettings().serverlessMode, 'dns');
+    final unknownMode = DeviceSettings.fromJson({
+      'connection': {'serverlessMode': 'unknown'},
+    });
+    expect(XrayConfigBuilder.serverlessModeOf(unknownMode), ServerlessMode.dns);
+    expect(
+      XrayConfigBuilder.serverlessModeOf(
+        DeviceSettings.fromJson({
+          'connection': {'serverlessMode': 'packet'},
+        }),
+      ),
+      ServerlessMode.packet,
+    );
+    expect(
+      XrayConfigBuilder.serverlessModeOf(const DeviceSettings()),
+      ServerlessMode.dns,
+    );
+  });
+
+  test('selected DNS servers keep address and bootstrap lists', () {
+    final settings = ServerlessDnsSettings.parse({
+      'servers': [
+        {
+          'addresses': ['https://freedns.example/p1'],
+          'bootstraps': ['76.76.2.11', '2606:1a40::11'],
+        },
+        {
+          'addresses': ['8.8.8.8', '8.8.4.4'],
+        },
+      ],
+    });
+
+    expect(settings.servers[0].addresses, ['https://freedns.example/p1']);
+    expect(settings.servers[0].bootstraps, ['76.76.2.11', '2606:1a40::11']);
+    expect(settings.servers[1].addresses, ['8.8.8.8', '8.8.4.4']);
+    expect(settings.servers[1].bootstraps, isEmpty);
+    expect((settings.toJson()['servers'] as List).length, 2);
+  });
+
+  test('Serverless Domain Fronting only allows Default or Psiphon exits', () {
+    DeviceSettings device(String exit) => DeviceSettings.fromJson({
+      'connection': {'serverlessMode': 'domainFronting'},
+      'exit': {
+        'nodes': {'serverless': exit},
+      },
+    });
+
+    expect(
+      XrayConfigBuilder.exitFor(
+        ConnectionMode.serverless,
+        device('tor'),
+        const [],
+      ),
+      ExitNode.worker,
+    );
+    expect(
+      XrayConfigBuilder.exitFor(
+        ConnectionMode.serverless,
+        device('psiphon'),
+        const [],
+      ),
+      ExitNode.psiphon,
+    );
+  });
+
   test('the chain proxy exit: per connection type, only with a chain proxy the type can carry', () {
     const device = DeviceSettings(
       exitNodes: {'worker': ExitNode.chain, 'warp': ExitNode.chain},

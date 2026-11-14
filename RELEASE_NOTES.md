@@ -22,6 +22,7 @@ BPB is now equipped with specific Cloudflare scanners for all protocol! The scan
 - Updated Xray-core to v26.11.9
 - Updated Tor to v4.9.16
 - Added ECH retries to Cloudflare API calls.
+- Added **Serverless DNS** mode supporting UDP,TCP,DoH and DoQ servers. Private servers use Cloudflare Security DoH as backend.
 - Fixed the BPB quick settings tile bug #9
 
 ![GitHub Downloads (all assets, specific tag)](https://img.shields.io/github/downloads/bia-pain-bache/BPB-VPN/v1.1.0/total)

@@ -99,6 +99,7 @@ enum MasqueVariant {
 /// patterniha's MITM domain fronting (browsers only: it decrypts their TLS with the app's own CA,
 /// see MitmCa).
 enum ServerlessMode {
+  dns('DNS'),
   packet('Packet'),
   domainFronting('Domain Fronting');
 
@@ -146,6 +147,7 @@ class XrayConfigBuilder {
   /// The worker to connect to and its VLESS UUID; null for WARP / Serverless only.
   final ActiveWorker? worker;
   final String? uuid;
+  final List<String> defaultPrivateDnsServers;
   final HostResolver resolver;
   final Random _random;
 
@@ -154,6 +156,7 @@ class XrayConfigBuilder {
     this.device, {
     this.worker,
     this.uuid,
+    this.defaultPrivateDnsServers = const [],
     HostResolver? resolver,
     Random? random,
   }) : resolver = resolver ?? systemResolve,
@@ -268,7 +271,16 @@ class XrayConfigBuilder {
   ) {
     if (mode == ConnectionMode.psiphon) return ExitNode.psiphon;
     if (mode == ConnectionMode.tor) return ExitNode.tor;
+    if (mode == ConnectionMode.serverless &&
+        serverlessModeOf(device) == ServerlessMode.dns) {
+      return ExitNode.worker;
+    }
     final node = device.exitNodeFor(mode.name);
+    if (mode == ConnectionMode.serverless &&
+        serverlessModeOf(device) == ServerlessMode.domainFronting &&
+        node == ExitNode.tor) {
+      return ExitNode.worker;
+    }
     if (node == ExitNode.chain &&
         (mode == ConnectionMode.serverless ||
             chainFor(mode, device, chains) == null)) {
@@ -319,7 +331,7 @@ class XrayConfigBuilder {
 
   static ServerlessMode serverlessModeOf(DeviceSettings device) =>
       ServerlessMode.values.asNameMap()[device.serverlessMode] ??
-      ServerlessMode.packet;
+      ServerlessMode.values.first;
 
   /// The Psiphon / Tor type: the exit process connects by itself (the app is outside the VPN),
   /// and the socks outbound to it is the "proxy".
@@ -348,6 +360,7 @@ class XrayConfigBuilder {
   VlessSettings get _vless => profile.vless;
   WarpSettings get _warp => profile.warp;
   MasqueSettings get _masque => profile.masque;
+  ServerlessSettings get _serverless => profile.serverless;
 
   /// WARP's or MASQUE's (see [ConnectionMode.isWarpLike]).
   String get _tunnelRemoteDns =>
@@ -421,9 +434,11 @@ class XrayConfigBuilder {
     ConnectionVariant variant,
   ) async {
     if (mode == ConnectionMode.serverless) {
-      return serverlessModeOf(device) == ServerlessMode.domainFronting
-          ? _buildDomainFronting()
-          : _buildServerless();
+      return switch (serverlessModeOf(device)) {
+        ServerlessMode.domainFronting => _buildDomainFronting(),
+        ServerlessMode.dns => _buildServerlessDns(),
+        ServerlessMode.packet => _buildServerlessPacket(),
+      };
     }
     if (_exitType) {
       if (mode == ConnectionMode.tor &&
@@ -641,14 +656,29 @@ class XrayConfigBuilder {
 
   static String _endpointHost(String endpoint) => Uri.http(endpoint).host;
 
-  Future<XrayBuild> _buildServerless() async {
+  Future<XrayBuild> _buildServerlessPacket() async {
     final config = await _buildConfig(
       outbounds: [
-        _freedomOutbound('proxy', isFragment: true),
-        _freedomOutbound('udp-proxy', isUdpNoise: true),
+        _freedomOutbound('proxy', isFragment: true, isUdpNoise: true),
       ],
       isBalancer: false,
-      isWorkerless: true,
+      isServerlessPacket: true,
+      outboundAddrs: const [],
+    );
+    return XrayBuild(config);
+  }
+
+  Future<XrayBuild> _buildServerlessDns() async {
+    final proxy = _freedomOutbound(
+      'proxy',
+      happyEyeBalls: true,
+      domainStrategy: 'ForceIP',
+    );
+    final config = await _buildConfig(
+      outbounds: [proxy],
+      isBalancer: false,
+      isServerlessPacket: false,
+      isServerlessDns: true,
       outboundAddrs: const [],
     );
     return XrayBuild(config);
@@ -758,7 +788,11 @@ class XrayConfigBuilder {
 
         case 'block-ip':
           if (!_chainedExit) {
-            rule['ip'] = ['10.10.34.34/24', '2001:4188:2:600:10:10:34:34/112', ...blockIp];
+            rule['ip'] = [
+              '10.10.34.34/24',
+              '2001:4188:2:600:10:10:34:34/112',
+              ...blockIp,
+            ];
           } else {
             routingRules.remove(rule);
           }
@@ -797,7 +831,8 @@ class XrayConfigBuilder {
 
       final customRules = _buildRoutingRules(
         isBalancer: false,
-        isServerless: false,
+        isServerlessPacket: false,
+        isServerlessDns: false,
         isWarp: false,
         dnsOutbound: 'dns-out-exit',
       );
@@ -832,13 +867,14 @@ class XrayConfigBuilder {
     required List<Map<String, dynamic>> outbounds,
     required bool isBalancer,
     String balancerFallback = 'proxy-1',
-    bool isWorkerless = false,
+    bool isServerlessPacket = false,
+    bool isServerlessDns = false,
     bool isWarp = false,
     required List<String> outboundAddrs,
     String? domainToStaticIPs,
   }) async {
-    final sniffQuic = isWorkerless;
-    final sniffFakeDns = isWorkerless || _general.enableFakeDns;
+    final sniffQuic = isServerlessPacket || isServerlessDns;
+    final sniffFakeDns = isServerlessPacket || _general.enableFakeDns;
     final sniffing = {
       'enabled': true,
       'destOverride': [
@@ -854,7 +890,8 @@ class XrayConfigBuilder {
       'log': {'loglevel': device.logLevel},
       'dns': await _buildDns(
         outboundAddrs,
-        isWorkerless,
+        isServerlessPacket,
+        isServerlessDns,
         isWarp,
         domainToStaticIPs,
       ),
@@ -881,7 +918,15 @@ class XrayConfigBuilder {
         {
           'protocol': 'freedom',
           'streamSettings': {
-            'sockopt': {'domainStrategy': 'UseIP'},
+            'sockopt': {
+              'domainStrategy': 'UseIP',
+              'happyEyeballs': {
+                'tryDelayMs': 250,
+                'prioritizeIPv6': false,
+                'interleave': 2,
+                'maxConcurrentTry': 4,
+              },
+            },
           },
           'tag': 'direct',
         },
@@ -897,7 +942,8 @@ class XrayConfigBuilder {
         'domainStrategy': profile.routing.domainStrategy.xray,
         'rules': _buildRoutingRules(
           isBalancer: isBalancer,
-          isServerless: isWorkerless,
+          isServerlessPacket: isServerlessPacket,
+          isServerlessDns: isServerlessDns,
           isWarp: isWarp,
           dnsOutbound: 'dns-out',
         ),
@@ -987,15 +1033,14 @@ class XrayConfigBuilder {
 
   Future<Map<String, dynamic>> _buildDns(
     List<String> outboundAddrs,
-    bool isWorkerless,
+    bool isServerlessPacket,
+    bool isServerlessDns,
     bool isWarp,
     String? domainToStaticIPs,
   ) async {
     final ipv6 = _general.enableIpv6;
     // Serverless: always the system's resolver ("localhost", outside Xray's routing), like v23.
-    final localDNS = _mode == ConnectionMode.serverless
-        ? 'localhost'
-        : _general.localDns;
+    final localDNS = _general.localDns;
     final hosts = <String, dynamic>{};
     final servers = <dynamic>[];
     final fakeDnsDomains = <String>[];
@@ -1003,7 +1048,7 @@ class XrayConfigBuilder {
     // The remote DNS's host: a public one's IPs in hosts; any other is resolved with the local
     // DNS (see bypassDomains), like the anti-sanction DoH.
     String? unlistedDnsHost;
-    if (!isWorkerless && !isWarp && !_exitType) {
+    if (!isServerlessPacket && !isServerlessDns && !isWarp && !_exitType) {
       unlistedDnsHost = _addDnsHost(hosts, _vless.remoteDns.server, ipv6);
     }
     if (isWarp) unlistedDnsHost = _addDnsHost(hosts, _tunnelRemoteDns, ipv6);
@@ -1013,18 +1058,47 @@ class XrayConfigBuilder {
       if (ips.isNotEmpty) hosts[domainToStaticIPs] = ips;
     }
 
-    final skipFallback = !isWorkerless;
-    if (isWorkerless) {
-      // Serverless: Google's and Cloudflare's DoH, side by side so the parallel query races them.
-      _serverlessDoh.forEach((host, ips) {
+    final skipFallback = !isServerlessPacket;
+    if (isServerlessPacket) {
+      _serverlessPacketDoh.forEach((host, ips) {
         hosts[host] = ips;
         servers.add(_dnsServer('https://$host/dns-query', tag: 'remote-dns'));
       });
-    } else if (_exitType) {
-      // The Psiphon / Tor types (no VLESS / WARP to go through) use the exit's own DNS server
-      // on this phone: it takes the DNS module's tag ("dns", routed direct) rather than remote-dns.
-      servers.add(_dnsServer('127.0.0.1', port: exitDnsPort));
-    } else {
+    }
+
+    final unknownHosts = [];
+    if (isServerlessDns) {
+      final dnsSettings = _serverless.dnsSettings;
+      final selectedServers = dnsSettings.servers.isEmpty
+          ? defaultPrivateDnsServers
+                .map((address) => SelectedDnsServer(addresses: [address]))
+                .toList()
+          : dnsSettings.servers;
+      for (final selectedServer in selectedServers) {
+        for (final address in selectedServer.addresses) {
+          final host = _dnsHost(address);
+          final ip = InternetAddress.tryParse(host);
+          if (!ipv6 && ip?.type == InternetAddressType.IPv6) {
+            continue;
+          }
+          final server = address
+              .replaceFirst('https://', 'https+local://')
+              .replaceFirst('tcp://', 'tcp+local://')
+              .replaceFirst('quic://', 'quic+local://');
+
+          if (_isDomain(host)) {
+            if (selectedServer.bootstraps.isNotEmpty) {
+              hosts[host] = selectedServer.bootstraps;
+            } else {
+              unknownHosts.add(host);
+            }
+          }
+          servers.add(server);
+        }
+      }
+    }
+
+    if (!isServerlessPacket && !isServerlessDns) {
       servers.add(
         _dnsServer(
           isWarp ? _tunnelRemoteDns : _vless.remoteDns.server,
@@ -1071,6 +1145,7 @@ class XrayConfigBuilder {
       ...routing.bypass.domains.map((d) => 'domain:$d'),
       ...outboundAddrs.where(_isDomain).map((d) => 'full:$d'),
       if (unlistedDnsHost != null) 'full:$unlistedDnsHost',
+      ...unknownHosts.map((d) => 'full:$d'),
     ];
 
     if (_antiSanction && sanctionDomains.isNotEmpty) {
@@ -1088,9 +1163,11 @@ class XrayConfigBuilder {
       if (_isDomain(host)) bypassDomains.add('full:$host');
     }
 
-    if (isWorkerless) {
+    if (isServerlessPacket) {
       for (final h
-          in _serverlessDoh.values.expand((ips) => ips).where(_isDomain)) {
+          in _serverlessPacketDoh.values
+              .expand((ips) => ips)
+              .where(_isDomain)) {
         bypassDomains.add('full:$h');
       }
     }
@@ -1106,7 +1183,7 @@ class XrayConfigBuilder {
       fakeDnsDomains.addAll(bypassDomains);
     }
 
-    if (_general.enableFakeDns || isWorkerless) {
+    if (_general.enableFakeDns || isServerlessPacket) {
       servers.insert(
         0,
         fakeDnsDomains.isEmpty
@@ -1122,15 +1199,15 @@ class XrayConfigBuilder {
     return {
       if (hosts.isNotEmpty) 'hosts': hosts,
       'servers': servers,
-      'queryStrategy': isWarp && !ipv6 ? 'UseIPv4' : 'UseIP',
-      if (isWorkerless) 'enableParallelQuery': true,
+      'queryStrategy': isWarp && !ipv6 ? 'UseIPv4' : 'UseSystem',
+      if (isServerlessPacket || isServerlessDns) 'enableParallelQuery': true,
       'tag': 'dns',
     };
   }
 
   /// Serverless's DoH servers and their hosts entries (Cloudflare's: a domain, resolved with
   /// the local DNS).
-  static const _serverlessDoh = {
+  static const _serverlessPacketDoh = {
     'dns.google': ['8.8.8.8', '8.8.4.4'],
     'cloudflare-dns.com': ['cloudflare.com'],
   };
@@ -1173,7 +1250,8 @@ class XrayConfigBuilder {
 
   List<Map<String, dynamic>> _buildRoutingRules({
     required bool isBalancer,
-    required bool isServerless,
+    required bool isServerlessPacket,
+    required bool isServerlessDns,
     required bool isWarp,
     required String dnsOutbound,
   }) {
@@ -1213,7 +1291,7 @@ class XrayConfigBuilder {
     // Through the connection itself: the remote DNS over VLESS / WARP (also with a Psiphon / Tor
     // exit, like BPB with a chain proxy, since the connection is up first), and Psiphon / Tor
     // reaching their servers as an exit (Serverless: with fragment).
-    if (!_exitType && !_frontedExit) {
+    if (!_exitType && !_frontedExit && !isServerlessDns) {
       add(
         inboundTag: [if (_hasExit) _exitInbound, 'remote-dns'],
         outbound: outTag,
@@ -1232,21 +1310,6 @@ class XrayConfigBuilder {
     // before the UDP block so its UDP (uTP, DHT) goes direct too.
     if (profile.routing.bypass.isOn('bittorrent')) {
       add(protocol: ['bittorrent'], outbound: 'direct');
-    }
-
-    // The worker and Tor only carry TCP (the worker also DNS); refuse other UDP so apps fall
-    // back to TCP fast. Psiphon carries UDP (over its udpgw), and the chain proxy is the exit
-    // for everything, UDP included.
-    final tcpOnly =
-        _exit == ExitNode.tor ||
-        (!isServerless &&
-            !isWarp &&
-            _exit != ExitNode.psiphon &&
-            _exit != ExitNode.chain);
-    if (tcpOnly) {
-      add(network: 'udp', outbound: 'block');
-    } else if (profile.routing.block.isOn('quic')) {
-      add(port: 443, network: 'udp', outbound: 'block');
     }
 
     final geo = _geoAssets();
@@ -1289,30 +1352,30 @@ class XrayConfigBuilder {
       add(domain: sanctionDomains, outbound: 'direct');
     }
 
-    // The catch-all only matches connections with an IP. With IPIfNonMatch, a domain-only
-    // connection that no domain rule took gets a second round after resolving the domain. No
-    // network: TCP and UDP are all there is, and where UDP isn't carried it's blocked above.
-    const anyIp = ['0.0.0.0/0', '::/0'];
-
-    if (isServerless) {
-      final target = _hasExit ? exitWorkerlessRules : rules;
-      if (!tcpOnly) {
-        add(
-          inboundTag: _hasExit ? [_exitInbound] : null,
-          network: 'udp',
-          outbound: 'udp-proxy',
-          into: target,
-        );
-      }
-    }
     if (_hasExit) rules.insertAll(0, exitWorkerlessRules);
+
+    // The worker and Tor only carry TCP (the worker also DNS); refuse other UDP so apps fall
+    // back to TCP fast. Psiphon carries UDP (over its udpgw), and the chain proxy is the exit
+    // for everything, UDP included.
+    final tcpOnly =
+        _exit == ExitNode.tor ||
+        (!isServerlessPacket &&
+            !isServerlessDns &&
+            !isWarp &&
+            _exit != ExitNode.psiphon &&
+            _exit != ExitNode.chain);
+    if (tcpOnly) {
+      add(network: 'udp', outbound: 'block');
+    } else if (profile.routing.block.isOn('quic')) {
+      add(port: 443, network: 'udp', outbound: 'block');
+    }
 
     final domainStrategy = profile.routing.domainStrategy.xray;
     final network = tcpOnly ? 'tcp' : 'tcp,udp';
     final outbound = _hasExit ? 'exit' : outTag;
 
     add(
-      ip: domainStrategy == 'AsIs' ? null : anyIp,
+      ip: domainStrategy == 'AsIs' ? null : ['0.0.0.0/0', '::/0'],
       network: domainStrategy == 'AsIs' ? network : null,
       outbound: outbound,
       balancer: isBalancer && !_hasExit,
@@ -1640,16 +1703,20 @@ class XrayConfigBuilder {
     String tag, {
     bool isFragment = false,
     bool isUdpNoise = false,
+    bool happyEyeBalls = false,
+    String domainStrategy = 'UseIP',
     String? packets,
   }) {
     return {
       'protocol': 'freedom',
       'streamSettings': {
-        'sockopt': isFragment
-            ? _sockopt(happyEyeballs: true, domainStrategy: 'UseIP')
-            : _sockopt(
-                domainStrategy: _general.enableIpv6 ? 'UseIPv4v6' : 'UseIPv4',
-              ),
+        if (isFragment)
+          'sockopt': _sockopt(happyEyeballs: true, domainStrategy: 'UseIP'),
+        if (happyEyeBalls)
+          'sockopt': _sockopt(
+            happyEyeballs: true,
+            domainStrategy: domainStrategy,
+          ),
         'finalmask': _finalMask(
           fragment: isFragment,
           udpNoise: isUdpNoise,

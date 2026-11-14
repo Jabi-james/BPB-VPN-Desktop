@@ -173,6 +173,19 @@ func StartEchGateway() string {
 	return ""
 }
 
+// CheckDNSJSON adapts networking.CheckDNS to gomobile's string-only API.
+func CheckDNSJSON(reqJSON string) string {
+	var req networking.DNSRequest
+	if err := json.Unmarshal([]byte(reqJSON), &req); err != nil {
+		return `{"ok":false}`
+	}
+	result, err := json.Marshal(networking.CheckDNS(context.Background(), req))
+	if err != nil {
+		return `{"ok":false}`
+	}
+	return string(result)
+}
+
 // Version is Xray-core's version, e.g. 26.10.21.
 func Version() string {
 	return core.Version()

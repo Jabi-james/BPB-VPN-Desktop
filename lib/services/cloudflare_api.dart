@@ -30,8 +30,8 @@ class CloudflareApi {
 
   /// The bundled worker's version, bumped with every change to worker/worker.js; deployments
   /// older than [minWorkerVersion] are redeployed automatically, the rest offer an update.
-  static const workerVersion = 1;
-  static const minWorkerVersion = 1;
+  static const workerVersion = 2;
+  static const minWorkerVersion = 2;
 
   /// The worker's only binding (plain text): base64 of a JSON object, see [encodeEnv].
   static const envVar = 'ENV';

@@ -103,6 +103,21 @@ class AppState extends ChangeNotifier {
   /// The selected deployment's VLESS UUID.
   String? get workerUuid => selected?.account.uuid;
 
+  /// Default private DoH endpoints used before the DNS settings page has saved selections.
+  List<String> get defaultPrivateDnsServers {
+    final current = selected;
+    final id = workerUuid;
+    if (current == null || id == null) return const [];
+    final customDomain = worker?.customDomain;
+    return {
+      for (final entry in deployments.where(
+        (entry) => entry.account.id == current.account.id,
+      ))
+        'https://${entry.deployment.host}/$id',
+      if (customDomain != null) 'https://$customDomain/$id',
+    }.toList();
+  }
+
   /// App theme colour and light/dark mode. Separate notifiers so only the theme rebuilds.
   final themeColor = ValueNotifier(ThemeColor.blue);
   final themeMode = ValueNotifier(ThemeMode.system);
@@ -296,8 +311,13 @@ class AppState extends ChangeNotifier {
 
   // region configs
 
-  XrayConfigBuilder get builder =>
-      XrayConfigBuilder(profile, device, worker: worker, uuid: workerUuid);
+  XrayConfigBuilder get builder => XrayConfigBuilder(
+    profile,
+    device,
+    worker: worker,
+    uuid: workerUuid,
+    defaultPrivateDnsServers: defaultPrivateDnsServers,
+  );
 
   /// Builds the config used for both display and connection startup.
   Future<XrayBuild> buildConfig() => builder.build(mode, variant: variant);
@@ -611,13 +631,17 @@ class AppState extends ChangeNotifier {
     final inbounds = (build.config['inbounds'] as List?) ?? const [];
     bool hasInbound(String tag) =>
         inbounds.any((i) => i is Map && i['tag'] == tag);
+    final dnsMode =
+        mode == ConnectionMode.serverless &&
+        serverlessMode == ServerlessMode.dns;
     // The exit process: "psiphon" or "tor".
-    final exit =
-        exitType?.name ??
-        const [
-          'psiphon',
-          'tor',
-        ].where((name) => hasInbound('$name-in')).firstOrNull;
+    final exit = dnsMode
+        ? null
+        : exitType?.name ??
+              const [
+                'psiphon',
+                'tor',
+              ].where((name) => hasInbound('$name-in')).firstOrNull;
     // The Psiphon / Tor types are already named after their exit.
     final exitInRemark = exit != null && exitType == null;
     await VpnChannel.start(
@@ -636,7 +660,7 @@ class AppState extends ChangeNotifier {
       proxyOnly: proxyMode,
       exit: exit,
       exitDirect: exitType != null,
-      exitRegion: device.exitRegion,
+      exitRegion: dnsMode ? '' : (device.exitRegion ?? ''),
       torBridge: mode == ConnectionMode.tor ? device.torBridge : null,
       torCustomBridges: profile.tor.bridges,
       psiphonConfig: exit == 'psiphon'

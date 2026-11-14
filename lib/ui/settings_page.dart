@@ -14,6 +14,7 @@ import '../state/app_state.dart';
 import 'cf_accounts_page.dart';
 import 'chain_proxies_page.dart';
 import 'cloudflare_scanner_page.dart';
+import 'dns_page.dart';
 import 'donation_page.dart';
 import 'fragments_page.dart';
 import 'license_page.dart';
@@ -343,7 +344,8 @@ class SettingsPage extends StatelessWidget {
                 'Clean IPs or domains',
                 icon: Symbols.list_arrow_rounded,
                 hint: 'www.speedtest.net\n104.16.1.1\n2606:4700::6810:84e5',
-                help: 'Set clean Cloudflare IPs or domains to boost connection speed. '
+                help:
+                    'Set clean Cloudflare IPs or domains to boost connection speed. '
                     'Include at least one IPv4 address.',
                 itemValidator: validateHost,
                 listValidator: validateCleanIps,
@@ -570,9 +572,22 @@ class SettingsPage extends StatelessWidget {
           SettingsCard(
             children: [
               ListTile(
+                leading: const Icon(Symbols.dns_rounded),
+                title: const Text('DNS servers'),
+                subtitle: Text('DNS mode'),
+                trailing: const Icon(Symbols.chevron_right_rounded),
+                onTap: () => Navigator.of(context)
+                    .push(MaterialPageRoute(builder: (_) => const DnsPage())),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SettingsCard(
+            children: [
+              ListTile(
                 leading: const Icon(Symbols.view_week_rounded),
                 title: const Text('TCP Fragments'),
-                subtitle: Text(_fragmentSummary(p.serverless.fragments)),
+                subtitle: Text('Packet mode'),
                 trailing: const Icon(Symbols.chevron_right_rounded),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
@@ -583,9 +598,7 @@ class SettingsPage extends StatelessWidget {
               ListTile(
                 leading: const Icon(Symbols.graphic_eq_rounded),
                 title: const Text('UDP Obfuscation'),
-                subtitle: Text(
-                  '${p.serverless.udpNoises.length} noise${p.serverless.udpNoises.length == 1 ? '' : 's'}',
-                ),
+                subtitle: Text('Packet mode'),
                 trailing: const Icon(Symbols.chevron_right_rounded),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
@@ -688,9 +701,9 @@ class SettingsPage extends StatelessWidget {
                 title: const Text('Donation'),
                 subtitle: const Text('Keep this project alive'),
                 trailing: const Icon(Symbols.chevron_right_rounded),
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const DonationPage()),
-                ),
+                onTap: () => Navigator.of(
+                  context,
+                ).push(MaterialPageRoute(builder: (_) => const DonationPage())),
               ),
             ],
           ),

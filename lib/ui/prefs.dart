@@ -44,6 +44,63 @@ String? validateProxyPassword(String v) {
 /// A bare IPv4 or IPv6 address (no brackets).
 bool isIp(String v) => InternetAddress.tryParse(v) != null;
 
+class CustomDnsAddress {
+  final String protocol;
+  final String host;
+  final String path;
+
+  const CustomDnsAddress({
+    required this.protocol,
+    required this.host,
+    this.path = '',
+  });
+
+  String get dnsType => switch (protocol) {
+    'https' => 'doh',
+    'quic' => 'doq',
+    _ => protocol,
+  };
+}
+
+/// Parses the supported custom DNS forms: bare IP (UDP), tcp://IP,
+/// https://domain-or-IP/any-path, and quic://domain-or-IP. Explicit ports,
+/// credentials, queries, fragments, and paths on non-DoH schemes are rejected.
+CustomDnsAddress? parseCustomDnsAddress(String value) {
+  final input = value.trim();
+  if (input.isEmpty) return null;
+  if (isIp(input)) return CustomDnsAddress(protocol: 'udp', host: input);
+
+  final uri = Uri.tryParse(input);
+  if (uri == null || !uri.hasAuthority || uri.host.isEmpty || uri.hasPort) {
+    return null;
+  }
+  final protocol = uri.scheme.toLowerCase();
+  if (!const {'tcp', 'https', 'quic'}.contains(protocol) ||
+      uri.userInfo.isNotEmpty ||
+      uri.hasQuery ||
+      uri.hasFragment ||
+      (!isDomain(uri.host) && !isIp(uri.host))) {
+    return null;
+  }
+
+  if (protocol == 'tcp') {
+    if (!isIp(uri.host) || uri.path.isNotEmpty) return null;
+  } else if (protocol == 'quic' && uri.path.isNotEmpty) {
+    return null;
+  }
+
+  return CustomDnsAddress(
+    protocol: protocol,
+    host: uri.host,
+    path: protocol == 'https' ? uri.path : '',
+  );
+}
+
+String? validateCustomDnsAddress(String value) =>
+    parseCustomDnsAddress(value) == null
+    ? 'Use an IP, tcp://IP, https://host/path, or quic://host.'
+    : null;
+
 bool isCidr(String v) {
   final parts = v.split('/');
   if (parts.length != 2) return false;
