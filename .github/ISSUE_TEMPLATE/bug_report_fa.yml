@@ -1,8 +1,5 @@
-name: گزارش ایراد فنی (فارسی)
+name: گزارش مشکل (فارسی)
 description: گزارش مشکل در BPB VPN
-title: "[ایراد فنی]: "
-labels:
-  - bug
 body:
   - type: markdown
     attributes:

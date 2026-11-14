@@ -1,8 +1,5 @@
 name: Bug report (English)
 description: Report a problem with BPB VPN
-title: "[Bug]: "
-labels:
-  - bug
 body:
   - type: markdown
     attributes:

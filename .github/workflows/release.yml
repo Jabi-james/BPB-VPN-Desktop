@@ -28,13 +28,6 @@ jobs:
           fi
           echo "VERSION=$version" >> "$GITHUB_ENV"
 
-      - name: Check manual release notes
-        run: |
-          set -euo pipefail
-          if [ ! -s RELEASE_NOTES.md ] || ! grep -q '[^[:space:]]' RELEASE_NOTES.md; then
-            echo "::error::Write this release's notes in RELEASE_NOTES.md before pushing the tag."
-            exit 1
-          fi
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
