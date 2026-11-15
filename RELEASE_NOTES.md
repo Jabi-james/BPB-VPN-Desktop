@@ -6,6 +6,13 @@ Welcome to BPB VPN, a companion app designed to make setting up and using the BP
 
 BPB is now equipped with specific Cloudflare scanners for all protocol! The scanner follows user settings for protocol i.e. Fingerprint, SNI, IP version, Custom domain, Transport and is even capable of scanning with Fragment and UDP Obfuscation (ECH is excluded). Please note that the more `Probes count` you set, the better IPs you get, but the downside is the scanner consumes more worker requests during VLESS scanning.
 
+## 🌟 Serverless DNS mode
+
+We've already seen DNS clients like `Rethink`, now assume you have a full DNS client with traffic splitting and even DNS tester!
+A very helpful feature which helps you through DNS disruptions supporting UDP,TCP,DoH and DoQ servers. You have your Workers and Pages DoH as private servers (using Cloudflare Security DoH as backend) along with some well-known public DNS servers of all types.
+
+The lovely part of this feature is **Fake SNI servers**, it uses Cloudflare, Google and Quad9 DoH servers with a Fake whitelisted SNI.
+
 ## 💡 Bug fixes and Improvements
 
 - Added **Snowflake AMP** to Tor modes.
@@ -26,6 +33,7 @@ BPB is now equipped with specific Cloudflare scanners for all protocol! The scan
 - Added **Prefer IPv6** option.
 - Updated routing rules.
 - Added Fake SNI DoH feat. to DNS mode.
+- Updated Fragment default setting, for now it may works on some ISPs.
 - Fixed the BPB quick settings tile bug #9
 - Fixed UI and documentation bugs #13 #14
 
