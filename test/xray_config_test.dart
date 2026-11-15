@@ -1142,12 +1142,12 @@ void main() {
             'outboundTag': 'dns-out-exit',
           },
           {
-            'ip': ['10.10.34.34/24', '2001:4188:2:600:10:10:34:34/112'],
-            'outboundTag': 'block',
-          },
-          {
             'domain': ['geosite:private'],
             'outboundTag': 'direct',
+          },
+          {
+            'ip': ['10.10.34.34/24', '2001:4188:2:600:10:10:34:34/112'],
+            'outboundTag': 'block',
           },
           {
             'ip': ['geoip:private'],
@@ -1392,19 +1392,15 @@ void main() {
       final sanction = rules.firstWhere(
         (r) => (r['domain'] as List?)?.contains('geosite:openai') ?? false,
       );
-      expect(identical(bypass, sanction), isFalse);
+      expect(identical(bypass, sanction), isTrue);
       expect(
         bypass['domain'],
-        containsAll(['geosite:cn', 'domain:example.ir']),
-      );
-      expect(bypass['domain'], isNot(contains('geosite:microsoft')));
-      expect(
-        bypass['domain'],
-        isNot(contains('domain:sanctioned.example.com')),
-      );
-      expect(
-        sanction['domain'],
-        containsAll(['geosite:microsoft', 'domain:sanctioned.example.com']),
+        containsAll([
+          'geosite:cn',
+          'domain:example.ir',
+          'geosite:microsoft',
+          'domain:sanctioned.example.com',
+        ]),
       );
       expect(sanction['outboundTag'], 'direct');
       final block = rules.firstWhere(

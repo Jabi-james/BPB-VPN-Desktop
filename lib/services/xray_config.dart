@@ -132,17 +132,17 @@ class XrayConfigBuilder {
   static const fakeSniServers = {
     'cloudflare': {
       'address': '1.1.1.1',
-      'bootstraps': ['1.1.1.1', '1.0.0.1'],
+      'bootstraps': ['1.1.1.1', '1.0.0.1', '2606:4700:4700::1111', '2606:4700:4700::1001'],
       'sni': 'one.one.one.one',
     },
     'google': {
       'address': '8.8.8.8',
-      'bootstraps': ['8.8.8.8', '8.8.4.4'],
+      'bootstraps': ['8.8.8.8', '8.8.4.4', '2001:4860:4860::8888', '2001:4860:4860::8844'],
       'sni': 'dns.google',
     },
     'quad9': {
       'address': '9.9.9.10',
-      'bootstraps': ['9.9.9.10', '149.112.112.10'],
+      'bootstraps': ['9.9.9.10', '149.112.112.10', '2620:fe::10', '2620:fe::fe:10'],
       'sni': 'dns10.quad9.net',
     },
   };
@@ -693,13 +693,14 @@ class XrayConfigBuilder {
       happyEyeBalls: true,
       domainStrategy: 'ForceIP',
     );
-    
+
     final tlsWrappers = [];
     if (_serverless.dnsSettings.fakeSniServers) {
       fakeSniServers.forEach((name, config) {
         tlsWrappers.add({
           'tag': 'tls-wrapper-$name',
           'protocol': 'freedom',
+          'settings': {'redirect': '$name.bootstraps:443'},
           'streamSettings': {
             'security': 'tls',
             'tlsSettings': {
@@ -707,6 +708,15 @@ class XrayConfigBuilder {
               'alpn': ['h2'],
               'fingerprint': 'chrome',
               'verifyPeerCertByName': config['sni'],
+            },
+            'sockopt': {
+              'domainStrategy': 'ForceIP',
+              'happyEyeballs': {
+                'tryDelayMs': 250,
+                'prioritizeIPv6': _general.preferIpv6,
+                'interleave': 2,
+                'maxConcurrentTry': 4,
+              },
             },
           },
         });

@@ -29,6 +29,9 @@ BPB is now equipped with specific Cloudflare scanners for all protocol! The scan
 - Fixed the BPB quick settings tile bug #9
 - Fixed UI and documentation bugs #13 #14
 
+> [!IMPORTANT]
+> Some default settings have been changed since 1.0.0 and 1.1.0, so I recommend to reset settings after this update just to be sure. Don't worry, this will preserve your clean IPs and endpoints.
+
 **Full Changelog**: https://github.com/bia-pain-bache/BPB-VPN/compare/v1.0.0...v1.2.0
 
 ![GitHub Downloads (all assets, specific tag)](https://img.shields.io/github/downloads/bia-pain-bache/BPB-VPN/v1.2.0/total)

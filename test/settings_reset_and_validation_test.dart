@@ -164,6 +164,8 @@ void main() {
         300,
         scrollable: find.byType(Scrollable).first,
       );
+      await tester.ensureVisible(pref);
+      await tester.pumpAndSettle();
       await tester.tap(pref);
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), '');
