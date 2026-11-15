@@ -387,7 +387,7 @@ class BpbVpnService : VpnService() {
             is VerificationState.Result.Retry -> {
                 if (!result.stale) {
                     Log.w(TAG, "Connection failed; retrying", failure)
-                    CoreManager.setDetail("Connection failed · Retrying…")
+                    CoreManager.setDetail("Failed · Retrying…")
                     notify(buildNotification(remark, connected = false))
                 }
                 scheduleVerification(result.delayMs)

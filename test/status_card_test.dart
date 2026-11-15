@@ -29,7 +29,7 @@ void main() {
   ) async {
     final state = AppState()
       ..status = VpnStatus.connecting
-      ..exitDetail = 'Connection failed · Retrying…';
+      ..exitDetail = 'Failed · Retrying…';
     const channel = MethodChannel('bpb/core');
     final calls = <String>[];
     final messenger = tester.binding.defaultBinaryMessenger;
@@ -47,7 +47,7 @@ void main() {
     );
 
     expect(find.text('Connecting'), findsOneWidget);
-    expect(find.text('Connection failed · Retrying…'), findsOneWidget);
+    expect(find.text('Failed · Retrying…'), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
     expect(
       find.byWidgetPredicate(

@@ -297,7 +297,7 @@ class Fragment {
   const Fragment({
     this.packets = FragmentPackets.tlsHello,
     this.lengths = const [Range(100, 200)],
-    this.delays = const [Range.single(1)],
+    this.delays = const [Range.single(0)],
     this.maxSplit,
   });
 
