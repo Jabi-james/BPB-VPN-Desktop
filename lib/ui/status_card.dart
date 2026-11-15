@@ -94,8 +94,8 @@ class _StatusCardState extends State<StatusCard> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Title and hint on the left; space for the button on the right.
-                SizedBox(
-                  height: _rowHeight,
+                ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: _rowHeight),
                   child: Row(
                     children: [
                       Expanded(
@@ -117,8 +117,6 @@ class _StatusCardState extends State<StatusCard> {
                             const SizedBox(height: 4),
                             Text(
                               subtitle,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: muted,
                               ),

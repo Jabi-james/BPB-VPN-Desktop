@@ -10,7 +10,7 @@ BPB is now equipped with specific Cloudflare scanners for all protocol! The scan
 
 - Added **Snowflake AMP** to Tor modes.
 - Added **Routing Strategy**.
-- **Connection behaviour:** The app now checks the actual before updating the UI. As a result, connections that are not working remain in the `Connecting` state, unlike the usual behavior in v2rayNG and similar apps.
+- **Connection behaviour:** The app now checks the actual connection before updating the UI. As a result, connections that are not working remain in the `Connecting` state, unlike the usual behavior in v2rayNG and similar apps.
 - Renamed **Serverless Fragment** to **Serverless Packet**, since it also supports UDP obfuscation.
 - Updated the default **UDP obfuscation** noises to simulate the AmneziaWG obfuscation.
 - Added **QUIC**, **DNS query**, **STUN Binding** mimic presets to UDP noises, along with a **None** mode to apply custom packet for **Expression** UDP noise mode.
@@ -27,6 +27,7 @@ BPB is now equipped with specific Cloudflare scanners for all protocol! The scan
 - Updated routing rules.
 - Added Fake SNI DoH feat. to DNS mode.
 - Fixed the BPB quick settings tile bug #9
+- Fixed UI and documentation bugs #13 #14
 
 **Full Changelog**: https://github.com/bia-pain-bache/BPB-VPN/compare/v1.0.0...v1.2.0
 

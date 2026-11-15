@@ -589,7 +589,7 @@ class AppState extends ChangeNotifier {
           serverlessMode == ServerlessMode.domainFronting &&
           !await VpnChannel.mitmCaExists()) {
         throw StateError(
-          'Install the Domain Fronting certificate first: Settings → Serverless.',
+          'Install the MITM certificate first: Settings → Serverless.',
         );
       }
       await _start();
