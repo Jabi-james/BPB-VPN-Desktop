@@ -25,6 +25,7 @@ BPB is now equipped with specific Cloudflare scanners for all protocol! The scan
 - Added **Serverless DNS** mode supporting UDP,TCP,DoH and DoQ servers. Private servers use Cloudflare Security DoH as backend.
 - Added **Prefer IPv6** option.
 - Updated routing rules.
+- Added Fake SNI DoH feat. to DNS mode.
 - Fixed the BPB quick settings tile bug #9
 
 **Full Changelog**: https://github.com/bia-pain-bache/BPB-VPN/compare/v1.0.0...v1.2.0

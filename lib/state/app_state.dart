@@ -105,6 +105,7 @@ class AppState extends ChangeNotifier {
 
   /// Default private DoH endpoints used before the DNS settings page has saved selections.
   List<String> get defaultPrivateDnsServers {
+    if (profile.serverless.dnsSettings.fakeSniServers) return const [];
     final current = selected;
     final id = workerUuid;
     if (current == null || id == null) return const [];
@@ -660,7 +661,7 @@ class AppState extends ChangeNotifier {
       proxyOnly: proxyMode,
       exit: exit,
       exitDirect: exitType != null,
-      exitRegion: dnsMode ? '' : (device.exitRegion ?? ''),
+      exitRegion: dnsMode ? '' : device.exitRegion,
       torBridge: mode == ConnectionMode.tor ? device.torBridge : null,
       torCustomBridges: profile.tor.bridges,
       psiphonConfig: exit == 'psiphon'

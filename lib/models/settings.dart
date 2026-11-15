@@ -224,11 +224,15 @@ class ServerlessDnsSettings {
   /// built-in defaults.
   final List<SelectedDnsServer> servers;
 
+  /// Adds some DoH servers with fake SNI to selected servers
+  final bool fakeSniServers;
+
   const ServerlessDnsSettings({
     this.dnsType = 'doh',
     this.testUrl = defaultTestUrl,
     this.customServers = const [],
     this.servers = const [],
+    this.fakeSniServers = false,
   });
 
   static ServerlessDnsSettings parse(Object? v) {
@@ -238,6 +242,7 @@ class ServerlessDnsSettings {
     return ServerlessDnsSettings(
       dnsType: _choice(j['dnsType'], {'udp', 'tcp', 'doh', 'doq'}, d.dnsType),
       testUrl: _str(j['testUrl'], d.testUrl),
+      fakeSniServers: _bool(j['fakeSniServers'], d.fakeSniServers),
       customServers: j['customServers'] is List
           ? (j['customServers'] as List).map(CustomDnsServer.parse).toList()
           : d.customServers,
@@ -253,6 +258,7 @@ class ServerlessDnsSettings {
   Map<String, dynamic> toJson() => {
     'dnsType': dnsType,
     'testUrl': testUrl,
+    'fakeSniServers': fakeSniServers,
     'customServers': customServers.map((s) => s.toJson()).toList(),
     'servers': servers.map((server) => server.toJson()).toList(),
   };

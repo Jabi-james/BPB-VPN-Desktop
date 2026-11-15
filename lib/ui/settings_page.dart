@@ -585,6 +585,12 @@ class SettingsPage extends StatelessWidget {
                 onTap: () => Navigator.of(context)
                     .push(MaterialPageRoute(builder: (_) => const DnsPage())),
               ),
+              const SwitchPref(
+                'serverless.dnsSettings.fakeSniServers',
+                'Fake SNI servers',
+                icon: Symbols.encrypted_rounded,
+                subtitle: 'DNS mode',
+              ),
             ],
           ),
           const SizedBox(height: 16),

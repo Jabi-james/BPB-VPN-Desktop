@@ -403,6 +403,9 @@ class _DnsPageState extends State<DnsPage> {
   }
 
   bool _selectDefaultPrivateServers() {
+    if (AppScope.read(context).profile.serverless.dnsSettings.fakeSniServers) {
+      return false;
+    }
     final servers = _privateServers();
     for (final server in servers) {
       _selectedServers[server['address']!] = true;
@@ -455,9 +458,11 @@ class _DnsPageState extends State<DnsPage> {
 
   void _saveCustomServers() {
     final state = AppScope.read(context);
+    final currentDnsSettings = state.profile.serverless.dnsSettings;
     final newSettings = ServerlessDnsSettings(
       dnsType: _selectedType,
       testUrl: _testUrlController.text,
+      fakeSniServers: currentDnsSettings.fakeSniServers,
       customServers: _customServers,
       servers: _selectedDnsConfiguration(),
     );

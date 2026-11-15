@@ -128,6 +128,25 @@ class XrayConfigBuilder {
   /// Direct internet check for the burst observatory (Cloudflare's captive-portal check).
   static const connectivityUrl = 'http://cp.cloudflare.com/generate_204';
 
+  /// Fake SNI DoH servers
+  static const fakeSniServers = {
+    'cloudflare': {
+      'address': '1.1.1.1',
+      'bootstraps': ['1.1.1.1', '1.0.0.1'],
+      'sni': 'one.one.one.one',
+    },
+    'google': {
+      'address': '8.8.8.8',
+      'bootstraps': ['8.8.8.8', '8.8.4.4'],
+      'sni': 'dns.google',
+    },
+    'quad9': {
+      'address': '9.9.9.10',
+      'bootstraps': ['9.9.9.10', '149.112.112.10'],
+      'sni': 'dns10.quad9.net',
+    },
+  };
+
   /// Recent pings averaged per outbound by the burst observatory.
   static const _probeSamples = 3;
   static const localProxyPort = 10808;
@@ -674,8 +693,28 @@ class XrayConfigBuilder {
       happyEyeBalls: true,
       domainStrategy: 'ForceIP',
     );
+    
+    final tlsWrappers = [];
+    if (_serverless.dnsSettings.fakeSniServers) {
+      fakeSniServers.forEach((name, config) {
+        tlsWrappers.add({
+          'tag': 'tls-wrapper-$name',
+          'protocol': 'freedom',
+          'streamSettings': {
+            'security': 'tls',
+            'tlsSettings': {
+              'serverName': 'www.google.com',
+              'alpn': ['h2'],
+              'fingerprint': 'chrome',
+              'verifyPeerCertByName': config['sni'],
+            },
+          },
+        });
+      });
+    }
+
     final config = await _buildConfig(
-      outbounds: [proxy],
+      outbounds: [proxy, ...tlsWrappers],
       isBalancer: false,
       isServerlessPacket: false,
       isServerlessDns: true,
@@ -1096,6 +1135,14 @@ class XrayConfigBuilder {
           servers.add(server);
         }
       }
+
+      if (_serverless.dnsSettings.fakeSniServers) {
+        fakeSniServers.forEach((name, config) {
+          final address = config['address'];
+          servers.add(_dnsServer('h2c://$address/dns-query', tag: '$name-dns'));
+          hosts['$name.bootstraps'] = config['bootstraps'];
+        });
+      }
     }
 
     if (!isServerlessPacket && !isServerlessDns) {
@@ -1297,6 +1344,12 @@ class XrayConfigBuilder {
         outbound: outTag,
         balancer: isBalancer,
       );
+    }
+
+    if (isServerlessDns) {
+      for (final name in fakeSniServers.keys) {
+        add(inboundTag: ['$name-dns'], outbound: 'tls-wrapper-$name');
+      }
     }
     // Domain Fronting with an exit: no DNS module tag (its local DNS is localhost, not routed).
     if (!_frontedExit) add(inboundTag: ['dns'], outbound: 'direct');
