@@ -57,16 +57,16 @@ class _StatusCardState extends State<StatusCard> {
     final (title, subtitle) = switch (state.status) {
       // Psiphon / Tor say what they're doing: progress while connecting, or reconnecting.
       VpnStatus.connected => (
-        'Connected',
+        'CONNECTED',
         state.exitDetail ?? 'Tap to disconnect',
       ),
       VpnStatus.connecting => (
-        state.connectedAt == null ? 'Connecting' : 'Reconnecting',
+        state.connectedAt == null ? 'CONNECTING' : 'RECONNECTING',
         state.exitDetail ?? 'Starting the tunnel…',
       ),
-      VpnStatus.disconnecting => ('Disconnecting', 'Stopping the tunnel…'),
+      VpnStatus.disconnecting => ('DISCONNECTING', 'Stopping the tunnel…'),
       VpnStatus.disconnected when failed => ('Connection failed', state.error!),
-      VpnStatus.disconnected => ('Disconnected', 'Tap to connect'),
+      VpnStatus.disconnected => ('DISCONNECTED', 'Tap to connect'),
     };
     final titleColor = state.isConnected
         ? _green
@@ -108,7 +108,7 @@ class _StatusCardState extends State<StatusCard> {
                               alignment: AlignmentDirectional.centerStart,
                               child: Text(
                                 title,
-                                style: theme.textTheme.headlineSmall?.copyWith(
+                                style: theme.textTheme.titleLarge?.copyWith(
                                   fontWeight: FontWeight.w700,
                                   color: titleColor,
                                 ),

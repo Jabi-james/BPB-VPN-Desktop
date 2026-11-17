@@ -192,10 +192,10 @@ const domainFrontingV23 = r'''
       "streamSettings": {
         "security": "tls",
         "tlsSettings": {
-          "serverName": "www.microsoft.com",
-          "verifyPeerCertByName": "fromMitM,www.microsoft.com,www.google.com,dns.google,cloudflare-dns.com,one.one.one.one",
+          "serverName": "www.google.com",
+          "verifyPeerCertByName": "one.one.one.one",
           "alpn": [
-            "fromMitM"
+            "h2"
           ],
           "fingerprint": "chrome"
         },
@@ -403,6 +403,7 @@ const domainFrontingV23 = r'''
         "outboundTag": "redirect-out-h211"
       },
       {
+        "inboundTag": [],
         "ip": [],
         "outboundTag": "block",
         "ruleTag": "block-ip"

@@ -132,17 +132,32 @@ class XrayConfigBuilder {
   static const fakeSniServers = {
     'cloudflare': {
       'address': '1.1.1.1',
-      'bootstraps': ['1.1.1.1', '1.0.0.1', '2606:4700:4700::1111', '2606:4700:4700::1001'],
+      'bootstraps': [
+        '1.1.1.1',
+        '1.0.0.1',
+        '2606:4700:4700::1111',
+        '2606:4700:4700::1001',
+      ],
       'sni': 'one.one.one.one',
     },
     'google': {
       'address': '8.8.8.8',
-      'bootstraps': ['8.8.8.8', '8.8.4.4', '2001:4860:4860::8888', '2001:4860:4860::8844'],
+      'bootstraps': [
+        '8.8.8.8',
+        '8.8.4.4',
+        '2001:4860:4860::8888',
+        '2001:4860:4860::8844',
+      ],
       'sni': 'dns.google',
     },
     'quad9': {
       'address': '9.9.9.10',
-      'bootstraps': ['9.9.9.10', '149.112.112.10', '2620:fe::10', '2620:fe::fe:10'],
+      'bootstraps': [
+        '9.9.9.10',
+        '149.112.112.10',
+        '2620:fe::10',
+        '2620:fe::fe:10',
+      ],
       'sni': 'dns10.quad9.net',
     },
   };
@@ -836,15 +851,11 @@ class XrayConfigBuilder {
           }
 
         case 'block-ip':
-          if (!_chainedExit) {
-            rule['ip'] = [
-              '10.10.34.34/24',
-              '2001:4188:2:600:10:10:34:34/112',
-              ...blockIp,
-            ];
-          } else {
-            routingRules.remove(rule);
-          }
+          rule['ip'] = [
+            '10.10.34.34/24',
+            '2001:4188:2:600:10:10:34:34/112',
+            if (!_chainedExit) ...blockIp,
+          ];
 
         case 'bypass-ip':
           if (!_chainedExit) {
