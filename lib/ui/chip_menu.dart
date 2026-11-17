@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
@@ -42,9 +44,19 @@ class ChipMenu<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    // A few Android builds report a smaller (or zero) bottom view padding for
+    // the menu overlay than the navigation bar actually occupies.
+    final bottomSystemInset = math.max(
+      MediaQuery.viewPaddingOf(context).bottom,
+      48.0,
+    ).toDouble();
     final selectedBadges = badges?.call(selected) ?? const <String>[];
     return MenuAnchor(
       alignmentOffset: const Offset(0, 6),
+      // The app-level SafeArea consumes the body padding, but menu overlays can
+      // still span to the window edge. Reserve the nav bar inset, with a 48 dp
+      // floor for Android builds that under-report it.
+      reservedPadding: EdgeInsets.fromLTRB(8, 8, 8, bottomSystemInset + 8),
       style: MenuStyle(shape: WidgetStatePropertyAll(roundedShape(kMenuRadius))),
       menuChildren: [
         for (final v in values)
