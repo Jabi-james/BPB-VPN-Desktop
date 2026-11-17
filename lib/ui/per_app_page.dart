@@ -15,7 +15,7 @@ class PerAppPage extends StatefulWidget {
 class _PerAppPageState extends State<PerAppPage> {
   late final Future<List<InstalledApp>> _apps = VpnChannel.installedApps();
   String _query = '';
-  bool _showSystem = false;
+  bool _showSystem = true;
 
   @override
   Widget build(BuildContext context) {
