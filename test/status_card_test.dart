@@ -18,7 +18,7 @@ void main() {
         child: const MaterialApp(home: Scaffold(body: StatusCard())),
       ),
     );
-    expect(find.text('Reconnecting'), findsOneWidget);
+    expect(find.text('RECONNECTING'), findsOneWidget);
     expect(find.text('Checking internet connection…'), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
@@ -46,7 +46,7 @@ void main() {
       ),
     );
 
-    expect(find.text('Connecting'), findsOneWidget);
+    expect(find.text('CONNECTING'), findsOneWidget);
     expect(find.text('Failed · Retrying…'), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
     expect(

@@ -160,30 +160,6 @@ const domainFrontingV23 = r'''
       }
     },
     {
-      "tag": "tls-repack-frommitm",
-      "protocol": "direct",
-      "streamSettings": {
-        "security": "tls",
-        "tlsSettings": {
-          "serverName": "fromMitM",
-          "verifyPeerCertByName": "fromMitM",
-          "alpn": [
-            "fromMitM"
-          ],
-          "fingerprint": "chrome"
-        },
-        "sockopt": {
-          "domainStrategy": "ForceIP",
-          "happyEyeballs": {
-            "tryDelayMs": 300,
-            "prioritizeIPv6": false,
-            "interleave": 2,
-            "maxConcurrentTry": 20
-          }
-        }
-      }
-    },
-    {
       "tag": "tls-repack-dns",
       "protocol": "direct",
       "settings": {
@@ -217,7 +193,7 @@ const domainFrontingV23 = r'''
         "security": "tls",
         "tlsSettings": {
           "serverName": "www.google.com",
-          "verifyPeerCertByName": "fromMitM,www.google.com,dns.google,www.googlevideo.com,www.youtube.com",
+          "verifyPeerCertByName": "fromMitM",
           "alpn": [
             "fromMitM"
           ],
@@ -244,7 +220,7 @@ const domainFrontingV23 = r'''
         "security": "tls",
         "tlsSettings": {
           "serverName": "github.githubassets.com",
-          "verifyPeerCertByName": "fromMitM,www.python.org,pypi.org,fastly.com,www.fastly.com,developer.fastly.com,reddit.com,githubassets.com,github.com,github.io,githubusercontent.com,github.githubassets.com",
+          "verifyPeerCertByName": "fromMitM",
           "alpn": [
             "fromMitM"
           ],
@@ -268,7 +244,7 @@ const domainFrontingV23 = r'''
         "security": "tls",
         "tlsSettings": {
           "serverName": "www.microsoft.com",
-          "verifyPeerCertByName": "fromMitM,www.google.com,www.microsoft.com,www.whatsapp.com,www.facebook.com,www.ar.meta.com,www.fb.com,www.whatsapp.net,www.atlassolutions.com,www.secure.facebook.com,www.extern.facebook.com,www.internet.org,www.oculus.com,www.wit.ai,www.facebook-dns.com,www.instagram.com,www.meta.com,www.external-disputes.meta.com,www.fbe2e.com,www.cloud.x2p.facebook.net,www.secure.latest.facebook.com",
+          "verifyPeerCertByName": "fromMitM",
           "alpn": [
             "fromMitM"
           ],

@@ -809,9 +809,11 @@ class XrayConfigBuilder {
       'destOverride': ['http', 'tls', 'fakedns'],
       'routeOnly': true,
     };
-    final [tun, mixedIn] = _localInbounds(sniffing);
+    final localInbounds = _localInbounds(sniffing);
+    final tun = localInbounds.length > 1 ? localInbounds.first : null;
+    final mixedIn = localInbounds.last;
     final inbounds = (config['inbounds'] as List).cast<Map<String, dynamic>>();
-    if (device.appMode != AppMode.proxy) inbounds.insert(0, tun);
+    if (tun != null) inbounds.insert(0, tun);
 
     final outbounds = (config['outbounds'] as List)
         .cast<Map<String, dynamic>>();

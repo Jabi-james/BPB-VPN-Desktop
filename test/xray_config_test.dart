@@ -1068,7 +1068,6 @@ void main() {
             'exit',
             'redirect-out-h11',
             'redirect-out-h211',
-            'tls-repack-frommitm',
             'tls-repack-dns',
             'tls-repack-google',
             'tls-repack-fastly',
@@ -1126,6 +1125,12 @@ void main() {
               ...r,
               'inboundTag': ['$exit-in'],
             },
+          {
+            'inboundTag': ['$exit-in'],
+            'ip': ['10.10.34.34/24', '2001:4188:2:600:10:10:34:34/112'],
+            'outboundTag': 'block',
+            'ruleTag': 'block-ip'
+          },
           {
             'inboundTag': ['$exit-in'],
             'ip': ['0.0.0.0/0', '::/0'],
