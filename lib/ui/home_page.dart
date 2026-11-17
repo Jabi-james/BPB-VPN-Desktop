@@ -69,9 +69,7 @@ class HomePage extends StatelessWidget {
       body: SafeArea(
         bottom: false,
         child: SingleChildScrollView(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.viewPaddingOf(context).bottom + 16,
-          ),
+          padding: const EdgeInsets.only(bottom: 16),
           child: Column(
             children: [
               if (state.needsReconnect) const _ReconnectBanner(),

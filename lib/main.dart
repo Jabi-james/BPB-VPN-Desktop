@@ -26,6 +26,12 @@ class BpbApp extends StatelessWidget {
         builder: (context, _) => MaterialApp(
           title: 'BPB',
           debugShowCheckedModeBanner: false,
+          // Android can draw the app into the navigation bar area (notably with
+          // gesture navigation). Keep every route's content above that inset.
+          builder: (context, child) => SafeArea(
+            top: false,
+            child: child ?? const SizedBox.shrink(),
+          ),
           theme: buildTheme(Brightness.light, state.themeColor.value),
           darkTheme: buildTheme(Brightness.dark, state.themeColor.value),
           themeMode: state.themeMode.value,
