@@ -258,7 +258,7 @@ class VpnChannel {
   static Future<String> readLog({String log = 'xray'}) async {
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
       if (log != 'xray') return '';
-      return _windowsLogLines.join('\\n');
+      return _windowsLogLines.join('\n');
     }
     return await _methods.invokeMethod<String>('readLog', {'log': log}) ?? '';
   }
@@ -266,7 +266,7 @@ class VpnChannel {
   /// Bytes in each log ("xray", "tor", "psiphon") since the last connect.
   static Future<Map<String, int>> logSizes() async {
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
-      return {'xray': utf8.encode(_windowsLogLines.join('\\n')).length};
+      return {'xray': utf8.encode(_windowsLogLines.join('\n')).length};
     }
     return (await _methods.invokeMapMethod<String, int>('logSizes')) ?? const {};
   }
