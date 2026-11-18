@@ -21,10 +21,10 @@ Legend:
 | Full-device VPN / TUN | Not implemented | Windows UI has a TUN choice but Go host rejects it. Must implement Wintun, elevation/service lifecycle, routes, DNS, cleanup. |
 | Connection state / connect / disconnect / reconnect | Partial | Windows process bridge exists; no runtime smoke test, and no persisted service/state after app exit. |
 | Traffic counters / ping / Xray logs | Partial | Xray traffic, delay and stdout/stderr log bridge exist; real runtime accuracy unverified. |
-| Psiphon exit / region selection | Not implemented | Android uses Android native library/service; no Windows Psiphon binary/process adapter bundled. |
-| Tor exit / bridges / region selection | Not implemented | Android Tor native service/binary integration is not ported to Windows. |
-| Setup-wizard “Retry with Tor” | Not implemented | Uses Android SetupTor service; intentionally deferred rather than attempting a fragile port. |
-| Browser Dialer | Not implemented | Depends on Android WebView/BrowserDialer integration. |
+| Psiphon exit / region selection | Not implemented | Android uses Android native library/service; no Windows Psiphon binary/process adapter bundled. Windows start rejects exit modes clearly. |
+| Tor exit / bridges / region selection | Not implemented | Android Tor native service/binary integration is not ported to Windows. Windows start rejects exit modes clearly. |
+| Setup-wizard “Retry with Tor” | Not implemented | Hidden on Windows and uses Android SetupTor service; intentionally deferred rather than attempting a fragile port. |
+| Browser Dialer | Not implemented | Depends on Android WebView/BrowserDialer integration; Windows start rejects this variant clearly. |
 
 ## Cloudflare account and deployment
 
@@ -61,14 +61,14 @@ Legend:
 
 | Android capability | Windows status | Notes |
 |---|---|---|
-| Per-app VPN routing / installed-app picker | Android only | Windows equivalent is not implemented; current Android package-name UI must be hidden or replaced on Windows. |
+| Per-app VPN routing / installed-app picker | Android only | Hidden in Windows settings; Windows start rejects a non-off per-app mode rather than silently ignoring it. |
 | MTU / append HTTP proxy | Partial | Android VPN-specific; Windows TUN not available. |
 | LAN proxy authentication | Shared model/config; runtime unverified | Must test Windows local proxy auth and LAN exposure. |
 | Logs | Partial | Windows only exposes Xray child stdout/stderr; Tor/Psiphon logs do not exist. |
 | View generated Xray config | Shared | Common config builder. |
 | Import/export BPB settings JSON | Windows implemented (build only) | Native Windows file dialogs added; file encoding and cancellation need runtime test. |
 | Share/export file | Partial | Windows maps share sheet to Save As; no Android-style share sheet. |
-| Update geoip/geosite assets | Not implemented | Save operation still calls Android MethodChannel. |
+| Update geoip/geosite assets | Windows implemented (build only) | Downloads are shared; Windows verifies SHA-256 and atomically replaces files beside the desktop core. Runtime update/reconnect still needs testing. |
 | MITM CA generate/save/install | Partial / Android only | Certificate generation is shared Dart; native save/install and Windows trust-store flow are not implemented. |
 | App/core version display | Partial | Xray version from Go host; Psiphon/Tor versions unavailable. Windows app version currently uses a compile-time fallback. |
 | App self-update | Not implemented | Existing updater is Android APK-oriented; Windows release/update channel is not defined. |
