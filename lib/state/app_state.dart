@@ -610,7 +610,7 @@ class AppState extends ChangeNotifier {
     // Starting again replaces the running session in the service.
     needsReconnect = false;
     // Switching from Proxy to VPN mode needs the VPN permission.
-    if (!await VpnChannel.prepare(vpn: !proxyMode)) {
+    if (!await VpnChannel.prepare(vpn: tunMode)) {
       error = 'VPN permission denied';
       notifyListeners();
       return;
