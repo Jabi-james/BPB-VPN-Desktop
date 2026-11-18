@@ -82,11 +82,11 @@ func main() {
 				write(response{ID: cmd.ID, Type: "ack"})
 			}
 		case <-ticker.C:
-			if bridge.IsRunning() {
-				raw := bridge.PollEvent(20)
-				if raw != "" {
-					fmt.Println(raw)
-				}
+			// Poll even after Running becomes false: finish() emits the terminal event
+			// immediately after clearing that flag.
+			raw := bridge.PollEvent(20)
+			if raw != "" {
+				fmt.Println(raw)
 			}
 		}
 	}
