@@ -342,6 +342,19 @@ class VpnChannel {
   /// Proxied traffic: bytes in the last second and since connecting, sampled by the
   /// VPN service (which also shows proxy and direct rates in its notification).
   static Future<({int up, int down, int totalUp, int totalDown})> traffic() async {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
+      final result = await _sendWindowsCommand({'command': 'traffic'});
+      var up = 0;
+      var down = 0;
+      for (final item in (result['traffic'] as String? ?? '').split(';')) {
+        final fields = item.split(',');
+        if (fields.length != 3) continue;
+        final bytes = int.tryParse(fields[2]) ?? 0;
+        if (fields[1] == 'uplink') up += bytes;
+        if (fields[1] == 'downlink') down += bytes;
+      }
+      return (up: up, down: down, totalUp: up, totalDown: down);
+    }
     final m = await _methods.invokeMapMethod<String, int>('trafficStats');
     return (
       up: m?['proxyUp'] ?? 0,

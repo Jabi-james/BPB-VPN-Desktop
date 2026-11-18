@@ -33,7 +33,7 @@ func writeResponse(res response) {
 	if err != nil {
 		return
 	}
-	fmt.Printf("BPB:%s\\n", encoded)
+	fmt.Fprintln(os.Stdout, "BPB:"+string(encoded))
 }
 
 func main() {
