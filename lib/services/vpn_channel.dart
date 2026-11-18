@@ -279,17 +279,84 @@ class VpnChannel {
     await _methods.invokeMethod('clearLog');
   }
 
-  /// Saves [content] as [name] and opens the share sheet so the user picks an app.
-  static Future<void> shareFile({required String name, required String content, String title = 'Share'}) =>
-      _methods.invokeMethod('shareFile', {'name': name, 'content': content, 'title': title});
+  /// Saves [content] as [name] and opens the share sheet (Android) or a Save As dialog (Windows).
+  static Future<void> shareFile({required String name, required String content, String title = 'Share'}) async {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
+      await _saveWindowsFile(name: name, content: content, title: title);
+      return;
+    }
+    await _methods.invokeMethod('shareFile', {'name': name, 'content': content, 'title': title});
+  }
 
-  /// Saves [content] as [name] in Downloads (Android 7-9: a Save-as screen). Returns where
-  /// it was saved, or null if the user cancelled.
-  static Future<String?> saveFile({required String name, required String content}) =>
-      _methods.invokeMethod<String>('saveFile', {'name': name, 'content': content});
+  /// Shows a native Windows Save As dialog and returns the saved path.
+  static Future<String?> _saveWindowsFile({
+    required String name,
+    required String content,
+    String title = 'Save BPB file',
+  }) async {
+    const script = r'''
+Add-Type -AssemblyName System.Windows.Forms
+$d = New-Object System.Windows.Forms.SaveFileDialog
+$d.Title = $env:BPB_DIALOG_TITLE
+$d.FileName = $env:BPB_DEFAULT_FILE_NAME
+$d.Filter = 'BPB and JSON files (*.json)|*.json|All files (*.*)|*.*'
+$d.AddExtension = $true
+$d.DefaultExt = 'json'
+if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+  [Console]::Out.Write($d.FileName)
+}
+''';
+    final result = await Process.run(
+      'powershell.exe',
+      ['-NoProfile', '-STA', '-Command', script],
+      environment: {
+        'BPB_DIALOG_TITLE': title,
+        'BPB_DEFAULT_FILE_NAME': name,
+      },
+    );
+    if (result.exitCode != 0) {
+      throw StateError('Windows Save As dialog failed: ${result.stderr}');
+    }
+    final path = (result.stdout as String).trim();
+    if (path.isEmpty) return null;
+    await File(path).writeAsString(content, encoding: utf8, flush: true);
+    return path;
+  }
+
+  /// Saves [content] as [name] in a Save As dialog on Windows or Downloads on Android.
+  /// Returns the path, or null if the user cancelled.
+  static Future<String?> saveFile({required String name, required String content}) {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
+      return _saveWindowsFile(name: name, content: content);
+    }
+    return _methods.invokeMethod<String>('saveFile', {'name': name, 'content': content});
+  }
 
   /// Opens the system file picker and returns the chosen file's name and text, or null if cancelled.
   static Future<({String name, String content})?> pickFile() async {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
+      const script = r'''
+Add-Type -AssemblyName System.Windows.Forms
+$d = New-Object System.Windows.Forms.OpenFileDialog
+$d.Title = 'Import BPB settings'
+$d.Filter = 'BPB and JSON files (*.json)|*.json|All files (*.*)|*.*'
+$d.CheckFileExists = $true
+if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+  [Console]::Out.Write($d.FileName)
+}
+''';
+      final result = await Process.run(
+        'powershell.exe',
+        ['-NoProfile', '-STA', '-Command', script],
+      );
+      if (result.exitCode != 0) {
+        throw StateError('Windows file picker failed: ${result.stderr}');
+      }
+      final path = (result.stdout as String).trim();
+      if (path.isEmpty) return null;
+      final file = File(path);
+      return (name: file.uri.pathSegments.last, content: await file.readAsString());
+    }
     final file = await _methods.invokeMapMethod<String, String>('pickFile');
     if (file == null) return null;
     return (name: file['name'] ?? '', content: file['content'] ?? '');
@@ -318,10 +385,26 @@ class VpnChannel {
   /// Starts the local ECH gateway (networking/), used when Cloudflare can't be reached directly.
   static Future<void> startEchGateway() => _methods.invokeMethod('startEchGateway');
 
-  /// Opens [url] in the browser; false if nothing could handle it.
+  /// Opens an HTTP(S) [url] in the default browser; false if it cannot be opened.
   static Future<bool> openUrl(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null || !{'http', 'https'}.contains(uri.scheme) || uri.host.isEmpty) {
+      return false;
+    }
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
+      try {
+        await Process.start(
+          'rundll32.exe',
+          ['url.dll,FileProtocolHandler', uri.toString()],
+          mode: ProcessStartMode.detached,
+        );
+        return true;
+      } on ProcessException {
+        return false;
+      }
+    }
     try {
-      return await _methods.invokeMethod<bool>('openUrl', {'url': url}) ?? false;
+      return await _methods.invokeMethod<bool>('openUrl', {'url': uri.toString()}) ?? false;
     } on PlatformException {
       return false;
     }
@@ -360,8 +443,16 @@ class VpnChannel {
     return (xray: m['xray'] ?? '', psiphon: m['psiphon'] ?? '', tor: m['tor'] ?? '');
   }
 
-  /// The installed app's version (from pubspec.yaml) and the phone's ABIs, preferred first.
+  /// The installed app's version and, on Android, supported ABIs.
   static Future<({String version, List<String> abis})> appInfo() async {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
+      // Keep this in sync with the version field in pubspec.yaml until a desktop
+      // release channel supplies package metadata.
+      return (version: const String.fromEnvironment(
+        'BPB_APP_VERSION',
+        defaultValue: '1.2.1+4',
+      ), abis: const []);
+    }
     final m = await _methods.invokeMapMethod<String, dynamic>('appInfo') ?? const {};
     return (
       version: '${m['version'] ?? ''}',
