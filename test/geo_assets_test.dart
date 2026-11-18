@@ -38,46 +38,57 @@ Set<String> datTags(String path) {
 
 void main() {
   test(
-    'every geosite/geoip tag the configs use exists in the bundled assets',
+    'every geosite/geoip tag the configs use exists in the downloaded routing assets',
     () async {
-    const assets = 'android/app/src/main/assets';
-    if (!File('$assets/geosite.dat').existsSync() ||
-        !File('$assets/geoip.dat').existsSync()) {
-      return;
-    }
-    final geosite = datTags('$assets/geosite.dat');
-    final geoip = datTags('$assets/geoip.dat');
+      const assets = 'android/app/src/main/assets';
+      final geositeFile = File('$assets/geosite.dat');
+      final geoipFile = File('$assets/geoip.dat');
+      expect(geositeFile.existsSync(), isTrue, reason: 'Run scripts/fetch_geo.sh first');
+      expect(geoipFile.existsSync(), isTrue, reason: 'Run scripts/fetch_geo.sh first');
+      expect(await geositeFile.length(), greaterThan(0));
+      expect(await geoipFile.length(), greaterThan(0));
 
-    // Every routing preset on.
-    Map<String, dynamic> all(Map<String, bool> presets) => {
-      'presets': {for (final k in presets.keys) k: true},
-    };
-    final profile = Profile.fromJson({
-      'routing': {
-        'bypass': all(RoutingPresets.bypass),
-        'sanctionBypass': all(RoutingPresets.sanctionBypass),
-        'block': all(RoutingPresets.block),
-      },
-    });
-    final builder = XrayConfigBuilder(
-      profile,
-      const DeviceSettings(),
-      worker: const ActiveWorker(
-        accountId: 'a',
-        name: 'w',
-        type: WorkerType.workers,
-        host: 'w.example.workers.dev',
-      ),
-      uuid: 'u',
-      resolver: (host, {required ipv6}) async => ['104.21.1.1'],
-    );
-    final json = jsonEncode((await builder.build(ConnectionMode.worker)).config);
+      final geosite = datTags(geositeFile.path);
+      final geoip = datTags(geoipFile.path);
 
-    final used = RegExp(r'(geosite|geoip):([a-z0-9@!_-]+)').allMatches(json).map((m) => m[0]!).toSet();
-    expect(used, contains('geosite:ir'));
-    for (final tag in used) {
-      final [kind, name] = tag.split(':');
-      expect((kind == 'geosite' ? geosite : geoip).contains(name), isTrue, reason: '$tag missing from $kind.dat');
-    }
-  });
+      // Every routing preset on.
+      Map<String, dynamic> all(Map<String, bool> presets) => {
+        'presets': {for (final k in presets.keys) k: true},
+      };
+      final profile = Profile.fromJson({
+        'routing': {
+          'bypass': all(RoutingPresets.bypass),
+          'sanctionBypass': all(RoutingPresets.sanctionBypass),
+          'block': all(RoutingPresets.block),
+        },
+      });
+      final builder = XrayConfigBuilder(
+        profile,
+        const DeviceSettings(),
+        worker: const ActiveWorker(
+          accountId: 'a',
+          name: 'w',
+          type: WorkerType.workers,
+          host: 'w.example.workers.dev',
+        ),
+        uuid: 'u',
+        resolver: (host, {required ipv6}) async => ['104.21.1.1'],
+      );
+      final json = jsonEncode((await builder.build(ConnectionMode.worker)).config);
+
+      final used = RegExp(r'(geosite|geoip):([a-z0-9@!_-]+)')
+          .allMatches(json)
+          .map((m) => m[0]!)
+          .toSet();
+      expect(used, contains('geosite:ir'));
+      for (final tag in used) {
+        final [kind, name] = tag.split(':');
+        expect(
+          (kind == 'geosite' ? geosite : geoip).contains(name),
+          isTrue,
+          reason: '$tag missing from $kind.dat',
+        );
+      }
+    },
+  );
 }
