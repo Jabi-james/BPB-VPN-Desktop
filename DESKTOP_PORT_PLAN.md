@@ -44,3 +44,11 @@ The supplied [Spider Firefox VPN repository](https://github.com/ppj30088-hash/fi
 - PattN (patterniha/PattN) is documented by its own README as an Iranian-focused fork of v2rayN, not as a standalone scanner library. It is a C# desktop client with Windows/Linux/macOS build workflows and Xray/sing-box support. Its README does not document a reusable scanner API or a separate scanner module. Therefore do not copy PattN wholesale or claim that its scanner has been ported.
 - PattN/v2rayN is still a useful behavioral reference for desktop node testing and core lifecycle. Before reusing any implementation, inspect the exact latency-test path, probe method, timeout/concurrency controls, result model and licensing in the source. Prefer implementing a BPB-native scanner adapter around the desktop Xray process and BPB's existing scan UI/model, so Android and desktop can use different probe backends while returning the same normalized results.
 - Desktop scan backends must distinguish at least: TCP reachability/connect latency, protocol/handshake or core-based test latency, and real URL download/throughput tests. These metrics are not interchangeable. Do not label a TCP connect result as a successful VPN handshake or as real internet speed.
+
+## Desktop scanner implementation (in progress)
+
+- The desktop adapter now launches a small native `bpb_scanner` helper beside the Flutter executable and communicates over newline-delimited JSON on stdin/stdout.
+- The helper calls the existing `xray.NewScannerBridge`, which in turn uses the existing shared `scanner.Scanner` algorithm and the same Xray outbound/HTTP probe implementation used by Android. It does not introduce a second scanning algorithm.
+- Flutter's existing `ScannerChannel` retains Android MethodChannel/EventChannel behavior and routes Windows/Linux calls to the native helper. Scanner event/result JSON remains the same.
+- The desktop CI workflow compiles the helper for Windows amd64 and Linux amd64 and includes it in the build artifact.
+- Remaining verification: run the workflow, confirm the helper compiles against the pinned Xray/Go dependencies, and test real scans for VLESS, WARP, MASQUE H2/H3, pause/resume/stop, and event delivery on actual Windows/Linux hosts. Until those tests pass, desktop scanning is implemented but not yet release-verified.
