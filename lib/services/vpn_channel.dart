@@ -205,6 +205,15 @@ class VpnChannel {
     bool verifyConnection = false,
   }) async {
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
+      if (exit != null) {
+        throw UnsupportedError('Tor and Psiphon exits are not available on Windows yet.');
+      }
+      if (browserDialer) {
+        throw UnsupportedError('Browser Dialer is Android-only.');
+      }
+      if (perAppMode != 'off') {
+        throw UnsupportedError('Per-app routing is not available on Windows yet.');
+      }
       await _startWindows(config: config, appMode: appMode);
       return;
     }
