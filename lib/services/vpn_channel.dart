@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -32,6 +34,110 @@ class VpnChannel {
   static const _events = EventChannel('bpb/state');
   static Future<bool>? _supportsAppendHttpProxy;
 
+  // Windows runs BPB's Go/Xray host as a child process. BPB: marks protocol replies,
+  // leaving ordinary Xray log lines separate from the command channel.
+  static Process? _windowsProcess;
+  static Completer<Map<String, dynamic>>? _windowsPending;
+  static final _windowsStates = StreamController<VpnStateEvent>.broadcast();
+  static DateTime? _windowsConnectedAt;
+
+  static void _emitWindowsState(VpnStatus status, [String? error]) {
+    _windowsStates.add(VpnStateEvent(
+      status, error,
+      status == VpnStatus.connected ? (_windowsConnectedAt ??= DateTime.now()) : null,
+      null,
+    ));
+    if (status == VpnStatus.disconnected) _windowsConnectedAt = null;
+  }
+
+  static Future<void> _ensureWindowsProcess() async {
+    if (_windowsProcess != null) return;
+    final executable = File(Platform.resolvedExecutable).parent.uri
+        .resolve('bpb_core.exe').toFilePath();
+    if (!await File(executable).exists()) {
+      throw StateError('BPB core executable was not found: $executable');
+    }
+    final process = await Process.start(executable, const []);
+    _windowsProcess = process;
+    process.stdout.transform(utf8.decoder).transform(const LineSplitter()).listen((line) {
+      if (!line.startsWith('BPB:')) return;
+      try {
+        final value = jsonDecode(line.substring(4));
+        final pending = _windowsPending;
+        if (value is Map && pending != null && !pending.isCompleted) {
+          pending.complete(Map<String, dynamic>.from(value));
+        }
+      } catch (_) {}
+    });
+    process.stderr.transform(utf8.decoder).listen((_) {});
+    unawaited(process.exitCode.then((code) {
+      if (identical(_windowsProcess, process)) _windowsProcess = null;
+      final pending = _windowsPending;
+      if (pending != null && !pending.isCompleted) {
+        pending.completeError(StateError('BPB core exited (code $code).'));
+      }
+      _windowsPending = null;
+      _emitWindowsState(VpnStatus.disconnected, 'BPB core exited (code $code).');
+    }));
+  }
+
+  static Future<Map<String, dynamic>> _sendWindowsCommand(
+    Map<String, dynamic> request,
+  ) async {
+    await _ensureWindowsProcess();
+    final process = _windowsProcess!;
+    if (_windowsPending != null) {
+      throw StateError('Another BPB core command is still running.');
+    }
+    final completer = Completer<Map<String, dynamic>>();
+    _windowsPending = completer;
+    try {
+      process.stdin.writeln(jsonEncode(request));
+      await process.stdin.flush();
+      return await completer.future.timeout(const Duration(seconds: 30));
+    } finally {
+      if (identical(_windowsPending, completer)) _windowsPending = null;
+    }
+  }
+
+  static Future<void> _startWindows({
+    required Map<String, dynamic> config,
+    required String appMode,
+  }) async {
+    _emitWindowsState(VpnStatus.connecting);
+    try {
+      final result = await _sendWindowsCommand({
+        'command': 'start', 'mode': appMode, 'config': jsonEncode(config),
+      });
+      if (result['ok'] != true) {
+        throw StateError(result['error'] as String? ?? 'BPB core failed to start.');
+      }
+      _emitWindowsState(VpnStatus.connected);
+    } catch (error) {
+      _emitWindowsState(VpnStatus.disconnected, '$error');
+      rethrow;
+    }
+  }
+
+  static Future<void> _stopWindows() async {
+    if (_windowsProcess == null) {
+      _emitWindowsState(VpnStatus.disconnected);
+      return;
+    }
+    _emitWindowsState(VpnStatus.disconnecting);
+    try {
+      final result = await _sendWindowsCommand({'command': 'stop'});
+      if (result['ok'] != true) {
+        throw StateError(result['error'] as String? ?? 'BPB core failed to stop.');
+      }
+      _emitWindowsState(VpnStatus.disconnected);
+    } catch (error) {
+      _emitWindowsState(VpnStatus.disconnected, '$error');
+      rethrow;
+    }
+  }
+
+
   static Future<bool> get supportsAppendHttpProxy {
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
       return Future.value(false);
@@ -41,21 +147,26 @@ class VpnChannel {
         .then((supported) => supported ?? false);
   }
 
-  static Stream<VpnStateEvent> get states => _events.receiveBroadcastStream().map((e) {
-    final map = Map<String, dynamic>.from(e as Map);
-    final at = (map['connectedAt'] as num?)?.toInt() ?? 0;
-    return VpnStateEvent(
-      VpnStatus.values.byName(map['state'] as String),
-      map['error'] as String?,
-      at > 0 ? DateTime.fromMillisecondsSinceEpoch(at) : null,
-      map['detail'] as String?,
-    );
-  });
+  static Stream<VpnStateEvent> get states {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) return _windowsStates.stream;
+    return _events.receiveBroadcastStream().map((e) {
+      final map = Map<String, dynamic>.from(e as Map);
+      final at = (map['connectedAt'] as num?)?.toInt() ?? 0;
+      return VpnStateEvent(
+        VpnStatus.values.byName(map['state'] as String),
+        map['error'] as String?,
+        at > 0 ? DateTime.fromMillisecondsSinceEpoch(at) : null,
+        map['detail'] as String?,
+      );
+    });
+  }
 
   /// Asks for VPN permission if needed; true when granted.
   /// Asks for notification permission and, when [vpn], the VPN permission.
-  static Future<bool> prepare({bool vpn = true}) async =>
-      await _methods.invokeMethod<bool>('prepare', {'vpn': vpn}) ?? false;
+  static Future<bool> prepare({bool vpn = true}) async {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) return true;
+    return await _methods.invokeMethod<bool>('prepare', {'vpn': vpn}) ?? false;
+  }
 
   static Future<void> start({
     required Map<String, dynamic> config,
@@ -74,7 +185,12 @@ class VpnChannel {
     Map<String, dynamic>? psiphonConfig,
     bool browserDialer = false,
     bool verifyConnection = false,
-  }) => _methods.invokeMethod('start', {
+  }) async {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
+      await _startWindows(config: config, appMode: appMode);
+      return;
+    }
+    await _methods.invokeMethod('start', {
     'config': jsonEncode(config),
     'remark': remark,
     'perAppMode': perAppMode,
@@ -97,7 +213,8 @@ class VpnChannel {
     // Worker's Browser Dialer: Xray's WebSockets are opened by a WebView (see BrowserDialer.kt).
     'browserDialer': browserDialer,
     'verifyConnection': verifyConnection,
-  });
+    });
+  }
 
   /// Tests a DNS server through the Go networking module. Latency is the DNS lookup time;
   /// null latency means the server failed its DNS lookup or HTTP 204 validation.
@@ -146,7 +263,13 @@ class VpnChannel {
     return (name: file['name'] ?? '', content: file['content'] ?? '');
   }
 
-  static Future<void> stop() => _methods.invokeMethod('stop');
+  static Future<void> stop() async {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
+      await _stopWindows();
+      return;
+    }
+    await _methods.invokeMethod('stop');
+  }
 
   /// Starts the setup wizard's Tor with [bridges]; returns its HTTP proxy port (SetupTor.kt).
   static Future<int> startSetupTor(List<String> bridges) async =>
@@ -208,6 +331,10 @@ class VpnChannel {
 
   /// Delay in ms through the running tunnel.
   static Future<int> measureDelay() async {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
+      final result = await _sendWindowsCommand({'command': 'delay'});
+      return (result['delay'] as num?)?.toInt() ?? -1;
+    }
     final ms = await _methods.invokeMethod<int>('measureDelay');
     return ms ?? -1;
   }

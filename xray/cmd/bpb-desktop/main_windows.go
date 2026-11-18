@@ -8,6 +8,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"os"
 
 	"bpb/xray"
@@ -27,11 +28,18 @@ type response struct {
 	Traffic string `json:"traffic,omitempty"`
 }
 
+func writeResponse(res response) {
+	encoded, err := json.Marshal(res)
+	if err != nil {
+		return
+	}
+	fmt.Printf("BPB:%s\\n", encoded)
+}
+
 func main() {
 	controller := xray.NewController()
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Buffer(make([]byte, 4096), 16*1024*1024)
-	enc := json.NewEncoder(os.Stdout)
 	defer func() {
 		_ = controller.Stop()
 		_ = restoreSystemProxy()
@@ -40,7 +48,7 @@ func main() {
 	for scanner.Scan() {
 		var req request
 		if err := json.Unmarshal(scanner.Bytes(), &req); err != nil {
-			_ = enc.Encode(response{Error: "invalid request: " + err.Error()})
+			writeResponse(response{Error: "invalid request: " + err.Error()})
 			continue
 		}
 		res := response{OK: true}
@@ -86,7 +94,7 @@ func main() {
 		case "shutdown":
 			_ = controller.Stop()
 			_ = restoreSystemProxy()
-			_ = enc.Encode(res)
+			writeResponse(res)
 			return
 		default:
 			res = response{Error: "unknown command"}
