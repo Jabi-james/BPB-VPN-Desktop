@@ -42,6 +42,20 @@ jobs:
       - name: Resolve dependencies
         run: flutter pub get --enforce-lockfile
 
+      - name: Install Node.js for Cloudflare Worker bundling
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build the bundled Cloudflare Worker asset
+        run: |
+          npm install --prefix worker --no-audit --no-fund
+          npm run --prefix worker minify
+
+      - name: Fetch Tor bridges required by the setup wizard
+        shell: bash
+        run: bash scripts/fetch_tor_bridges.sh
+
       # flutter create generates a sample MyApp widget test that does not
       # match BPB's BpbApp entry point. Remove only that generated template.
       - name: Remove generated Flutter sample test
