@@ -125,8 +125,8 @@ class ScannerChannel {
     if (_desktopProcess != null) return;
     final executableDir = File(Platform.resolvedExecutable).parent.path;
     final executable = Platform.isWindows
-        ? '${executableDir}\\bpb_scanner.exe'
-        : '${executableDir}/bpb_scanner';
+        ? '$executableDir\\bpb_scanner.exe'
+        : '$executableDir/bpb_scanner';
     if (!await File(executable).exists()) {
       throw StateError('BPB scanner helper was not found: $executable');
     }
