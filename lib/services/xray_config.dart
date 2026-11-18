@@ -830,7 +830,13 @@ class XrayConfigBuilder {
     for (final rule in routingRules.toList()) {
       final inboundTags = rule['inboundTag'] as List?;
       if (inboundTags != null && inboundTags.isEmpty) {
-        if (_chainedExit) {
+        if (!_chainedExit) {
+      // The upstream v23 template defaults to 10808; use BPB's shared local proxy port.
+      inbounds.firstWhere((inbound) => inbound['tag'] == 'mixed-in')['port'] =
+          localProxyPort;
+    }
+
+    if (_chainedExit) {
           rule['inboundTag'] = [_exitInbound];
         } else {
           rule.remove('inboundTag');
