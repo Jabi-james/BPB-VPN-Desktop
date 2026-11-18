@@ -197,21 +197,22 @@ class SettingsPage extends StatelessWidget {
                 min: 1280,
                 max: 9000,
               ),
-              ListTile(
-                leading: const Icon(Symbols.apps_rounded),
-                title: const Text('Per-app proxy'),
-                subtitle: Text(switch (d.perAppMode) {
-                  PerAppMode.include =>
-                    'Proxy selected apps (${d.perAppApps.length})',
-                  PerAppMode.exclude =>
-                    'Exclude selected apps (${d.perAppApps.length})',
-                  PerAppMode.off => 'Proxy all apps',
-                }),
-                trailing: const Icon(Symbols.chevron_right_rounded),
-                onTap: () => Navigator.of(
-                  context,
-                ).push(MaterialPageRoute(builder: (_) => const PerAppPage())),
-              ),
+              if (defaultTargetPlatform != TargetPlatform.windows)
+                ListTile(
+                  leading: const Icon(Symbols.apps_rounded),
+                  title: const Text('Per-app proxy'),
+                  subtitle: Text(switch (d.perAppMode) {
+                    PerAppMode.include =>
+                      'Proxy selected apps (${d.perAppApps.length})',
+                    PerAppMode.exclude =>
+                      'Exclude selected apps (${d.perAppApps.length})',
+                    PerAppMode.off => 'Proxy all apps',
+                  }),
+                  trailing: const Icon(Symbols.chevron_right_rounded),
+                  onTap: () => Navigator.of(
+                    context,
+                  ).push(MaterialPageRoute(builder: (_) => const PerAppPage())),
+                ),
             ],
           ),
 
@@ -620,8 +621,10 @@ class SettingsPage extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          SettingsCard(children: [const _MitmCaTile()]),
+          if (defaultTargetPlatform != TargetPlatform.windows) ...[
+            const SizedBox(height: 16),
+            SettingsCard(children: [const _MitmCaTile()]),
+          ],
 
           const SectionHeader('Routing'),
           const SettingsCard(
@@ -657,7 +660,8 @@ class SettingsPage extends StatelessWidget {
                 domainHint: 'ads.example.com',
                 ipHint: '10.10.34.34/24\n2001:4188:2:600:10:10:34:34/112',
               ),
-              _GeoAssetsTile(),
+              if (defaultTargetPlatform != TargetPlatform.windows)
+                _GeoAssetsTile(),
             ],
           ),
 
@@ -677,7 +681,8 @@ class SettingsPage extends StatelessWidget {
           SettingsCard(
             children: [
               const _VersionTile(),
-              const _UpdateTile(),
+              if (defaultTargetPlatform != TargetPlatform.windows)
+                const _UpdateTile(),
               ListTile(
                 leading: const Icon(Symbols.code_rounded),
                 title: const Text('Source code'),
