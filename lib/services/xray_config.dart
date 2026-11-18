@@ -1463,6 +1463,12 @@ class XrayConfigBuilder {
       geoip: 'geoip:ru',
       dns: _GeoDns.local,
     ),
+    // Same region-routing presets as Firefox Spider VPN. Xray's native
+    // domain/IP matchers implement these rules without a second router.
+    'afghanistan': _GeoAsset('domain:af', geoip: 'geoip:af', dns: _GeoDns.local),
+    'turkey': _GeoAsset('domain:tr', geoip: 'geoip:tr', dns: _GeoDns.local),
+    'indonesia': _GeoAsset('domain:id', geoip: 'geoip:id', dns: _GeoDns.local),
+    'brazil': _GeoAsset('domain:br', geoip: 'geoip:br', dns: _GeoDns.local),
   };
 
   static const _sanctionAssets = {
