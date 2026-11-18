@@ -701,7 +701,8 @@ class _InstallStepState extends State<_InstallStep> {
     final theme = Theme.of(context);
     final accounts = widget.token.accounts;
     final failed = _failed.toList();
-    final offerTor = _bridges != null && failed.any((i) => _rows[i]!.network);
+    final offerTor = defaultTargetPlatform != TargetPlatform.windows &&
+        _bridges != null && failed.any((i) => _rows[i]!.network);
     final List<Widget> buttons;
     if (!_started) {
       buttons = [
