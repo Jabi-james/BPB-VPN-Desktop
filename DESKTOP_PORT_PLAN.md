@@ -52,3 +52,30 @@ The supplied [Spider Firefox VPN repository](https://github.com/ppj30088-hash/fi
 - Flutter's existing `ScannerChannel` retains Android MethodChannel/EventChannel behavior and routes Windows/Linux calls to the native helper. Scanner event/result JSON remains the same.
 - The desktop CI workflow compiles the helper for Windows amd64 and Linux amd64 and includes it in the build artifact.
 - Remaining verification: run the workflow, confirm the helper compiles against the pinned Xray/Go dependencies, and test real scans for VLESS, WARP, MASQUE H2/H3, pause/resume/stop, and event delivery on actual Windows/Linux hosts. Until those tests pass, desktop scanning is implemented but not yet release-verified.
+
+## Product requirements: Android-equivalent UI and feature parity
+
+These are release requirements, not optional redesign suggestions.
+
+### UI parity
+- Use the existing Flutter widgets and theme as the source of truth for Windows and Linux. Do not redesign the home screen or settings pages as a separate desktop product.
+- Preserve the Android visual language: dark/light themes and accent colors, typography, icons, rounded cards, borders, spacing, chip/dropdown selectors, labels, field order, conditional visibility, animations, dialogs, and page navigation.
+- Preserve the home-screen order: app bar/actions, ConnectionCard (Connection, Mode, Exit Node, Region/Chain as applicable), StatusCard, download/upload traffic cards, and conditional Worker usage card.
+- Preserve the existing Settings page section order and every existing setting control. Desktop may use responsive sizing or a centered content width on wide monitors, but must not reorder, rename, omit, or regroup settings merely to look like a generic desktop client.
+- Keep the same state model, validation, persistence, defaults, and config-generation behavior. A setting is not complete if it only appears in the UI.
+
+### Functional parity
+The desktop port must implement and test every Android-supported mode and its settings, including:
+- Worker/VLESS and Serverless modes, including Domain Fronting and DNS variants.
+- WARP and MASQUE (HTTP/2 and HTTP/3), including endpoint and protocol-specific options.
+- Chain proxies and their supported protocols/transports, with the same selection and exit-node behavior.
+- Psiphon and Tor, including region selection, bridges and Snowflake AMP where supported by the source version.
+- Fragment/serverless packet and UDP obfuscation/noise settings, ECH-related controls where applicable, fingerprint/SNI/IP-version/transport options.
+- DNS modes and custom servers (UDP, TCP, DoH, DoQ), Fake DNS, IPv6 preferences, routing strategy/rules, per-app routing where the OS supports an equivalent, and scanner settings.
+- Cloudflare account/deployment management, import/export/config view, logs, connection state, traffic counters, ping and exit IP information, themes, reset/persistence, updates and other existing Settings pages.
+
+### Platform implementation rule
+Shared Dart UI and config-generation logic should remain shared. Android MethodChannel/VpnService code must not be called on Windows/Linux; replace only platform-specific execution with native desktop adapters. If a feature cannot be supported with equivalent behavior on a target OS, document the exact limitation and do not mark it as parity-complete.
+
+### Acceptance gate
+A feature checklist must compare every Android settings control and mode with its desktop implementation. Test generated configs and real traffic for each protocol/mode, connect/disconnect, error paths, DNS and route restoration, IPv4/IPv6, sleep/resume, network changes, and process crashes on actual Windows and Linux machines. CI compilation alone does not satisfy feature parity.
