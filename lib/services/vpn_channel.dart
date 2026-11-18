@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:pointycastle/export.dart';
 
 import 'mitm_ca.dart';
 
@@ -436,12 +437,52 @@ if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
 
   /// Replaces Xray's geo files (geoip.dat, geosite.dat) with [files], each checked against its
   /// SHA-256 (hex) first: none is replaced unless all match. Xray uses them from its next start.
-  static Future<void> saveGeoAssets(Map<String, ({Uint8List data, String sha256})> files) =>
-      _methods.invokeMethod('saveGeoAssets', {
-        'files': {
-          for (final e in files.entries) e.key: {'data': e.value.data, 'sha256': e.value.sha256},
-        },
-      });
+  static Future<void> saveGeoAssets(
+    Map<String, ({Uint8List data, String sha256})> files,
+  ) async {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
+      const allowed = {'geoip.dat', 'geosite.dat'};
+      if (files.isEmpty || files.keys.any((name) => !allowed.contains(name))) {
+        throw ArgumentError('Only geoip.dat and geosite.dat can be replaced.');
+      }
+      final digest = SHA256Digest();
+      // Verify every file before touching the installed assets.
+      for (final entry in files.entries) {
+        final actual = digest.process(entry.value.data)
+            .map((byte) => byte.toRadixString(16).padLeft(2, '0'))
+            .join();
+        if (actual != entry.value.sha256.toLowerCase()) {
+          throw StateError('${entry.key} failed SHA-256 verification.');
+        }
+      }
+      final directory = Directory(
+        '${File(Platform.resolvedExecutable).parent.path}\\assets',
+      );
+      await directory.create(recursive: true);
+      for (final entry in files.entries) {
+        final target = File('${directory.path}\\${entry.key}');
+        final temporary = File('${target.path}.tmp');
+        final backup = File('${target.path}.bpb-backup');
+        await temporary.writeAsBytes(entry.value.data, flush: true);
+        if (await backup.exists()) await backup.delete();
+        if (await target.exists()) await target.rename(backup.path);
+        try {
+          await temporary.rename(target.path);
+          if (await backup.exists()) await backup.delete();
+        } catch (_) {
+          if (await backup.exists()) await backup.rename(target.path);
+          rethrow;
+        }
+      }
+      return;
+    }
+    await _methods.invokeMethod('saveGeoAssets', {
+      'files': {
+        for (final e in files.entries)
+          e.key: {'data': e.value.data, 'sha256': e.value.sha256},
+      },
+    });
+  }
 
   /// The cores' versions, from their own reports: Xray (e.g. 26.10.21) and
   /// the Psiphon (its core's module version) and Tor ("Tor version …") binaries; empty if unknown.
