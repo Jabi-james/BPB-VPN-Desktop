@@ -40,6 +40,16 @@ class VpnChannel {
   static Completer<Map<String, dynamic>>? _windowsPending;
   static final _windowsStates = StreamController<VpnStateEvent>.broadcast();
   static DateTime? _windowsConnectedAt;
+  static final List<String> _windowsLogLines = [];
+  static const int _windowsMaxLogLines = 2000;
+
+  static void _appendWindowsLog(String line) {
+    if (line.isEmpty) return;
+    _windowsLogLines.add(line);
+    if (_windowsLogLines.length > _windowsMaxLogLines) {
+      _windowsLogLines.removeRange(0, _windowsLogLines.length - _windowsMaxLogLines);
+    }
+  }
 
   static void _emitWindowsState(VpnStatus status, [String? error]) {
     _windowsStates.add(VpnStateEvent(
@@ -60,16 +70,23 @@ class VpnChannel {
     final process = await Process.start(executable, const []);
     _windowsProcess = process;
     process.stdout.transform(utf8.decoder).transform(const LineSplitter()).listen((line) {
-      if (!line.startsWith('BPB:')) return;
+      if (!line.startsWith('BPB:')) {
+        _appendWindowsLog(line);
+        return;
+      }
       try {
         final value = jsonDecode(line.substring(4));
         final pending = _windowsPending;
         if (value is Map && pending != null && !pending.isCompleted) {
           pending.complete(Map<String, dynamic>.from(value));
         }
-      } catch (_) {}
+      } catch (error) {
+        _appendWindowsLog('BPB protocol decode error: $error');
+      }
     });
-    process.stderr.transform(utf8.decoder).listen((_) {});
+    process.stderr.transform(utf8.decoder).transform(const LineSplitter()).listen((line) {
+      _appendWindowsLog('[stderr] $line');
+    });
     unawaited(process.exitCode.then((code) {
       if (identical(_windowsProcess, process)) _windowsProcess = null;
       final pending = _windowsPending;
@@ -238,14 +255,29 @@ class VpnChannel {
   }
 
   /// The end of Xray's log for the current/last connection.
-  static Future<String> readLog({String log = 'xray'}) async =>
-      await _methods.invokeMethod<String>('readLog', {'log': log}) ?? '';
+  static Future<String> readLog({String log = 'xray'}) async {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
+      if (log != 'xray') return '';
+      return _windowsLogLines.join('\\n');
+    }
+    return await _methods.invokeMethod<String>('readLog', {'log': log}) ?? '';
+  }
 
   /// Bytes in each log ("xray", "tor", "psiphon") since the last connect.
-  static Future<Map<String, int>> logSizes() async =>
-      (await _methods.invokeMapMethod<String, int>('logSizes')) ?? const {};
+  static Future<Map<String, int>> logSizes() async {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
+      return {'xray': utf8.encode(_windowsLogLines.join('\\n')).length};
+    }
+    return (await _methods.invokeMapMethod<String, int>('logSizes')) ?? const {};
+  }
 
-  static Future<void> clearLog() => _methods.invokeMethod('clearLog');
+  static Future<void> clearLog() async {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
+      _windowsLogLines.clear();
+      return;
+    }
+    await _methods.invokeMethod('clearLog');
+  }
 
   /// Saves [content] as [name] and opens the share sheet so the user picks an app.
   static Future<void> shareFile({required String name, required String content, String title = 'Share'}) =>
