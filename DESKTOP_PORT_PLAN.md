@@ -33,3 +33,7 @@ This document tracks the desktop adaptation of BPB. The Android application rema
 ## Safety and release gates
 
 A successful Flutter build is not proof that a VPN works. Before a desktop release, test connect/disconnect, application restart, forced process termination, sleep/resume, network changes, DNS restoration, route restoration, IPv4/IPv6 leak behavior and failure recovery on real Windows and Linux machines. Do not publish a build as a working VPN until these tests pass.
+
+## Reference implementation reviewed
+
+The supplied [Spider Firefox VPN repository](https://github.com/ppj30088-hash/firefox-spider-vpn) confirms that a Flutter-based client can ship desktop builds while keeping platform-specific networking behind a native core. Its public project description also separates the local proxy/system-proxy path from full-device TUN behavior. For BPB, the useful design lessons are to keep Proxy mode usable without administrator privileges, treat TUN as a separately permissioned subsystem, and make cleanup/recovery part of the service lifecycle. This is an architectural reference only; BPB will retain its own Xray-based protocol/configuration logic and will not copy unrelated account or service code.
