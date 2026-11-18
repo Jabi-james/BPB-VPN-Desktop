@@ -32,7 +32,16 @@ class RoutingPage extends StatelessWidget {
       'These rules only apply to Serverless, WARP and MASQUE connections when Exit node is set to Default.';
 
   /// Direct connection, resolved with the local DNS.
-  static const bypassLabels = {'iran': 'Iran', 'china': 'China', 'russia': 'Russia', 'bittorrent': 'BitTorrent'};
+  static const bypassLabels = {
+    'iran': 'Iran',
+    'china': 'China',
+    'russia': 'Russia',
+    'afghanistan': 'Afghanistan',
+    'turkey': 'Turkey',
+    'indonesia': 'Indonesia',
+    'brazil': 'Brazil',
+    'bittorrent': 'BitTorrent',
+  };
 
   /// Direct connection, resolved with the anti-sanction DNS.
   static const sanctionBypassLabels = {
