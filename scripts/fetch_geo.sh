@@ -1,14 +1,25 @@
 #!/usr/bin/env bash
-# Fetches Xray's routing data, geoip.dat and geosite.dat (Iran-focused rules), from the latest
-# Chocolate4U/Iran-v2ray-rules release into the app's assets.
+# Fetches Xray routing data from the latest Chocolate4U/Iran-v2ray-rules release.
+# The same SHA-256 files are used by GeoAssetsDownloader at runtime.
 set -euo pipefail
 cd "$(dirname "$0")"
 
 BASE=https://github.com/Chocolate4U/Iran-v2ray-rules/releases/latest/download
 ASSETS=../android/app/src/main/assets
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
 
 mkdir -p "$ASSETS"
 for f in geoip.dat geosite.dat; do
-  curl -fsSL --retry 3 -o "$ASSETS/$f" "$BASE/$f"
+  curl -fsSL --retry 3 -o "$TMP/$f.sha256sum" "$BASE/$f.sha256sum"
+  curl -fsSL --retry 3 -o "$TMP/$f" "$BASE/$f"
+  (
+    cd "$TMP"
+    sha256sum --check "$f.sha256sum"
+  )
+  install -m 0644 "$TMP/$f" "$ASSETS/$f"
 done
-ls -la "$ASSETS"/geoip.dat "$ASSETS"/geosite.dat
+
+test -s "$ASSETS/geoip.dat"
+test -s "$ASSETS/geosite.dat"
+ls -lh "$ASSETS/geoip.dat" "$ASSETS/geosite.dat"
