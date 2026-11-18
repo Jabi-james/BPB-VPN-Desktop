@@ -236,6 +236,9 @@ class AppState extends ChangeNotifier {
   /// Proxy mode: only the local SOCKS/HTTP proxy, no VPN.
   bool get proxyMode => device.appMode == AppMode.proxy;
 
+  /// Full-device VPN mode (TUN). System proxy and local proxy do not need VPN permission.
+  bool get tunMode => device.appMode == AppMode.vpn;
+
   void setMode(ConnectionMode value) =>
       write('device.connection.type', value.name);
 
@@ -573,7 +576,7 @@ class AppState extends ChangeNotifier {
     status = VpnStatus.connecting;
     notifyListeners();
     try {
-      if (!await VpnChannel.prepare(vpn: !proxyMode)) {
+      if (!await VpnChannel.prepare(vpn: tunMode)) {
         throw StateError('VPN permission denied');
       }
       // First WARP / MASQUE connection: register the account, which also gives its endpoints.
@@ -652,13 +655,15 @@ class AppState extends ChangeNotifier {
         mode.label,
         if (exitInRemark)
           XrayConfigBuilder.exitLabel(ExitNode.values.byName(exit)),
-        if (proxyMode) 'Proxy',
+        if (device.appMode == AppMode.proxy) 'Proxy',
+        if (device.appMode == AppMode.systemProxy) 'System Proxy',
       ].join(' · '),
       perAppMode: device.perAppMode.name,
       apps: device.perAppApps,
       mtu: device.mtu,
       appendHttpProxy: device.appendHttpProxy,
       proxyOnly: proxyMode,
+      appMode: device.appMode.name,
       exit: exit,
       exitDirect: exitType != null,
       exitRegion: dnsMode ? '' : device.exitRegion,

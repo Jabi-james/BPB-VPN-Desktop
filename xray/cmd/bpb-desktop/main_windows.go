@@ -1,7 +1,8 @@
 //go:build windows
 
 // bpb-desktop is the Windows process host for BPB's existing Xray configuration.
-// It deliberately has no Firefox VPN integration and starts Xray in proxy-only mode.
+// It has no Firefox VPN integration. TUN is intentionally rejected until the
+// Windows Wintun/service backend is implemented and tested.
 package main
 
 import (
@@ -15,6 +16,7 @@ import (
 type request struct {
 	Command string `json:"command"`
 	Config  string `json:"config,omitempty"`
+	Mode    string `json:"mode,omitempty"`
 }
 
 type response struct {
@@ -44,13 +46,23 @@ func main() {
 		res := response{OK: true}
 		switch req.Command {
 		case "start":
-			if req.Config == "" {
+			mode := req.Mode
+			if mode == "" {
+				mode = "proxy"
+			}
+			if mode == "vpn" {
+				res = response{Error: "Windows TUN mode is not available yet; use Proxy or System Proxy."}
+			} else if mode != "proxy" && mode != "systemProxy" {
+				res = response{Error: "unsupported connection mode"}
+			} else if req.Config == "" {
 				res = response{Error: "Xray config is required"}
 			} else if err := controller.Start(req.Config, 0); err != nil {
 				res = response{Error: err.Error()}
-			} else if err := applySystemProxy("127.0.0.1:10808"); err != nil {
-				_ = controller.Stop()
-				res = response{Error: "could not enable Windows system proxy: " + err.Error()}
+			} else if mode == "systemProxy" {
+				if err := applySystemProxy("127.0.0.1:10880"); err != nil {
+					_ = controller.Stop()
+					res = response{Error: "could not enable Windows system proxy: " + err.Error()}
+				}
 			}
 		case "stop":
 			stopErr := controller.Stop()

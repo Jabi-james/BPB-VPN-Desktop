@@ -164,7 +164,7 @@ class XrayConfigBuilder {
 
   /// Recent pings averaged per outbound by the burst observatory.
   static const _probeSamples = 3;
-  static const localProxyPort = 10808;
+  static const localProxyPort = 10880;
 
   /// Psiphon / Tor exit (see ExitProcess.kt): it dials its servers through the psiphon-in /
   /// tor-in inbound, and serves SOCKS5 for the exit outbound (Psiphon: TCP and UDP; Tor: TCP).
@@ -1048,7 +1048,7 @@ class XrayConfigBuilder {
   /// The VPN device (not in proxy mode) and the local SOCKS/HTTP proxy.
   List<Map<String, dynamic>> _localInbounds(Map<String, dynamic> sniffing) => [
     // Proxy mode has no VPN device: only the mixed inbound below.
-    if (device.appMode != AppMode.proxy)
+    if (device.appMode == AppMode.vpn)
       {
         'tag': 'tun',
         'protocol': 'tun',

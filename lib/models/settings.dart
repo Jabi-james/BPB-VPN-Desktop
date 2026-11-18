@@ -1020,7 +1020,7 @@ class Profile {
 
 // region device
 
-enum AppMode { vpn, proxy }
+enum AppMode { vpn, systemProxy, proxy }
 
 enum PerAppMode { off, include, exclude }
 

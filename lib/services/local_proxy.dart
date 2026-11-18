@@ -3,7 +3,7 @@ import 'dart:io';
 /// The local SOCKS/HTTP proxy (Xray's mixed inbound, see XrayConfigBuilder). The app
 /// is excluded from the VPN, so its own requests reach the internet through this.
 class LocalProxy {
-  static const port = 10808;
+  static const port = 10880;
 
   /// Set while LAN connections are allowed with a username and password: then every
   /// client, the app included, must log in.

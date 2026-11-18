@@ -65,6 +65,7 @@ class VpnChannel {
     required int mtu,
     bool appendHttpProxy = false,
     bool proxyOnly = false,
+    String appMode = 'vpn',
     String? exit,
     bool exitDirect = false,
     String exitRegion = '',
@@ -81,6 +82,7 @@ class VpnChannel {
     'mtu': mtu,
     'appendHttpProxy': appendHttpProxy,
     'proxyOnly': proxyOnly,
+    'appMode': appMode,
     // Starts that exit process ("psiphon" / "tor"); null for none.
     'exit': exit,
     // The Psiphon / Tor type: the exit connects by itself, not through Xray's psiphon-in / tor-in.

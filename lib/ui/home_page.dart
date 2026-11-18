@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../models/settings.dart';
@@ -35,11 +36,17 @@ class HomePage extends StatelessWidget {
           ],
         ),
         actions: [
-          // VPN: the whole device; Proxy: only apps set to use the local SOCKS/HTTP proxy.
+          // VPN captures all traffic; System Proxy changes Windows' proxy setting; Proxy exposes only the local port.
           ChipMenu(
-            values: AppMode.values,
+            values: defaultTargetPlatform == TargetPlatform.windows
+              ? AppMode.values
+              : const [AppMode.vpn, AppMode.proxy],
             selected: state.device.appMode,
-            label: (v) => v == AppMode.proxy ? 'Proxy mode' : 'VPN mode',
+            label: (v) => switch (v) {
+              AppMode.vpn => 'VPN mode',
+              AppMode.systemProxy => 'System Proxy',
+              AppMode.proxy => 'Proxy mode',
+            },
             onSelected: state.setAppMode,
             enabled: !state.isBusy,
           ),
