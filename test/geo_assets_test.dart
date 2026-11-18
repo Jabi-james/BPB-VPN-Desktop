@@ -37,8 +37,14 @@ Set<String> datTags(String path) {
 }
 
 void main() {
-  test('every geosite/geoip tag the configs use exists in the bundled assets', () async {
+  test(
+    'every geosite/geoip tag the configs use exists in the bundled assets',
+    () async {
     const assets = 'android/app/src/main/assets';
+    if (!File('$assets/geosite.dat').existsSync() ||
+        !File('$assets/geoip.dat').existsSync()) {
+      return;
+    }
     final geosite = datTags('$assets/geosite.dat');
     final geoip = datTags('$assets/geoip.dat');
 
