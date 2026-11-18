@@ -814,6 +814,10 @@ class RoutingPresets {
     'iran': false,
     'china': false,
     'russia': false,
+    'afghanistan': false,
+    'turkey': false,
+    'indonesia': false,
+    'brazil': false,
     'bittorrent': false,
   };
 
