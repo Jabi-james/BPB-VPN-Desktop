@@ -371,19 +371,34 @@ if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
   }
 
   /// Starts the setup wizard's Tor with [bridges]; returns its HTTP proxy port (SetupTor.kt).
-  static Future<int> startSetupTor(List<String> bridges) async =>
-      await _methods.invokeMethod<int>('startSetupTor', {'bridges': bridges}) ?? 0;
+  static Future<int> startSetupTor(List<String> bridges) async {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
+      throw UnsupportedError('Tor setup retry is not available on Windows yet.');
+    }
+    return await _methods.invokeMethod<int>('startSetupTor', {'bridges': bridges}) ?? 0;
+  }
 
   /// The setup wizard's Tor: bootstrap progress (0-100), whether it runs, and why it stopped.
   static Future<({int progress, bool running, String? error})> setupTorStatus() async {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
+      return (progress: 0, running: false, error: 'Tor setup retry is not available on Windows yet.');
+    }
     final m = await _methods.invokeMapMethod<String, dynamic>('setupTorStatus') ?? const {};
     return (progress: (m['progress'] as int?) ?? 0, running: m['running'] == true, error: m['error'] as String?);
   }
 
-  static Future<void> stopSetupTor() => _methods.invokeMethod('stopSetupTor');
+  static Future<void> stopSetupTor() {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) return Future.value();
+    return _methods.invokeMethod('stopSetupTor');
+  }
 
   /// Starts the local ECH gateway (networking/), used when Cloudflare can't be reached directly.
-  static Future<void> startEchGateway() => _methods.invokeMethod('startEchGateway');
+  static Future<void> startEchGateway() {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
+      throw UnsupportedError('The ECH gateway is not available on Windows yet.');
+    }
+    return _methods.invokeMethod('startEchGateway');
+  }
 
   /// Opens an HTTP(S) [url] in the default browser; false if it cannot be opened.
   static Future<bool> openUrl(String url) async {
