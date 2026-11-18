@@ -36,10 +36,6 @@ class RoutingPage extends StatelessWidget {
     'iran': 'Iran',
     'china': 'China',
     'russia': 'Russia',
-    'afghanistan': 'Afghanistan',
-    'turkey': 'Turkey',
-    'indonesia': 'Indonesia',
-    'brazil': 'Brazil',
     'bittorrent': 'BitTorrent',
   };
 
