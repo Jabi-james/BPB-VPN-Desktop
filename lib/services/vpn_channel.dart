@@ -348,6 +348,14 @@ class VpnChannel {
   /// The cores' versions, from their own reports: Xray (e.g. 26.10.21) and
   /// the Psiphon (its core's module version) and Tor ("Tor version …") binaries; empty if unknown.
   static Future<({String xray, String psiphon, String tor})> versions() async {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
+      final result = await _sendWindowsCommand({'command': 'versions'});
+      return (
+        xray: result['xray'] as String? ?? '',
+        psiphon: '',
+        tor: '',
+      );
+    }
     final m = await _methods.invokeMapMethod<String, String>('versions') ?? const {};
     return (xray: m['xray'] ?? '', psiphon: m['psiphon'] ?? '', tor: m['tor'] ?? '');
   }
