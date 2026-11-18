@@ -79,7 +79,9 @@ class ScannerChannel {
   static int _nextCommandId = 0;
 
   static bool get _isDesktop =>
-      !kIsWeb && (Platform.isWindows || Platform.isLinux);
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.windows ||
+          defaultTargetPlatform == TargetPlatform.linux);
 
   static bool get isSupported =>
       !kIsWeb &&
