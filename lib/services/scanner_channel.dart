@@ -72,39 +72,137 @@ class ScannerEvent {
 class ScannerChannel {
   static const _methods = MethodChannel('bpb/core');
   static const _events = EventChannel('bpb/scanner');
+  static Process? _desktopProcess;
+  static final StreamController<ScannerEvent> _desktopEvents =
+      StreamController<ScannerEvent>.broadcast();
+  static final Map<String, Completer<void>> _pending = {};
+  static int _nextCommandId = 0;
 
-  static Stream<ScannerEvent> get events =>
-      _events.receiveBroadcastStream().map(
-        (event) => ScannerEvent.fromJson(
-          Map<String, dynamic>.from(jsonDecode(event as String) as Map),
-        ),
-      );
+  static bool get _isDesktop =>
+      !kIsWeb && (Platform.isWindows || Platform.isLinux);
 
   static bool get isSupported =>
-      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android || _isDesktop);
+
+  static Stream<ScannerEvent> get events {
+    if (_isDesktop) return _desktopEvents.stream;
+    return _events.receiveBroadcastStream().map(
+      (event) => ScannerEvent.fromJson(
+        Map<String, dynamic>.from(jsonDecode(event as String) as Map),
+      ),
+    );
+  }
 
   static Future<void> start(Map<String, dynamic> options) async {
     _requirePlatform();
+    if (_isDesktop) {
+      await _ensureDesktopProcess();
+      await _sendDesktop('start', options: options);
+      return;
+    }
     final error = await _methods.invokeMethod<String>('scannerStart', {
       'config': jsonEncode(options),
     });
     if (error != null && error.isNotEmpty) throw StateError(error);
   }
 
-  static Future<void> pause() => _call('scannerPause');
-  static Future<void> resume() => _call('scannerResume');
-  static Future<void> stop() => _call('scannerStop');
+  static Future<void> pause() => _call('pause', 'scannerPause');
+  static Future<void> resume() => _call('resume', 'scannerResume');
+  static Future<void> stop() => _call('stop', 'scannerStop');
 
-  static Future<void> _call(String method) async {
+  static Future<void> _call(String desktopAction, String androidMethod) async {
     _requirePlatform();
-    final error = await _methods.invokeMethod<String>(method);
+    if (_isDesktop) {
+      await _sendDesktop(desktopAction);
+      return;
+    }
+    final error = await _methods.invokeMethod<String>(androidMethod);
     if (error != null && error.isNotEmpty) throw StateError(error);
+  }
+
+  static Future<void> _ensureDesktopProcess() async {
+    if (_desktopProcess != null) return;
+    final executableDir = File(Platform.resolvedExecutable).parent.path;
+    final executable = Platform.isWindows
+        ? '${executableDir}\\bpb_scanner.exe'
+        : '${executableDir}/bpb_scanner';
+    if (!await File(executable).exists()) {
+      throw StateError('BPB scanner helper was not found: $executable');
+    }
+    final process = await Process.start(executable, const []);
+    _desktopProcess = process;
+    process.stdout
+        .transform(utf8.decoder)
+        .transform(const LineSplitter())
+        .listen(_handleDesktopLine);
+    process.stderr.transform(utf8.decoder).listen(
+      (message) => debugPrint('BPB scanner: $message'),
+    );
+    process.exitCode.then((code) {
+      if (identical(_desktopProcess, process)) _desktopProcess = null;
+      final error = StateError('BPB scanner process exited (code $code).');
+      for (final completer in _pending.values) {
+        if (!completer.isCompleted) completer.completeError(error);
+      }
+      _pending.clear();
+    });
+  }
+
+  static Future<void> _sendDesktop(
+    String action, {
+    Map<String, dynamic>? options,
+  }) async {
+    final process = _desktopProcess;
+    if (process == null) throw StateError('BPB scanner process is not running.');
+    final id = (++_nextCommandId).toString();
+    final completer = Completer<void>();
+    _pending[id] = completer;
+    process.stdin.writeln(jsonEncode({
+      'id': id,
+      'action': action,
+      if (options != null) 'options': options,
+    }));
+    try {
+      await completer.future.timeout(const Duration(seconds: 10));
+    } finally {
+      _pending.remove(id);
+    }
+  }
+
+  static void _handleDesktopLine(String line) {
+    try {
+      final json = Map<String, dynamic>.from(jsonDecode(line) as Map);
+      final type = json['type'] as String?;
+      final id = json['id'] as String?;
+      if ((type == 'ack' || type == 'error') && id != null) {
+        final completer = _pending[id];
+        if (completer != null && !completer.isCompleted) {
+          if (type == 'error') {
+            completer.completeError(
+              StateError(json['message'] as String? ?? 'Scanner error'),
+            );
+          } else {
+            completer.complete();
+          }
+          return;
+        }
+      }
+      if (type == 'progress' ||
+          type == 'done' ||
+          type == 'stopped' ||
+          type == 'error') {
+        _desktopEvents.add(ScannerEvent.fromJson(json));
+      }
+    } catch (error) {
+      debugPrint('Invalid BPB scanner event: $error');
+    }
   }
 
   static void _requirePlatform() {
     if (!isSupported) {
       throw UnsupportedError(
-        'Cloudflare scanning is currently available on Android only.',
+        'Cloudflare scanning is available on Android, Windows and Linux.',
       );
     }
   }
