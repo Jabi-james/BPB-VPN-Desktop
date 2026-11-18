@@ -16,7 +16,7 @@ const _unsafeCipherSuites =
 /// How traffic reaches the internet.
 enum ConnectionMode {
   /// VLESS over WebSocket + TLS through the worker; see [ConnectionVariant].
-  worker('Worker'),
+  worker('VLESS'),
 
   /// WireGuard to Cloudflare WARP (no worker); see [ConnectionVariant].
   warp('WARP'),

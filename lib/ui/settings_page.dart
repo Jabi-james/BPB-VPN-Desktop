@@ -374,7 +374,7 @@ class SettingsPage extends StatelessWidget {
           const SizedBox(height: 16),
           SettingsCard(children: [const _CloudflareAccountsTile()]),
 
-          const SectionHeader('Masque'),
+          const SectionHeader('MASQUE'),
           SettingsCard(
             children: [
               const TextPref(
@@ -470,7 +470,7 @@ class SettingsPage extends StatelessWidget {
           const SizedBox(height: 16),
           SettingsCard(children: [const _MasqueAccountTile()]),
 
-          const SectionHeader('Warp'),
+          const SectionHeader('WARP'),
           SettingsCard(
             children: [
               const TextPref(

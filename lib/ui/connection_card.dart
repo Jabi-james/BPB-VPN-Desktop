@@ -206,8 +206,8 @@ class _TypeSelector extends StatelessWidget {
   const _TypeSelector();
 
   static String _protocol(ConnectionMode m) => switch (m) {
-    ConnectionMode.worker => 'VLESS',
-    ConnectionMode.warp => 'Wireguard',
+    ConnectionMode.worker => 'HTTPS',
+    ConnectionMode.warp => 'WireGuard',
     // CONNECT-IP over HTTP/2 or 3: HTTPS either way.
     ConnectionMode.masque => 'HTTPS',
     ConnectionMode.serverless => 'Direct',

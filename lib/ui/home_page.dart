@@ -195,11 +195,12 @@ class _TrafficCard extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: 6,
           children: [
             Row(
+              spacing: 6,
               children: [
                 Icon(icon, size: 18, weight: 600, color: muted),
-                const SizedBox(width: 6),
                 Text(
                   '${formatBytes(rate)}/s',
                   style: theme.textTheme.titleMedium
@@ -208,10 +209,9 @@ class _TrafficCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 4),
-            const SizedBox(height: 2),
             Text(
               'Total ${formatBytes(total)}',
+              // textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium
                   ?.copyWith(color: muted)
                   .merge(_tabular),
