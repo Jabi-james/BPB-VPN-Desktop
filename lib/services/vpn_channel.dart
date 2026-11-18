@@ -516,7 +516,7 @@ if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
       return (version: const String.fromEnvironment(
         'BPB_APP_VERSION',
         defaultValue: '1.2.1+4',
-      ), abis: const []);
+      ), abis: const <String>[]);
     }
     final m = await _methods.invokeMapMethod<String, dynamic>('appInfo') ?? const {};
     return (
