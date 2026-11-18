@@ -27,6 +27,7 @@ type response struct {
 	Running bool   `json:"running,omitempty"`
 	Delay   int64  `json:"delay,omitempty"`
 	Traffic string `json:"traffic,omitempty"`
+	Xray    string `json:"xray,omitempty"`
 }
 
 func writeResponse(res response) {
@@ -101,6 +102,8 @@ func main() {
 			} else {
 				res.Delay = ms
 			}
+		case "versions":
+			res.Xray = xray.Version()
 		case "shutdown":
 			_ = controller.Stop()
 			_ = restoreSystemProxy()
