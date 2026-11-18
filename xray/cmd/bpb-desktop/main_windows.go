@@ -106,6 +106,6 @@ func main() {
 		default:
 			res = response{Error: "unknown command"}
 		}
-		_ = enc.Encode(res)
+		writeResponse(res)
 	}
 }
