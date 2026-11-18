@@ -161,7 +161,7 @@ class ScannerChannel {
     process.stdin.writeln(jsonEncode({
       'id': id,
       'action': action,
-      if (options != null) 'options': options,
+      'options': ?options,
     }));
     try {
       await completer.future.timeout(const Duration(seconds: 10));
