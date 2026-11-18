@@ -97,12 +97,13 @@ jobs:
           go-version-file: xray/go.mod
           cache-dependency-path: xray/go.sum
 
-      - name: Build BPB native scanner helper
+      - name: Build BPB native helpers
         shell: bash
         run: |
           cd xray
           if [ "${{ matrix.platform }}" = "windows" ]; then
             GOOS=windows GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o ../build/windows/x64/runner/Release/bpb_scanner.exe ./cmd/bpb-scanner
+            GOOS=windows GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o ../build/windows/x64/runner/Release/bpb_core.exe ./cmd/bpb-desktop
           else
             GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o ../build/linux/x64/release/bundle/bpb_scanner ./cmd/bpb-scanner
           fi
