@@ -18,8 +18,6 @@ jobs:
         include:
           - platform: windows
             os: windows-latest
-          - platform: linux
-            os: ubuntu-latest
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -48,9 +46,10 @@ jobs:
           node-version: 22
 
       - name: Build the bundled Cloudflare Worker asset
+        working-directory: worker
         run: |
-          npm install --prefix worker --no-audit --no-fund
-          npm run --prefix worker minify
+          npm install --no-audit --no-fund
+          npm run minify
 
       - name: Fetch Tor bridges required by the setup wizard
         shell: bash
