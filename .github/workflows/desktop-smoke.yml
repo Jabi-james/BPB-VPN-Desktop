@@ -49,4 +49,28 @@ jobs:
         run: flutter test --no-pub
 
       - name: Compile desktop shell
-        run: flutter build ${{ matrix.platform }} --debug --no-pub
+        run: flutter build ${{ matrix.platform }} --release --no-pub
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: xray/go.mod
+          cache-dependency-path: xray/go.sum
+
+      - name: Build BPB native scanner helper
+        shell: bash
+        run: |
+          cd xray
+          if [ "${{ matrix.platform }}" = "windows" ]; then
+            GOOS=windows GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o ../build/windows/x64/runner/Release/bpb_scanner.exe ./cmd/bpb-scanner
+          else
+            GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o ../build/linux/x64/release/bundle/bpb_scanner ./cmd/bpb-scanner
+          fi
+
+      - name: Package desktop application
+        uses: actions/upload-artifact@v4
+        with:
+          name: bpb-${{ matrix.platform }}-desktop
+          path: |
+            build/windows/x64/runner/Release/
+            build/linux/x64/release/bundle/
