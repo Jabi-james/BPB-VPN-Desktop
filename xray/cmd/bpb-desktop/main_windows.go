@@ -43,6 +43,9 @@ func main() {
 		fmt.Fprintln(os.Stderr, "locate BPB core executable:", err)
 		os.Exit(1)
 	}
+	if err := restoreSystemProxy(); err != nil {
+		fmt.Fprintln(os.Stderr, "restore previous Windows proxy settings:", err)
+	}
 	xray.InitEnv(filepath.Join(filepath.Dir(executable), "assets"))
 	controller := xray.NewController()
 	scanner := bufio.NewScanner(os.Stdin)
