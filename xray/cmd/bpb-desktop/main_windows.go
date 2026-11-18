@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"bpb/xray"
 )
@@ -37,6 +38,12 @@ func writeResponse(res response) {
 }
 
 func main() {
+	executable, err := os.Executable()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "locate BPB core executable:", err)
+		os.Exit(1)
+	}
+	xray.InitEnv(filepath.Join(filepath.Dir(executable), "assets"))
 	controller := xray.NewController()
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Buffer(make([]byte, 4096), 16*1024*1024)

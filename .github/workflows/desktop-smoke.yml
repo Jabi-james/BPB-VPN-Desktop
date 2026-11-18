@@ -104,6 +104,9 @@ jobs:
           if [ "${{ matrix.platform }}" = "windows" ]; then
             GOOS=windows GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o ../build/windows/x64/runner/Release/bpb_scanner.exe ./cmd/bpb-scanner
             GOOS=windows GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o ../build/windows/x64/runner/Release/bpb_core.exe ./cmd/bpb-desktop
+            mkdir -p ../build/windows/x64/runner/Release/assets
+            cp ../android/app/src/main/assets/geoip.dat ../build/windows/x64/runner/Release/assets/geoip.dat
+            cp ../android/app/src/main/assets/geosite.dat ../build/windows/x64/runner/Release/assets/geosite.dat
           else
             GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o ../build/linux/x64/release/bundle/bpb_scanner ./cmd/bpb-scanner
           fi
