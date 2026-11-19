@@ -22,11 +22,16 @@ class GeoAssetsDownloader {
   const GeoAssetsDownloader(this.client);
 
   /// Each file's content and its SHA-256 (hex), by name.
-  Future<Map<String, ({Uint8List data, String sha256})>> download() async {
+  Future<Map<String, ({Uint8List data, String sha256})>> download({
+    void Function(String file, int received, int? total)? onProgress,
+  }) async {
     final downloaded = <String, ({Uint8List data, String sha256})>{};
     for (final name in files) {
       final sha256 = _hash(await _get('$_base/$name.sha256sum'), name);
-      downloaded[name] = (data: await _get('$_base/$name'), sha256: sha256);
+      downloaded[name] = (
+        data: await _getFile('$_base/$name', name, onProgress),
+        sha256: sha256,
+      );
     }
     return downloaded;
   }
@@ -38,8 +43,45 @@ class GeoAssetsDownloader {
     } catch (e) {
       throw GeoAssetsException("Can't reach GitHub: $e");
     }
-    if (res.statusCode != 200) throw GeoAssetsException('GitHub answered HTTP ${res.statusCode}');
+    if (res.statusCode != 200) {
+      throw GeoAssetsException('GitHub answered HTTP ${res.statusCode}');
+    }
     return res.bodyBytes;
+  }
+
+  Future<Uint8List> _getFile(
+    String url,
+    String name,
+    void Function(String file, int received, int? total)? onProgress,
+  ) async {
+    final http.StreamedResponse response;
+    try {
+      response = await client
+          .send(http.Request('GET', Uri.parse(url)))
+          .timeout(const Duration(minutes: 3));
+    } catch (e) {
+      throw GeoAssetsException("Can't reach GitHub: $e");
+    }
+    if (response.statusCode != 200) {
+      throw GeoAssetsException('GitHub answered HTTP ${response.statusCode}');
+    }
+
+    final total = response.contentLength;
+    var received = 0;
+    final bytes = BytesBuilder(copy: false);
+    onProgress?.call(name, received, total);
+    try {
+      await for (final chunk in response.stream.timeout(
+        const Duration(minutes: 3),
+      )) {
+        bytes.add(chunk);
+        received += chunk.length;
+        onProgress?.call(name, received, total);
+      }
+    } catch (e) {
+      throw GeoAssetsException('Download of $name failed: $e');
+    }
+    return bytes.takeBytes();
   }
 
   /// The hash in a sha256sum line (`<hex>  <file>`).
