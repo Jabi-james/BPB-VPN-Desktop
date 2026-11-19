@@ -225,11 +225,20 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed with exit code $LASTEXITCODE" }
           if (!(Test-Path "installer-output/BPB-VPN-Setup-v1.2.1.exe")) { throw "Installer output missing" }
 
-      - name: Package desktop application
+      - name: Package Windows portable application
+        if: matrix.platform == 'windows'
         uses: actions/upload-artifact@v4
         with:
-          name: bpb-${{ matrix.platform }}-desktop
-          path: |
-            build/windows/x64/runner/Release/
-            build/linux/x64/release/bundle/
-            installer-output/*.exe
+          name: bpb-windows-portable
+          path: build/windows/x64/runner/Release/
+          if-no-files-found: error
+          compression-level: 0
+
+      - name: Package Windows installer
+        if: matrix.platform == 'windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: bpb-windows-installer
+          path: installer-output/*.exe
+          if-no-files-found: error
+
