@@ -20,9 +20,9 @@ class BpbApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppScope(
       state: state,
-      // Rebuilds only when the theme colour or mode changes (picked in Settings).
+      // Rebuilds when the theme or global text scale changes in Settings.
       child: ListenableBuilder(
-        listenable: Listenable.merge([state.themeColor, state.themeMode]),
+        listenable: Listenable.merge([state.themeColor, state.themeMode, state.fontScale]),
         builder: (context, _) => MaterialApp(
           title: 'BPB',
           debugShowCheckedModeBanner: false,
