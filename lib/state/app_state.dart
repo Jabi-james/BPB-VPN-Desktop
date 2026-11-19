@@ -345,7 +345,7 @@ class AppState extends ChangeNotifier {
 
   // region init
 
-  Future<void> init({bool cleanStart = false}) async {
+  Future<void> init({bool cleanStart = false, bool startLanTimer = true}) async {
     // Portable copies keep independent settings/secrets based on their own folder.
     // Moving a portable folder intentionally starts a separate profile; old folders remain untouched.
     final executablePath = Platform.resolvedExecutable.toLowerCase();
@@ -387,10 +387,12 @@ class AppState extends ChangeNotifier {
     _redeployDue();
     unawaited(refreshUsage());
     unawaited(refreshLanIp());
-    _lanTimer = Timer.periodic(
-      const Duration(seconds: 5),
-      (_) => refreshLanIp(),
-    );
+    if (startLanTimer) {
+      _lanTimer = Timer.periodic(
+        const Duration(seconds: 5),
+        (_) => refreshLanIp(),
+      );
+    }
   }
 
   static Map<String, dynamic> _decodeMap(String? raw) {
