@@ -8,12 +8,27 @@ ICO = ROOT / "windows" / "runner" / "resources" / "app_icon.ico"
 if not PNG.is_file():
     raise SystemExit(f"Rendered PNG is missing: {PNG}")
 
-with Image.open(PNG) as image:
-    image.convert("RGBA").save(
-        ICO,
-        format="ICO",
-        sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)],
-    )
+with Image.open(PNG) as source:
+    image = source.convert("RGBA")
+    # Keep the in-app title mark unchanged; crop transparent margins only for
+    # Windows shell icons so the taskbar and tray artwork appears larger.
+    bounds = image.getchannel("A").getbbox()
+    if bounds is None:
+        raise SystemExit(f"Rendered app icon is fully transparent: {PNG}")
+    left, top, right, bottom = bounds
+    pad_x = max(1, round((right - left) * 0.035))
+    pad_y = max(1, round((bottom - top) * 0.035))
+    image = image.crop((
+        max(0, left - pad_x),
+        max(0, top - pad_y),
+        min(image.width, right + pad_x),
+        min(image.height, bottom + pad_y),
+    ))
 
-print(f"Generated app-bar icon: {PNG}")
-print(f"Generated Windows executable icon: {ICO}")
+image.save(
+    ICO,
+    format="ICO",
+    sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)],
+)
+
+print(f"Generated enlarged Windows shell icon: {ICO}")
