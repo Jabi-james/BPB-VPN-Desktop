@@ -1,8 +1,7 @@
 //go:build windows
 
 // bpb-desktop is the Windows process host for BPB's existing Xray configuration.
-// It has no Firefox VPN integration. TUN is intentionally rejected until the
-// Windows Wintun/service backend is implemented and tested.
+// It has no Firefox VPN integration. Xray-core owns the Wintun adapter and route lifecycle.
 package main
 
 import (
