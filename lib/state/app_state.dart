@@ -6,6 +6,7 @@ import 'dart:isolate';
 import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter/widgets.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -229,8 +230,14 @@ class AppState extends ChangeNotifier {
       ConnectionMode.warp => device.warpVariant,
       _ => null,
     };
-    return ConnectionVariant.values.asNameMap()[name] ??
+    final selected = ConnectionVariant.values.asNameMap()[name] ??
         ConnectionVariant.normal;
+    // Browser Dialer relies on Android WebView and is not a Windows transport.
+    if (defaultTargetPlatform == TargetPlatform.windows &&
+        selected == ConnectionVariant.browserDialer) {
+      return ConnectionVariant.normal;
+    }
+    return selected;
   }
 
   /// Proxy mode: only the local SOCKS/HTTP proxy, no VPN.
@@ -535,7 +542,11 @@ class AppState extends ChangeNotifier {
       if (!wasConnected && !sameSession) {
         needsReconnect = false;
         totalUp = totalDown = 0;
-        unawaited(refreshMyIps());
+        // Fetch exit IPs first, then automatically measure latency through the tunnel.
+        unawaited(() async {
+          await refreshMyIps();
+          await testPing();
+        }());
         unawaited(refreshUsage());
         _redeployDue(); // The API may only be reachable through the tunnel.
       }
