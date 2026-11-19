@@ -113,6 +113,25 @@ class ScannerChannel {
   static Future<void> resume() => _call('resume', 'scannerResume');
   static Future<void> stop() => _call('stop', 'scannerStop');
 
+  /// Closes the desktop scanner helper and waits for its process to exit.
+  static Future<void> shutdownDesktop() async {
+    if (!_isDesktop) return;
+    final process = _desktopProcess;
+    if (process == null) return;
+    try {
+      await _sendDesktop('close').timeout(const Duration(seconds: 4));
+    } catch (_) {}
+    try {
+      await process.exitCode.timeout(const Duration(seconds: 3));
+    } catch (_) {
+      process.kill();
+      try {
+        await process.exitCode.timeout(const Duration(seconds: 2));
+      } catch (_) {}
+    }
+    if (identical(_desktopProcess, process)) _desktopProcess = null;
+  }
+
   static Future<void> _call(String desktopAction, String androidMethod) async {
     _requirePlatform();
     if (_isDesktop) {
