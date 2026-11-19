@@ -43,7 +43,7 @@ class HomePage extends StatelessWidget {
               : const [AppMode.vpn, AppMode.proxy],
             selected: state.device.appMode,
             label: (v) => switch (v) {
-              AppMode.vpn => 'VPN mode',
+              AppMode.vpn => defaultTargetPlatform == TargetPlatform.windows ? 'TUN mode' : 'VPN mode',
               AppMode.systemProxy => 'System Proxy',
               AppMode.proxy => 'Proxy mode',
             },
