@@ -79,7 +79,10 @@ class ConnectionCard extends StatelessWidget {
       color: scheme.surfaceContainer,
       elevation: 0,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+        padding: EdgeInsets.symmetric(
+          horizontal: defaultTargetPlatform == TargetPlatform.windows ? 16 : 24,
+          vertical: defaultTargetPlatform == TargetPlatform.windows ? 12 : 20,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
