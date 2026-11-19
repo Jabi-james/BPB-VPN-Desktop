@@ -54,11 +54,14 @@ class VpnChannel {
 
   static void _emitWindowsState(VpnStatus status, [String? error]) {
     _windowsStates.add(VpnStateEvent(
-      status, error,
+      status,
+      error,
       status == VpnStatus.connected ? (_windowsConnectedAt ??= DateTime.now()) : null,
       null,
     ));
-    if (status == VpnStatus.disconnected) _windowsConnectedAt = null;
+    if (status == VpnStatus.connecting || status == VpnStatus.disconnected) {
+      _windowsConnectedAt = null;
+    }
   }
 
   static Future<void> _ensureWindowsProcess() async {
