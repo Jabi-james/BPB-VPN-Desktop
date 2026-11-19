@@ -34,6 +34,7 @@ class AppState extends ChangeNotifier {
   static const _kProfile = 'profile';
   static const _kDevice = 'device';
   static const _kSecretAccounts = 'cloudflareAccounts';
+  static const _kGeoAssetsUpdatedAt = 'geoAssetsUpdatedAt';
 
   late SharedPreferences _prefs;
   final _secrets = const FlutterSecureStorage();
@@ -46,6 +47,12 @@ class AppState extends ChangeNotifier {
   Profile get profile => _profile ??= _stored.updated('vless', vless.toJson());
 
   DeviceSettings device = const DeviceSettings();
+
+  /// Last successful Windows geo-assets update, stored per app preferences.
+  DateTime? get geoAssetsUpdatedAt {
+    final raw = _prefs.getString(_kGeoAssetsUpdatedAt);
+    return raw == null ? null : DateTime.tryParse(raw)?.toLocal();
+  }
 
   /// Cloudflare accounts saved on this device, each with the deployments this install made in
   /// it (secret: tokens and UUIDs).
@@ -879,6 +886,7 @@ class AppState extends ChangeNotifier {
         client,
       ).download(onProgress: onProgress);
       await VpnChannel.saveGeoAssets(files);
+      await _prefs.setString(_kGeoAssetsUpdatedAt, DateTime.now().toUtc().toIso8601String());
     } on GeoAssetsException catch (e) {
       throw StateError(e.message);
     } on PlatformException catch (e) {
