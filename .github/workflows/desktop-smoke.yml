@@ -158,6 +158,7 @@ jobs:
             mkdir -p ../build/windows/x64/runner/Release/assets
             cp ../android/app/src/main/assets/geoip.dat ../build/windows/x64/runner/Release/assets/geoip.dat
             cp ../android/app/src/main/assets/geosite.dat ../build/windows/x64/runner/Release/assets/geosite.dat
+            cp ../windows/runner/resources/app_icon.ico ../build/windows/x64/runner/Release/bpb_tray.ico
           else
             GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o ../build/linux/x64/release/bundle/bpb_scanner ./cmd/bpb-scanner
           fi
