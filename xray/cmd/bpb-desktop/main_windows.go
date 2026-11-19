@@ -75,17 +75,21 @@ func main() {
 				res = response{Error: "unsupported connection mode"}
 			} else if req.Config == "" {
 				res = response{Error: "Xray config is required"}
-			} else if err := controller.Stop(); err != nil {
-				res = response{Error: "stop previous Xray session: " + err.Error()}
-			} else if err := restoreSystemProxy(); err != nil {
-				res = response{Error: "restore previous Windows proxy settings: " + err.Error()}
-			} else if err := controller.Start(req.Config, 0); err != nil {
-				res = response{Error: err.Error()}
-			} else if mode == "systemProxy" {
-				if err := applySystemProxy("127.0.0.1:10880"); err != nil {
-					_ = controller.Stop()
-					_ = restoreSystemProxy()
-					res = response{Error: "could not enable Windows system proxy: " + err.Error()}
+			} else {
+				stopErr := controller.Stop()
+				proxyErr := restoreSystemProxy()
+				if stopErr != nil {
+					res = response{Error: "stop previous Xray session: " + stopErr.Error()}
+				} else if proxyErr != nil {
+					res = response{Error: "restore previous Windows proxy settings: " + proxyErr.Error()}
+				} else if err := controller.Start(req.Config, 0); err != nil {
+					res = response{Error: err.Error()}
+				} else if mode == "systemProxy" {
+					if err := applySystemProxy("127.0.0.1:10880"); err != nil {
+						_ = controller.Stop()
+						_ = restoreSystemProxy()
+						res = response{Error: "could not enable Windows system proxy: " + err.Error()}
+					}
 				}
 			}
 			if res.OK && req.VerifyConnection {
