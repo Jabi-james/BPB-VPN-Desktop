@@ -46,15 +46,39 @@ jobs:
       - name: Generate the missing Flutter desktop runner
         run: flutter create --platforms=${{ matrix.platform }} --project-name=bpb .
 
-      - name: Set compact Windows startup window
+      - name: Set BPB VPN Windows identity and compact window
         if: matrix.platform == 'windows'
         shell: pwsh
         run: |
           $path = "windows/runner/main.cpp"
           $source = Get-Content $path -Raw
-          $updated = $source -replace 'Win32Window::Size size\(1280, 720\);', 'Win32Window::Size size(680, 820);'
-          if ($updated -eq $source) { throw "Could not find Flutter's default Windows window size in $path" }
-          Set-Content -Path $path -Value $updated -Encoding utf8
+          $source = $source.Replace('Win32Window::Size size(1280, 720);', 'Win32Window::Size size(680, 656);')
+          $adminHelper = @'
+          bool IsBpbAdministrator() {
+            BOOL isAdmin = FALSE;
+            PSID adminGroup = nullptr;
+            SID_IDENTIFIER_AUTHORITY authority = SECURITY_NT_AUTHORITY;
+            if (AllocateAndInitializeSid(&authority, 2, SECURITY_BUILTIN_DOMAIN_RID,
+                DOMAIN_ALIAS_RID_ADMINS, 0, 0, 0, 0, 0, 0, &adminGroup)) {
+              CheckTokenMembership(nullptr, adminGroup, &isAdmin);
+              FreeSid(adminGroup);
+            }
+            return isAdmin == TRUE;
+          }
+          '@
+          $source = $source.Replace('}  // namespace' + [Environment]::NewLine + [Environment]::NewLine + 'int APIENTRY',
+            '}  // namespace' + [Environment]::NewLine + [Environment]::NewLine + $adminHelper + [Environment]::NewLine + 'int APIENTRY')
+          $source = $source.Replace('window.Create(L"bpb", origin, size)',
+            'window.Create((IsBpbAdministrator() ? std::wstring(L"BPB VPN - v.1.2.1 - ADMIN") : std::wstring(L"BPB VPN - v.1.2.1")).c_str(), origin, size)')
+          if ($source -notmatch 'Win32Window::Size size\(680, 656\);' -or $source -notmatch 'IsBpbAdministrator') {
+            throw "Could not apply BPB VPN window identity/size patch to $path"
+          }
+          Set-Content -Path $path -Value $source -Encoding utf8
+          $cmake = "windows/CMakeLists.txt"
+          $cmakeSource = Get-Content $cmake -Raw
+          $cmakeUpdated = $cmakeSource -replace 'set\(BINARY_NAME "bpb"\)', 'set(BINARY_NAME "BPB-VPN")'
+          if ($cmakeUpdated -eq $cmakeSource) { throw "Could not rename the Windows executable in $cmake" }
+          Set-Content -Path $cmake -Value $cmakeUpdated -Encoding utf8
 
       - name: Resolve dependencies
         run: flutter pub get --enforce-lockfile
