@@ -54,6 +54,7 @@ jobs:
           $source = Get-Content $path -Raw
           $source = $source.Replace('Win32Window::Size size(1280, 720);', 'Win32Window::Size size(680, 656);')
           $adminHelper = @'
+          #pragma comment(lib, "Advapi32.lib")
           bool IsBpbAdministrator() {
             BOOL isAdmin = FALSE;
             PSID adminGroup = nullptr;
@@ -70,7 +71,7 @@ jobs:
             '}  // namespace' + [Environment]::NewLine + [Environment]::NewLine + $adminHelper + [Environment]::NewLine + 'int APIENTRY')
           $source = $source.Replace('window.Create(L"bpb", origin, size)',
             'window.Create((IsBpbAdministrator() ? std::wstring(L"BPB VPN - v.1.2.1 - ADMIN") : std::wstring(L"BPB VPN - v.1.2.1")).c_str(), origin, size)')
-          if ($source -notmatch 'Win32Window::Size size\(680, 656\);' -or $source -notmatch 'IsBpbAdministrator') {
+          if ($source -notmatch 'Win32Window::Size size\(680, 656\);' -or $source -notmatch 'IsBpbAdministrator' -or $source -notmatch 'BPB VPN - v.1.2.1') {
             throw "Could not apply BPB VPN window identity/size patch to $path"
           }
           Set-Content -Path $path -Value $source -Encoding utf8
