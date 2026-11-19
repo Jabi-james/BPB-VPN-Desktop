@@ -45,6 +45,16 @@ jobs:
       - name: Generate the missing Flutter desktop runner
         run: flutter create --platforms=${{ matrix.platform }} --project-name=bpb .
 
+      - name: Set compact Windows startup window
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $path = "windows/runner/main.cpp"
+          $source = Get-Content $path -Raw
+          $updated = $source -replace 'Win32Window::Size size\(1280, 720\);', 'Win32Window::Size size(680, 820);'
+          if ($updated -eq $source) { throw "Could not find Flutter's default Windows window size in $path" }
+          Set-Content -Path $path -Value $updated -Encoding utf8
+
       - name: Resolve dependencies
         run: flutter pub get --enforce-lockfile
 
