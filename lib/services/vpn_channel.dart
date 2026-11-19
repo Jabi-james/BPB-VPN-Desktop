@@ -236,7 +236,7 @@ class VpnChannel {
       }
       if (appMode == 'vpn' && !await _isWindowsElevated()) {
         final executable = Platform.resolvedExecutable.replaceAll("'", "''");
-        final script = "try { Start-Process -FilePath '$executable' -Verb RunAs -ArgumentList '--bpb-elevated-tun' -ErrorAction Stop; exit 0 } catch { [Console]::Error.WriteLine($_.Exception.Message); exit 1 }";
+        final script = "try { Start-Process -FilePath '$executable' -Verb RunAs -ArgumentList '--bpb-elevated-tun' -ErrorAction Stop; exit 0 } catch { [Console]::Error.WriteLine(\$_.Exception.Message); exit 1 }";
         final launch = await Process.run('powershell.exe', [
           '-NoProfile',
           '-NonInteractive',
