@@ -640,9 +640,13 @@ class AppState extends ChangeNotifier {
       } catch (_) {
         // Keep the original verification failure visible.
       }
+      // Let the asynchronous stop events settle before restoring the verification error.
+      await Future<void>.delayed(Duration.zero);
       status = VpnStatus.disconnected;
       error = failure;
       connectedAt = null;
+      loadingIps = false;
+      notifyListeners();
     } finally {
       if (token == _windowsVerificationToken) {
         loadingIps = false;
