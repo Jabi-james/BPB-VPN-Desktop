@@ -1158,6 +1158,7 @@ class DeviceSettings {
 
   final String themeColor;
   final String themeMode;
+  final double fontScale;
 
   /// The selected deployment: `<account id>/<workers or pages>`; empty for the first one.
   final String deployment;
@@ -1187,6 +1188,7 @@ class DeviceSettings {
     this.exitRegion = '',
     this.themeColor = 'blue',
     this.themeMode = 'system',
+    this.fontScale = 1.0,
     this.deployment = '',
     this.setupDone = false,
   });
@@ -1250,6 +1252,7 @@ class DeviceSettings {
       exitRegion: exitRegions.containsKey(region) ? region : d.exitRegion,
       themeColor: _str(theme['color'], d.themeColor),
       themeMode: _str(theme['mode'], d.themeMode),
+      fontScale: ((j['fontScale'] is num ? (j['fontScale'] as num).toDouble() : d.fontScale).clamp(0.8, 1.3)).toDouble(),
       deployment: _str(j['deployment'], d.deployment),
       setupDone: _bool(j['setupDone'], d.setupDone),
     );
@@ -1282,6 +1285,7 @@ class DeviceSettings {
       'region': exitRegion,
     },
     'theme': {'color': themeColor, 'mode': themeMode},
+    'fontScale': fontScale,
     'deployment': deployment,
     'setupDone': setupDone,
   };
