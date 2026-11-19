@@ -164,6 +164,56 @@ jobs:
             GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o ../build/linux/x64/release/bundle/bpb_scanner ./cmd/bpb-scanner
           fi
 
+      - name: Build the Windows Psiphon exit
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $env:GOTOOLCHAIN = "go1.26.9"
+          $env:CGO_ENABLED = "0"
+          $env:GOOS = "windows"
+          $env:GOARCH = "amd64"
+          go version
+          Push-Location psiphon
+          try {
+            go build -trimpath -buildvcs=false -ldflags="-s -w" -o ../build/windows/x64/runner/Release/bpb_psiphon.exe .
+          } finally {
+            Pop-Location
+          }
+          if (!(Test-Path "build/windows/x64/runner/Release/bpb_psiphon.exe")) { throw "Psiphon executable was not produced" }
+
+      - name: Fetch and verify the official Tor Windows Expert Bundle
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $version = "16.0.1"
+          $name = "tor-expert-bundle-windows-x86_64-$version.tar.gz"
+          $base = "https://dist.torproject.org/torbrowser/$version"
+          $archive = Join-Path $env:RUNNER_TEMP $name
+          Invoke-WebRequest -Uri "$base/$name" -OutFile $archive
+          $expected = "9eed3c3ff1fe43df034ce360196c9ec95472560d77ff55614d0cd5120edea27b"
+          $actual = (Get-FileHash $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne $expected) { throw "Tor Expert Bundle SHA-256 mismatch: $actual" }
+          $extract = Join-Path $env:RUNNER_TEMP "tor-expert"
+          New-Item -ItemType Directory -Force $extract | Out-Null
+          tar -xzf $archive -C $extract
+          $tor = Join-Path $extract "tor/tor.exe"
+          $pt = Join-Path $extract "tor/pluggable_transports/lyrebird.exe"
+          $geoip = Join-Path $extract "data/geoip"
+          $geoip6 = Join-Path $extract "data/geoip6"
+          foreach ($file in @($tor, $pt, $geoip, $geoip6)) {
+            if (!(Test-Path $file)) { throw "Expected Tor bundle file missing: $file" }
+          }
+          $release = "build/windows/x64/runner/Release"
+          $torDir = Join-Path $release "tor"
+          New-Item -ItemType Directory -Force $torDir | Out-Null
+          Copy-Item $tor (Join-Path $torDir "tor.exe")
+          Copy-Item $pt (Join-Path $torDir "lyrebird.exe")
+          Copy-Item $geoip (Join-Path $torDir "geoip")
+          Copy-Item $geoip6 (Join-Path $torDir "geoip6")
+          Copy-Item "android/app/src/main/assets/tor_pt_config.json" (Join-Path $torDir "tor_pt_config.json")
+          Copy-Item "android/app/src/main/assets/psiphon_config.json" (Join-Path $release "psiphon_config.json")
+          if (!(Test-Path (Join-Path $release "psiphon_config.json"))) { throw "Psiphon configuration asset missing" }
+
       - name: Fetch and verify the official Wintun runtime
         if: matrix.platform == 'windows'
         shell: pwsh
