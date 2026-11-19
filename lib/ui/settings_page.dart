@@ -154,7 +154,7 @@ class SettingsPage extends StatelessWidget {
                 'device.lanSharing.enabled',
                 'Share over LAN',
                 icon: Symbols.lan_rounded,
-                subtitle: 'Share a Socks, HTTP proxy on port 10808',
+                subtitle: 'Share a SOCKS/HTTP proxy on port 10880',
               ),
               if (d.lanSharing) ...[
                 const TextPref(
@@ -661,8 +661,7 @@ class SettingsPage extends StatelessWidget {
                 domainHint: 'ads.example.com',
                 ipHint: '10.10.34.34/24\n2001:4188:2:600:10:10:34:34/112',
               ),
-              if (defaultTargetPlatform != TargetPlatform.windows)
-                _GeoAssetsTile(),
+              _GeoAssetsTile(),
             ],
           ),
 

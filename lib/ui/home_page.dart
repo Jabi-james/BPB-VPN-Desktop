@@ -27,11 +27,14 @@ class HomePage extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             // The BPB mark uses both neon blues from the Windows app icon.
-            Image.asset(
-              'assets/icons/ic_stat_vpn.png',
-              width: 24,
-              height: 24,
-              filterQuality: FilterQuality.high,
+            ColorFiltered(
+              colorFilter: const ColorFilter.mode(Color(0xFF2196F3), BlendMode.srcIn),
+              child: Image.asset(
+                'assets/icons/ic_stat_vpn.png',
+                width: 30,
+                height: 30,
+                filterQuality: FilterQuality.high,
+              ),
             ),
             const SizedBox(width: 6),
             const Text('BPB VPN', style: TextStyle(fontWeight: FontWeight.w600)),

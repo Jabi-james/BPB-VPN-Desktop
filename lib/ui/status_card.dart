@@ -63,7 +63,10 @@ class _StatusCardState extends State<StatusCard> {
       ),
       VpnStatus.connecting => (
         state.connectedAt == null ? 'CONNECTING' : 'RECONNECTING',
-        state.exitDetail ?? 'Starting the tunnel…',
+        state.exitDetail ?? switch (state.device.appMode) {
+          AppMode.vpn => 'Starting The Tunnel...',
+          AppMode.proxy || AppMode.systemProxy => 'Checking...',
+        },
       ),
       VpnStatus.disconnecting => ('DISCONNECTING', 'Stopping the tunnel…'),
       VpnStatus.disconnected when failed => ('Connection failed', state.error!),
@@ -175,7 +178,7 @@ class _Metrics extends StatelessWidget {
     final refreshIps = state.isConnected ? state.refreshMyIps : null;
     final twoIps = state.mode.needsWorker && state.exitNode == ExitNode.worker;
     // This phone's LAN address (always shown); with LAN connections allowed, other
-    // devices use it with port 10808 for the SOCKS/HTTP proxy.
+    // devices use it with port 10880 for the SOCKS/HTTP proxy.
     final lanIp = state.lanIp;
     final lan = _Metric(
       icon: Symbols.network_node_rounded,
