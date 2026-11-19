@@ -75,7 +75,7 @@ ThemeData _buildTheme(ColorScheme scheme) {
     scaffoldBackgroundColor: Color.lerp(
       scheme.surface,
       Colors.black,
-      scheme.brightness == Brightness.dark ? 0.045 : 0.025,
+      scheme.brightness == Brightness.dark ? 0.065 : 0.025,
     ),
     useMaterial3: true,
     fontFamily: 'OpenSans',
