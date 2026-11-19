@@ -163,6 +163,53 @@ jobs:
           Copy-Item (Join-Path $extract "wintun/bin/amd64/wintun.dll") (Join-Path $release "wintun.dll")
           Copy-Item (Join-Path $extract "wintun/LICENSE.txt") (Join-Path $release "LICENSE-Wintun.txt")
 
+      - name: Build Windows installer
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $release = (Resolve-Path "build/windows/x64/runner/Release").Path
+          $app = Join-Path $release "BPB-VPN.exe"
+          if (!(Test-Path $app)) { throw "Expected Windows app executable not found: $app" }
+          if (!(Get-Command ISCC.exe -ErrorAction SilentlyContinue)) {
+            choco install innosetup --no-progress -y
+          }
+          $iscc = (Get-Command ISCC.exe -ErrorAction Stop).Source
+          $script = @'
+          #define MyAppName "BPB VPN"
+          #define MyAppVersion "1.2.1"
+          #define SourceDir "build/windows/x64/runner/Release"
+          [Setup]
+          AppId={{D38C7B2A-3D9E-4C70-9F17-8B0D5D91B121}
+          AppName={#MyAppName}
+          AppVersion={#MyAppVersion}
+          AppPublisher=BPB VPN
+          DefaultDirName={autopf}\BPB VPN
+          DefaultGroupName=BPB VPN
+          OutputDir=installer-output
+          OutputBaseFilename=BPB-VPN-Setup-v{#MyAppVersion}
+          Compression=lzma2
+          SolidCompression=yes
+          WizardStyle=modern
+          ArchitecturesAllowed=x64
+          ArchitecturesInstallIn64BitMode=x64
+          PrivilegesRequired=lowest
+          UninstallDisplayIcon={app}\BPB-VPN.exe
+          [Tasks]
+          Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional icons:"
+          [Files]
+          Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+          [Icons]
+          Name: "{group}\BPB VPN"; Filename: "{app}\BPB-VPN.exe"
+          Name: "{autodesktop}\BPB VPN"; Filename: "{app}\BPB-VPN.exe"; Tasks: desktopicon
+          [Run]
+          Filename: "{app}\BPB-VPN.exe"; Description: "Launch BPB VPN"; Flags: postinstall nowait skipifsilent
+          '@
+          New-Item -ItemType Directory -Force "installer-output" | Out-Null
+          Set-Content -Path "BPB-VPN.iss" -Value $script -Encoding utf8
+          & $iscc "BPB-VPN.iss"
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed with exit code $LASTEXITCODE" }
+          if (!(Test-Path "installer-output/BPB-VPN-Setup-v1.2.1.exe")) { throw "Installer output missing" }
+
       - name: Package desktop application
         uses: actions/upload-artifact@v4
         with:
@@ -170,3 +217,4 @@ jobs:
           path: |
             build/windows/x64/runner/Release/
             build/linux/x64/release/bundle/
+            installer-output/*.exe
