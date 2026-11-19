@@ -1545,7 +1545,7 @@ class _GeoAssetsTileState extends State<_GeoAssetsTile> {
           setState(() {
             _downloadingFile = file;
             _progress = total != null && total > 0
-                ? (received / total).clamp(0.0, 1.0)
+                ? (received / total).clamp(0.0, 1.0).toDouble()
                 : null;
           });
         },
