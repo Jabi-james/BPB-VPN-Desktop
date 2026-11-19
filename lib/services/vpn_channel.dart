@@ -118,6 +118,17 @@ class VpnChannel {
     }
   }
 
+  static Future<bool> _isWindowsElevated() async {
+    final result = await Process.run('powershell.exe', [
+      '-NoProfile',
+      '-NonInteractive',
+      '-Command',
+      r'([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)',
+    ]);
+    return result.exitCode == 0 &&
+        result.stdout.toString().trim().toLowerCase() == 'true';
+  }
+
   static Future<void> _startWindows({
     required Map<String, dynamic> config,
     required String appMode,
@@ -217,6 +228,24 @@ class VpnChannel {
       }
       if (perAppMode != 'off') {
         throw UnsupportedError('Per-app routing is not available on Windows yet.');
+      }
+      if (appMode == 'vpn' && !await _isWindowsElevated()) {
+        final executable = Platform.resolvedExecutable.replaceAll("'", "''");
+        final script = "try { Start-Process -FilePath '$executable' -Verb RunAs -ArgumentList '--bpb-elevated-tun' -ErrorAction Stop; exit 0 } catch { [Console]::Error.WriteLine($_.Exception.Message); exit 1 }";
+        final launch = await Process.run('powershell.exe', [
+          '-NoProfile',
+          '-NonInteractive',
+          '-Command',
+          script,
+        ]);
+        if (launch.exitCode != 0) {
+          throw StateError(
+            'Windows TUN requires Administrator permission. '
+            '${launch.stderr.toString().trim()}',
+          );
+        }
+        // The elevated copy restores the saved settings and starts the TUN session.
+        exit(0);
       }
       await _startWindows(config: config, appMode: appMode);
       return;
