@@ -277,11 +277,9 @@ class _ModeSelector extends StatelessWidget {
       );
     }
     return ChipMenu(
-      values: ConnectionVariant.of(state.mode)
-          .where((v) =>
-              defaultTargetPlatform != TargetPlatform.windows ||
-              v != ConnectionVariant.browserDialer)
-          .toList(),
+      // Browser Dialer is supported on Windows for Proxy and System Proxy.
+      // TUN remains intentionally unsupported for Browser Dialer.
+      values: ConnectionVariant.of(state.mode),
       selected: state.variant,
       label: (v) => v.label(state.mode),
       onSelected: state.setVariant,
