@@ -10,9 +10,22 @@ void main() {
   testWidgets('Donation is the last About item and opens the page', (
     tester,
   ) async {
+    SharedPreferences.setMockInitialValues({});
+    FlutterSecureStorage.setMockInitialValues({});
+    final messenger = tester.binding.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(
+      const MethodChannel('bpb/state'),
+      (_) async => null,
+    );
+    addTearDown(() => messenger.setMockMethodCallHandler(
+      const MethodChannel('bpb/state'), null,
+    ));
+    final state = AppState();
+    await state.init();
+    addTearDown(state.dispose);
     await tester.pumpWidget(
       AppScope(
-        state: AppState(),
+        state: state,
         child: const MaterialApp(home: SettingsPage()),
       ),
     );
