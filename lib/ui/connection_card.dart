@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../models/settings.dart';
@@ -273,7 +274,11 @@ class _ModeSelector extends StatelessWidget {
       );
     }
     return ChipMenu(
-      values: ConnectionVariant.of(state.mode),
+      values: ConnectionVariant.of(state.mode)
+          .where((v) =>
+              defaultTargetPlatform != TargetPlatform.windows ||
+              v != ConnectionVariant.browserDialer)
+          .toList(),
       selected: state.variant,
       label: (v) => v.label(state.mode),
       onSelected: state.setVariant,
