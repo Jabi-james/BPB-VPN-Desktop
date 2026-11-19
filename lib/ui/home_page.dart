@@ -27,11 +27,9 @@ class HomePage extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             // The BPB mark uses both neon blues from the Windows app icon.
-            Image.asset(
-              'assets/icons/ic_stat_vpn.png',
-              width: 24,
-              height: 24,
-              filterQuality: FilterQuality.high,
+            const CustomPaint(
+              size: Size(24, 24),
+              painter: _BpbMarkPainter(),
             ),
             const SizedBox(width: 6),
             const Text('BPB VPN', style: TextStyle(fontWeight: FontWeight.w600)),
@@ -429,4 +427,44 @@ class _AccountUsage extends StatelessWidget {
       ],
     );
   }
+}
+
+
+/// Small, crisp two-blue BPB mark for the app bar. The shell/taskbar icon is
+/// generated separately from bpb_icon.svg and is intentionally unaffected.
+class _BpbMarkPainter extends CustomPainter {
+  const _BpbMarkPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    void circle(Offset center, double radius, List<Color> colors) {
+      final rect = Rect.fromCircle(center: center, radius: radius);
+      final paint = Paint()
+        ..shader = RadialGradient(
+          center: const Alignment(-0.35, -0.4),
+          radius: 1.25,
+          colors: colors,
+        ).createShader(rect);
+      canvas.drawCircle(center, radius, paint);
+    }
+
+    circle(
+      Offset(size.width * 0.36, size.height * 0.65),
+      size.width * 0.34,
+      const [Color(0xFF42B7FF), Color(0xFF0874E8), Color(0xFF0752B5)],
+    );
+    circle(
+      Offset(size.width * 0.66, size.height * 0.27),
+      size.width * 0.17,
+      const [Color(0xFF8ADFFF), Color(0xFF36AFFF), Color(0xFF168BFF)],
+    );
+    circle(
+      Offset(size.width * 0.79, size.height * 0.57),
+      size.width * 0.115,
+      const [Color(0xFF62C8FF), Color(0xFF168BFF), Color(0xFF0752B5)],
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _BpbMarkPainter oldDelegate) => false;
 }
