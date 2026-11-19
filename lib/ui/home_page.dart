@@ -194,7 +194,6 @@ class _TrafficCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final muted = theme.colorScheme.onSurfaceVariant;
     final scheme = theme.colorScheme;
     return Card(
       margin: EdgeInsets.zero,
