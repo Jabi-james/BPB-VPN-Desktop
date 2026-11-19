@@ -1525,8 +1525,14 @@ class _GeoAssetsTile extends StatefulWidget {
   State<_GeoAssetsTile> createState() => _GeoAssetsTileState();
 }
 
-class _GeoAssetsTileState extends State<_GeoAssetsTile> {
+class _GeoAssetsTileState extends State<_GeoAssetsTile>
+    with AutomaticKeepAliveClientMixin<_GeoAssetsTile> {
   bool _updating = false;
+
+  // Settings uses a lazy ListView. Keep this tile (and its in-flight download)
+  // alive while it is scrolled out of view.
+  @override
+  bool get wantKeepAlive => _updating;
   String? _downloadingFile;
   double? _progress;
 
@@ -1538,6 +1544,7 @@ class _GeoAssetsTileState extends State<_GeoAssetsTile> {
       _downloadingFile = null;
       _progress = null;
     });
+    updateKeepAlive();
     try {
       await state.updateGeoAssets(
         onProgress: (file, received, total) {
@@ -1572,12 +1579,14 @@ class _GeoAssetsTileState extends State<_GeoAssetsTile> {
           _downloadingFile = null;
           _progress = null;
         });
+        updateKeepAlive();
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final progressLabel = _downloadingFile == null
         ? 'Preparing download...'
         : 'Downloading $_downloadingFile'
