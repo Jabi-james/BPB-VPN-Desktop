@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:tray_manager/tray_manager.dart';
+import 'package:tray_manager/legacy.dart';
 import 'package:window_manager/window_manager.dart';
 
 enum _CloseChoice { minimize, close }
@@ -13,14 +13,12 @@ class WindowsLifecycle with WindowListener, TrayListener {
 
   static final navigatorKey = GlobalKey<NavigatorState>();
   static const _preference = 'windows.closeChoice';
-  static WindowsLifecycle? _instance;
   final Future<void> Function() _onExit;
   SharedPreferences? _preferences;
   bool _closing = false;
 
   static Future<void> initialize(Future<void> Function() onExit) async {
     final lifecycle = WindowsLifecycle._(onExit);
-    _instance = lifecycle;
     lifecycle._preferences = await SharedPreferences.getInstance();
     await windowManager.ensureInitialized();
     windowManager.addListener(lifecycle);
@@ -36,7 +34,11 @@ class WindowsLifecycle with WindowListener, TrayListener {
   }
 
   @override
-  Future<void> onWindowClose() async {
+  void onWindowClose() {
+    unawaited(_handleWindowClose());
+  }
+
+  Future<void> _handleWindowClose() async {
     if (_closing) return;
     final saved = _preferences?.getString(_preference);
     if (saved == _CloseChoice.minimize.name) {
@@ -102,9 +104,6 @@ class WindowsLifecycle with WindowListener, TrayListener {
 
   @override
   void onTrayIconMouseDown() => unawaited(_restore());
-
-  @override
-  void onTrayIconDoubleClick() => unawaited(_restore());
 
   @override
   void onTrayMenuItemClick(MenuItem menuItem) {

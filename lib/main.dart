@@ -3,7 +3,6 @@ import 'dart:io' as io;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
-import 'package:window_manager/window_manager.dart';
 
 import 'services/windows_lifecycle.dart';
 import 'services/vpn_channel.dart';
