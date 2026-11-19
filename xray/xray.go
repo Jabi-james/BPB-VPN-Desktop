@@ -334,17 +334,46 @@ func (c *Controller) OutboundTraffic() string {
 // MeasureDelay is the time in ms for a GET of url (a 204 / 200 page) through the running
 // instance, the faster of two tries on one connection, so the second skips the handshakes.
 func (c *Controller) MeasureDelay(url string) (int64, error) {
+	// Do not make one blocked probe host a single point of failure. Some networks
+	// can reach Cloudflare but not Google (or the reverse), especially through chains.
+	candidates := []string{
+		url,
+		"https://cp.cloudflare.com/generate_204",
+		"https://connectivitycheck.gstatic.com/generate_204",
+		"https://www.google.com/generate_204",
+		"https://www.cloudflare.com/cdn-cgi/trace",
+	}
+	seen := make(map[string]bool, len(candidates))
+	var lastErr error
+	for _, candidate := range candidates {
+		if candidate == "" || seen[candidate] {
+			continue
+		}
+		seen[candidate] = true
+		ms, err := c.measureDelayURL(candidate, 4*time.Second)
+		if err == nil {
+			return ms, nil
+		}
+		lastErr = err
+	}
+	if lastErr == nil {
+		lastErr = errors.New("no connectivity probe URL configured")
+	}
+	return -1, lastErr
+}
+
+func (c *Controller) measureDelayURL(url string, timeout time.Duration) (int64, error) {
 	c.mu.Lock()
 	instance := c.instance
 	c.mu.Unlock()
 	if instance == nil {
 		return -1, errors.New("not running")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	transport := &http.Transport{
-		TLSHandshakeTimeout: 6 * time.Second,
+		TLSHandshakeTimeout: 3 * time.Second,
 		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 			dest, err := xnet.ParseDestination(network + ":" + addr)
 			if err != nil {
