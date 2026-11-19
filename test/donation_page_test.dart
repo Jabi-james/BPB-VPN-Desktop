@@ -23,7 +23,7 @@ void main() {
       const MethodChannel('bpb/state'), null,
     ));
     final state = AppState();
-    await state.init();
+    await state.init(startLanTimer: false);
     addTearDown(state.dispose);
     await tester.pumpWidget(
       AppScope(
