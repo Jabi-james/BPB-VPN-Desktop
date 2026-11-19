@@ -345,7 +345,7 @@ class AppState extends ChangeNotifier {
 
   // region init
 
-  Future<void> init() async {
+  Future<void> init({bool cleanStart = false}) async {
     // Portable copies keep independent settings/secrets based on their own folder.
     // Moving a portable folder intentionally starts a separate profile; old folders remain untouched.
     final executablePath = Platform.resolvedExecutable.toLowerCase();
@@ -356,6 +356,10 @@ class AppState extends ChangeNotifier {
     _portableNamespace = hash.toRadixString(16).padLeft(8, '0');
     SharedPreferences.setPrefix('bpb_$_portableNamespace.');
     _prefs = await SharedPreferences.getInstance();
+    if (cleanStart) {
+      await _prefs.clear();
+      await _secrets.delete(key: _secretAccountsKey);
+    }
     _stored = Profile.fromJson(_decodeMap(_prefs.getString(_kProfile)))
         .updated('vless', null);
     device = DeviceSettings.fromJson(_decodeMap(_prefs.getString(_kDevice)));
