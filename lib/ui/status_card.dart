@@ -13,7 +13,7 @@ import 'format.dart';
 import 'theme.dart';
 
 /// Connected colour; stays green whatever theme colour is picked.
-const _green = Color(0xFF1FA463);
+const _green = Color(0xFF39FF75);
 const _tabular = TextStyle(fontFeatures: [FontFeature.tabularFigures()]);
 
 // Layout constants: the power button is positioned from these.
@@ -339,7 +339,7 @@ class _PingButton extends StatelessWidget {
     final state = AppScope.of(context);
     final theme = Theme.of(context);
     final ping = state.pingMs;
-    final color = theme.colorScheme.primary;
+    const color = _green;
     return Tooltip(
       message: 'Test ping',
       child: InkWell(
@@ -359,14 +359,7 @@ class _PingButton extends StatelessWidget {
                     color: color,
                   ),
                 )
-              else
-                Icon(
-                  Symbols.electric_bolt_rounded,
-                  size: 22,
-                  weight: 700,
-                  color: color,
-                ),
-              const SizedBox(width: 6),
+              if (state.pinging) const SizedBox(width: 6),
               Text(
                 state.pinging
                     ? 'Testing'
