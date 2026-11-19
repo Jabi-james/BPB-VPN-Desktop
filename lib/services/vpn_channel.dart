@@ -132,6 +132,7 @@ class VpnChannel {
   static Future<void> _startWindows({
     required Map<String, dynamic> config,
     required String appMode,
+    required bool verifyConnection,
   }) async {
     _emitWindowsState(VpnStatus.connecting);
     try {
@@ -140,7 +141,7 @@ class VpnChannel {
         'mode': appMode,
         'config': jsonEncode(config),
         // Do not report CONNECTED until Xray can complete a request through its outbound.
-        'verifyConnection': true,
+        'verifyConnection': verifyConnection,
       });
       if (result['ok'] != true) {
         throw StateError(result['error'] as String? ?? 'BPB core failed to start.');
@@ -247,7 +248,11 @@ class VpnChannel {
         // The elevated copy restores the saved settings and starts the TUN session.
         exit(0);
       }
-      await _startWindows(config: config, appMode: appMode);
+      await _startWindows(
+        config: config,
+        appMode: appMode,
+        verifyConnection: verifyConnection,
+      );
       return;
     }
     await _methods.invokeMethod('start', {
