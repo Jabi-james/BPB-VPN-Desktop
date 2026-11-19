@@ -19,6 +19,7 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
+    final gap = defaultTargetPlatform == TargetPlatform.windows ? 10.0 : 16.0;
 
     return Scaffold(
       appBar: AppBar(
@@ -80,7 +81,7 @@ class HomePage extends StatelessWidget {
           child: Column(
             children: [
               if (state.needsReconnect) const _ReconnectBanner(),
-              const SizedBox(height: 16),
+              SizedBox(height: gap),
               const ConnectionCard(),
               const SizedBox(height: 16),
               const StatusCard(),
