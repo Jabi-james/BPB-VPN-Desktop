@@ -753,6 +753,8 @@ class AppState extends ChangeNotifier {
           (tunInbound['settings'] as Map?) ?? const {},
         );
         settings.addAll({
+          // A stable, app-specific name avoids colliding with a stale generic xray0 adapter.
+          'name': 'BPB VPN',
           'desc': 'BPB',
           'gateway': ['198.18.0.1/30', 'fd00:198:18::1/126'],
           'dns': ['1.1.1.1', '8.8.8.8'],
