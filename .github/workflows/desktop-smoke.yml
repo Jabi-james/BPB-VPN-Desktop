@@ -67,11 +67,11 @@ jobs:
             return isAdmin == TRUE;
           }
           '@
-          $source = $source.Replace('}  // namespace' + [Environment]::NewLine + [Environment]::NewLine + 'int APIENTRY',
-            '}  // namespace' + [Environment]::NewLine + [Environment]::NewLine + $adminHelper + [Environment]::NewLine + 'int APIENTRY')
+          $source = [regex]::Replace($source, '(?m)^int APIENTRY',
+            ($adminHelper + [Environment]::NewLine + 'int APIENTRY'), 1)
           $source = $source.Replace('window.Create(L"bpb", origin, size)',
-            'window.Create((IsBpbAdministrator() ? std::wstring(L"BPB VPN - v.1.2.1 - ADMIN") : std::wstring(L"BPB VPN - v.1.2.1")).c_str(), origin, size)')
-          if ($source -notmatch 'Win32Window::Size size\(680, 656\);' -or $source -notmatch 'IsBpbAdministrator' -or $source -notmatch 'BPB VPN - v.1.2.1') {
+            'const wchar_t* window_title = IsBpbAdministrator() ? L"BPB VPN - v.1.2.1 - ADMIN" : L"BPB VPN - v.1.2.1";' + [Environment]::NewLine + '  window.Create(window_title, origin, size)')
+          if ($source -notmatch 'Win32Window::Size size\(680, 656\);' -or $source -notmatch 'bool IsBpbAdministrator\(' -or $source -notmatch 'BPB VPN - v.1.2.1') {
             throw "Could not apply BPB VPN window identity/size patch to $path"
           }
           Set-Content -Path $path -Value $source -Encoding utf8
