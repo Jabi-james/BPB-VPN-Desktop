@@ -19,6 +19,8 @@ type request struct {
 	Command string `json:"command"`
 	Config  string `json:"config,omitempty"`
 	Mode    string `json:"mode,omitempty"`
+	DNS     string `json:"dns,omitempty"`
+	VerifyConnection bool `json:"verifyConnection,omitempty"`
 }
 
 type response struct {
@@ -28,6 +30,7 @@ type response struct {
 	Delay   int64  `json:"delay,omitempty"`
 	Traffic string `json:"traffic,omitempty"`
 	Xray    string `json:"xray,omitempty"`
+	DNS     string `json:"dns,omitempty"`
 }
 
 func writeResponse(res response) {
@@ -75,12 +78,24 @@ func main() {
 				res = response{Error: "unsupported connection mode"}
 			} else if req.Config == "" {
 				res = response{Error: "Xray config is required"}
+			} else if err := controller.Stop(); err != nil {
+				res = response{Error: "stop previous Xray session: " + err.Error()}
+			} else if err := restoreSystemProxy(); err != nil {
+				res = response{Error: "restore previous Windows proxy settings: " + err.Error()}
 			} else if err := controller.Start(req.Config, 0); err != nil {
 				res = response{Error: err.Error()}
 			} else if mode == "systemProxy" {
 				if err := applySystemProxy("127.0.0.1:10880"); err != nil {
 					_ = controller.Stop()
+					_ = restoreSystemProxy()
 					res = response{Error: "could not enable Windows system proxy: " + err.Error()}
+				}
+			}
+			if res.OK && req.VerifyConnection {
+				if _, err := controller.MeasureDelay("https://www.gstatic.com/generate_204"); err != nil {
+					_ = controller.Stop()
+					_ = restoreSystemProxy()
+					res = response{Error: "connection verification failed: " + err.Error()}
 				}
 			}
 		case "stop":
@@ -101,6 +116,12 @@ func main() {
 				res = response{Error: err.Error(), Delay: -1}
 			} else {
 				res.Delay = ms
+			}
+		case "checkDns":
+			if req.DNS == "" {
+				res = response{Error: "DNS test request is required"}
+			} else {
+				res.DNS = xray.CheckDNSJSON(req.DNS)
 			}
 		case "versions":
 			res.Xray = xray.Version()
