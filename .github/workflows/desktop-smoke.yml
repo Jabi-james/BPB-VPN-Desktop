@@ -46,6 +46,13 @@ jobs:
       - name: Generate the missing Flutter desktop runner
         run: flutter create --platforms=${{ matrix.platform }} --project-name=bpb .
 
+      - name: Generate BPB two-tone app icons
+        if: matrix.platform == 'windows'
+        shell: bash
+        run: |
+          python -m pip install --disable-pip-version-check --quiet cairosvg pillow
+          python scripts/generate_app_icons.py
+
       - name: Set BPB VPN Windows identity and compact window
         if: matrix.platform == 'windows'
         shell: pwsh

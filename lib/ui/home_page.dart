@@ -26,11 +26,12 @@ class HomePage extends StatelessWidget {
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // The status bar icon, tinted like the other icons.
-            ImageIcon(
-              const AssetImage('assets/icons/ic_stat_vpn.png'),
-              size: 24,
-              color: Theme.of(context).colorScheme.primary,
+            // The BPB mark uses both neon blues from the Windows app icon.
+            Image.asset(
+              'assets/icons/ic_stat_vpn.png',
+              width: 24,
+              height: 24,
+              filterQuality: FilterQuality.high,
             ),
             const SizedBox(width: 6),
             const Text('BPB VPN', style: TextStyle(fontWeight: FontWeight.w600)),
