@@ -42,15 +42,16 @@ Future<MyIps> fetchMyIps({required int proxyPort}) async {
         'nocache': '$nocache',
       }).toString(),
     );
-    if (body == null) return null;
-
-    try {
-      final data = jsonDecode(body) as Map<String, dynamic>;
-      final query = data['query'] as String?;
-      if (query == null || InternetAddress.tryParse(query) == null) return null;
-      return (ip: query, country: data['countryCode'] as String?);
-    } catch (_) {
-      // ip-api may be blocked while the proxy itself is healthy.
+    if (body != null) {
+      try {
+        final data = jsonDecode(body) as Map<String, dynamic>;
+        final query = data['query'] as String?;
+        if (query != null && InternetAddress.tryParse(query) != null) {
+          return (ip: query, country: data['countryCode'] as String?);
+        }
+      } catch (_) {
+        // ip-api may be blocked while the proxy itself is healthy.
+      }
     }
     if (ip != null) return (ip: ip, country: null);
     final fallbacks = await Future.wait([
