@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
+import 'scanner_channel.dart';
 import 'vpn_channel.dart';
 
 /// Windows close/minimize-to-tray lifecycle. The tray remains available while the
@@ -132,6 +133,7 @@ class WindowsLifecycle with WindowListener, TrayListener {
     if (_exiting) return;
     _exiting = true;
     try {
+      await ScannerChannel.shutdownDesktop();
       await VpnChannel.shutdownWindows();
     } finally {
       await trayManager.destroy();
