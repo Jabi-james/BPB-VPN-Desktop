@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:io' as io;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -249,7 +250,7 @@ class VpnChannel {
           );
         }
         // The elevated copy restores the saved settings and starts the TUN session.
-        exit(0);
+        io.exit(0);
       }
       await _startWindows(
         config: config,
