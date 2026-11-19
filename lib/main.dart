@@ -6,12 +6,18 @@ import 'state/app_state.dart';
 import 'ui/home_page.dart';
 import 'ui/setup_wizard.dart';
 import 'ui/theme.dart';
+import 'services/windows_lifecycle.dart';
+
+final _navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   final state = AppState();
   await state.init();
   runApp(BpbApp(state: state));
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    unawaited(WindowsLifecycle.initialize(_navigatorKey));
+  });
   if (args.contains('--bpb-elevated-tun')) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Let the unelevated copy and its core process exit before binding port 10880 again.
@@ -32,6 +38,7 @@ class BpbApp extends StatelessWidget {
       child: ListenableBuilder(
         listenable: Listenable.merge([state.themeColor, state.themeMode, state.fontScale]),
         builder: (context, _) => MaterialApp(
+          navigatorKey: _navigatorKey,
           title: 'BPB VPN',
           debugShowCheckedModeBanner: false,
           // Android can draw the app into the navigation bar area (notably with
