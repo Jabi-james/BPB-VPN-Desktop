@@ -595,6 +595,17 @@ class AppState extends ChangeNotifier {
   Future<void> _verifyWindowsConnection(VpnStateEvent event, int token) async {
     String? failure;
     try {
+      // Serverless DNS is a DNS-only service and has no exit IP to display.
+      if (mode == ConnectionMode.serverless &&
+          serverlessMode == ServerlessMode.dns) {
+        if (token != _windowsVerificationToken) return;
+        status = VpnStatus.connected;
+        connectedAt = event.connectedAt ?? DateTime.now();
+        needsReconnect = false;
+        _startTrafficTimer();
+        unawaited(refreshUsage());
+        return;
+      }
       final ips = await fetchMyIps(proxyPort: LocalProxy.port)
           .timeout(const Duration(seconds: 24));
       if (token != _windowsVerificationToken) return;
