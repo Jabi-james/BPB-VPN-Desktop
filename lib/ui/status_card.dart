@@ -63,7 +63,8 @@ class _StatusCardState extends State<StatusCard> {
       ),
       VpnStatus.connecting => (
         state.connectedAt == null ? 'CONNECTING' : 'RECONNECTING',
-        state.exitDetail ?? 'Starting the tunnel…',
+        state.exitDetail ??
+            (state.tunMode ? 'Starting the tunnel…' : 'Checking connection…'),
       ),
       VpnStatus.disconnecting => ('DISCONNECTING', 'Stopping the tunnel…'),
       VpnStatus.disconnected when failed => ('Connection failed', state.error!),
