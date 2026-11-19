@@ -50,8 +50,21 @@ Future<MyIps> fetchMyIps({required int proxyPort}) async {
       if (query == null || InternetAddress.tryParse(query) == null) return null;
       return (ip: query, country: data['countryCode'] as String?);
     } catch (_) {
-      return null;
+      // ip-api may be blocked while the proxy itself is healthy.
     }
+    if (ip != null) return (ip: ip, country: null);
+    final fallbacks = await Future.wait([
+      get('https://api.ipify.org'),
+      get('https://ifconfig.me/ip'),
+      get('https://ipv4.icanhazip.com'),
+    ]);
+    for (final body in fallbacks) {
+      final address = body?.trim();
+      if (address != null && InternetAddress.tryParse(address) != null) {
+        return (ip: address, country: null);
+      }
+    }
+    return null;
   }
 
   Future<IpInfo?> cloudflareTargets() async {
