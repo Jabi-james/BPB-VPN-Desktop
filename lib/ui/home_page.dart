@@ -136,7 +136,7 @@ class _ReconnectBanner extends StatelessWidget {
 
 const _tabular = TextStyle(fontFeatures: [FontFeature.tabularFigures()]);
 
-/// Download and Upload cards (rate on top, session total below).
+/// Compact Download and Upload cards; session totals are intentionally hidden.
 /// Always laid out so the connect button doesn't jump when the VPN connects.
 class _TrafficRow extends StatelessWidget {
   const _TrafficRow();
@@ -156,8 +156,7 @@ class _TrafficRow extends StatelessWidget {
                   label: 'Download',
                   accent: const Color(0xFF39FF75),
                   rate: state.downSpeed,
-                  total: state.totalDown,
-                ),
+                  ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -166,8 +165,7 @@ class _TrafficRow extends StatelessWidget {
                   label: 'Upload',
                   accent: const Color(0xFFFF5555),
                   rate: state.upSpeed,
-                  total: state.totalUp,
-                ),
+                  ),
               ),
             ],
           ),
@@ -182,13 +180,12 @@ class _TrafficCard extends StatelessWidget {
   final String label;
   final Color accent;
   final int rate;
-  final int total;
+
   const _TrafficCard({
     required this.icon,
     required this.label,
     required this.accent,
     required this.rate,
-    required this.total,
   });
 
   @override
@@ -208,7 +205,7 @@ class _TrafficCard extends StatelessWidget {
       elevation: 0,
       child: Padding(
         padding: EdgeInsets.symmetric(
-          vertical: defaultTargetPlatform == TargetPlatform.windows ? 6 : 16,
+          vertical: defaultTargetPlatform == TargetPlatform.windows ? 8 : 16,
           horizontal: defaultTargetPlatform == TargetPlatform.windows ? 14 : 20,
         ),
         child: Column(
@@ -218,20 +215,18 @@ class _TrafficCard extends StatelessWidget {
             Row(
               spacing: 6,
               children: [
-                Icon(icon, size: 18, weight: 600, color: accent),
+                Icon(icon, size: 18, weight: 700, color: accent),
                 Text(
-                  '${formatBytes(rate)}/s',
-                  style: theme.textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w600)
-                      .merge(_tabular),
+                  label,
+                  style: theme.textTheme.bodyMedium
+                      ?.copyWith(color: accent, fontWeight: FontWeight.w700),
                 ),
               ],
             ),
             Text(
-              '$label  ${formatBytes(total)}',
-              // textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium
-                  ?.copyWith(color: accent, fontWeight: FontWeight.w600)
+              '${formatBytes(rate)}/s',
+              style: theme.textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w700)
                   .merge(_tabular),
             ),
           ],
