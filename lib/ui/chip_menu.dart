@@ -33,10 +33,27 @@ class ChipMenu<T> extends StatelessWidget {
   /// One tag (a protocol, TCP / UDP…), as the chips show it; also used by ChoicePref.
   static Widget badge(BuildContext context, String text) {
     final theme = Theme.of(context);
+    // Keep the VLESS protocol tag recognizable regardless of the user's theme color.
+    final isVless = text.toUpperCase() == 'VLESS';
+    final background = isVless
+        ? const Color(0xFF2563EB)
+        : theme.colorScheme.primaryContainer;
+    final foreground = isVless
+        ? Colors.white
+        : theme.colorScheme.onPrimaryContainer;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(color: theme.colorScheme.primaryContainer, borderRadius: BorderRadius.circular(6)),
-      child: Text(text, style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onPrimaryContainer)),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        text,
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: foreground,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
     );
   }
 
