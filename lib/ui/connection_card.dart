@@ -210,7 +210,7 @@ class _TypeSelector extends StatelessWidget {
   const _TypeSelector();
 
   static String _protocol(ConnectionMode m) => switch (m) {
-    ConnectionMode.worker => 'HTTPS',
+    ConnectionMode.worker => 'VLESS',
     ConnectionMode.warp => 'WireGuard',
     // CONNECT-IP over HTTP/2 or 3: HTTPS either way.
     ConnectionMode.masque => 'HTTPS',
@@ -227,7 +227,7 @@ class _TypeSelector extends StatelessWidget {
       // Only what's installed (see AppState.availableModes).
       values: state.availableModes,
       selected: state.mode,
-      label: (m) => m.label,
+      label: (m) => m == ConnectionMode.worker ? 'Worker VLESS' : m.label,
       badges: (m) => [_protocol(m)],
       onSelected: state.setMode,
       enabled: !state.isBusy,
@@ -277,7 +277,11 @@ class _ModeSelector extends StatelessWidget {
       );
     }
     return ChipMenu(
-      values: ConnectionVariant.of(state.mode),
+      values: ConnectionVariant.of(state.mode)
+          .where((v) =>
+              defaultTargetPlatform != TargetPlatform.windows ||
+              v != ConnectionVariant.browserDialer)
+          .toList(),
       selected: state.variant,
       label: (v) => v.label(state.mode),
       onSelected: state.setVariant,

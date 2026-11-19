@@ -142,6 +142,13 @@ jobs:
       - name: Compile desktop shell
         run: flutter build ${{ matrix.platform }} --release --no-pub
 
+
+      - name: Copy tray icon into the Windows app bundle
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          Copy-Item "windows/runner/resources/app_icon.ico" "build/windows/x64/runner/Release/app_icon.ico" -Force
+
       - name: Install Go
         uses: actions/setup-go@v5
         with:
