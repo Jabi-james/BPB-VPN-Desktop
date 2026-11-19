@@ -662,8 +662,16 @@ class AppState extends ChangeNotifier {
         final t = await VpnChannel.traffic();
         upSpeed = t.up;
         downSpeed = t.down;
-        totalUp = t.totalUp;
-        totalDown = t.totalDown;
+        if (defaultTargetPlatform == TargetPlatform.windows) {
+          // The Windows host reads and resets Xray's counters each second, so
+          // these values are deltas; accumulate them for the session totals.
+          totalUp += t.up;
+          totalDown += t.down;
+        } else {
+          // Android's TrafficMeter already returns cumulative session totals.
+          totalUp = t.totalUp;
+          totalDown = t.totalDown;
+        }
         notifyListeners();
       } catch (_) {
         // Core stopping; ignore.
@@ -713,6 +721,10 @@ class AppState extends ChangeNotifier {
     if (status == VpnStatus.disconnected) return connect();
     // Starting again replaces the running session in the service.
     // Switching from Proxy to VPN mode needs the VPN permission.
+    // Dismiss the Apply banner immediately; the connection state below shows the
+    // reconnect attempt instead of leaving a stale notification on screen.
+    needsReconnect = false;
+    notifyListeners();
     if (!await VpnChannel.prepare(vpn: tunMode)) {
       error = 'VPN permission denied';
       notifyListeners();
@@ -720,7 +732,6 @@ class AppState extends ChangeNotifier {
     }
     try {
       await _start();
-      needsReconnect = false;
       notifyListeners();
     } catch (e) {
       error = e is StateError ? e.message : '$e';
