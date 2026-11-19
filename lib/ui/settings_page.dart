@@ -676,7 +676,7 @@ class SettingsPage extends StatelessWidget {
           ),
 
           const SectionHeader('Appearance'),
-          const SettingsCard(children: [_ThemeModeTile(), _ThemeColorTile()]),
+          const SettingsCard(children: [_ThemeModeTile(), _ThemeColorTile(), _FontScaleTile()]),
 
           const SectionHeader('About'),
           SettingsCard(
@@ -724,6 +724,40 @@ class SettingsPage extends StatelessWidget {
                 ).push(MaterialPageRoute(builder: (_) => const DonationPage())),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// App-wide text size, independent of the Windows display scaling.
+class _FontScaleTile extends StatelessWidget {
+  const _FontScaleTile();
+
+  @override
+  Widget build(BuildContext context) {
+    final state = AppScope.of(context);
+    return ValueListenableBuilder<double>(
+      valueListenable: state.fontScale,
+      builder: (context, scale, _) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ListTile(
+            leading: const Icon(Symbols.text_fields_rounded),
+            title: const Text('Font size'),
+            subtitle: Text('${(scale * 100).round()}%'),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+            child: Slider(
+              value: scale,
+              min: 0.8,
+              max: 1.3,
+              divisions: 10,
+              label: '${(scale * 100).round()}%',
+              onChanged: state.setFontScale,
+            ),
           ),
         ],
       ),
