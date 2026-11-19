@@ -14,7 +14,8 @@ Future<void> main(List<String> args) async {
   runApp(BpbApp(state: state));
   if (args.contains('--bpb-elevated-tun')) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(state.connect());
+      // Let the unelevated copy and its core process exit before binding port 10880 again.
+      unawaited(Future<void>.delayed(const Duration(seconds: 2), state.connect));
     });
   }
 }
