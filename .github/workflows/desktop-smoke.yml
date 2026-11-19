@@ -121,6 +121,22 @@ jobs:
             GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o ../build/linux/x64/release/bundle/bpb_scanner ./cmd/bpb-scanner
           fi
 
+      - name: Fetch and verify the official Wintun runtime
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $archive = Join-Path $env:RUNNER_TEMP "wintun-0.14.1.zip"
+          Invoke-WebRequest -Uri "https://www.wintun.net/builds/wintun-0.14.1.zip" -OutFile $archive
+          $hash = (Get-FileHash $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($hash -ne "07c256185d6ee3652e09fa55c0b673e2624b565e02c4b9091c79ca7d2f24ef51") {
+            throw "Wintun archive SHA-256 mismatch: $hash"
+          }
+          $extract = Join-Path $env:RUNNER_TEMP "wintun"
+          Expand-Archive -Path $archive -DestinationPath $extract -Force
+          $release = "build/windows/x64/runner/Release"
+          Copy-Item (Join-Path $extract "wintun/bin/amd64/wintun.dll") (Join-Path $release "wintun.dll")
+          Copy-Item (Join-Path $extract "wintun/LICENSE.txt") (Join-Path $release "LICENSE-Wintun.txt")
+
       - name: Package desktop application
         uses: actions/upload-artifact@v4
         with:
