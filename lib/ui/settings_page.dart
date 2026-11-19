@@ -661,8 +661,7 @@ class SettingsPage extends StatelessWidget {
                 domainHint: 'ads.example.com',
                 ipHint: '10.10.34.34/24\n2001:4188:2:600:10:10:34:34/112',
               ),
-              if (defaultTargetPlatform != TargetPlatform.windows)
-                _GeoAssetsTile(),
+              const _GeoAssetsTile(),
             ],
           ),
 
@@ -1528,43 +1527,85 @@ class _GeoAssetsTile extends StatefulWidget {
 
 class _GeoAssetsTileState extends State<_GeoAssetsTile> {
   bool _updating = false;
+  String? _downloadingFile;
+  double? _progress;
 
   Future<void> _update() async {
     final state = AppScope.read(context);
     final messenger = ScaffoldMessenger.of(context);
-    setState(() => _updating = true);
+    setState(() {
+      _updating = true;
+      _downloadingFile = null;
+      _progress = null;
+    });
     try {
-      await state.updateGeoAssets();
+      await state.updateGeoAssets(
+        onProgress: (file, received, total) {
+          if (!mounted) return;
+          setState(() {
+            _downloadingFile = file;
+            _progress = total != null && total > 0
+                ? (received / total).clamp(0.0, 1.0)
+                : null;
+          });
+        },
+      );
       messenger.showSnackBar(
         SnackBar(
           content: Text(
             state.isConnected
                 ? 'Geo assets updated. Reconnect to use them.'
-                : 'Geo assets updated',
+                : 'Geo assets updated successfully',
           ),
         ),
       );
     } on StateError catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Geo assets update failed: $e')),
+      );
     } finally {
-      if (mounted) setState(() => _updating = false);
+      if (mounted) {
+        setState(() {
+          _updating = false;
+          _downloadingFile = null;
+          _progress = null;
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      leading: const Icon(Symbols.update_rounded),
-      title: const Text('Update Geo assets'),
-      subtitle: const Text('Latest Chocolate4U assets'),
-      trailing: _updating
-          ? const SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : null,
-      onTap: _updating ? null : _update,
+    final progressLabel = _downloadingFile == null
+        ? 'Preparing download...'
+        : 'Downloading $_downloadingFile'
+              '${_progress == null ? '' : ' · ${(_progress! * 100).round()}%'}';
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ListTile(
+          leading: const Icon(Symbols.update_rounded),
+          title: const Text('Update Geo assets'),
+          subtitle: Text(
+            _updating ? progressLabel : 'Latest Chocolate4U assets',
+          ),
+          trailing: _updating
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : null,
+          onTap: _updating ? null : _update,
+        ),
+        if (_updating)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: LinearProgressIndicator(value: _progress),
+          ),
+      ],
     );
   }
 }
