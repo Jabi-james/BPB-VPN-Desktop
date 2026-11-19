@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
@@ -32,7 +33,8 @@ class WindowsLifecycle with WindowListener, TrayListener {
     await windowManager.setPreventClose(true);
     windowManager.addListener(lifecycle);
     trayManager.addListener(lifecycle);
-    await trayManager.setIcon('assets/icons/ic_stat_vpn.png');
+    final trayIcon = File('${File(Platform.resolvedExecutable).parent.path}\\bpb_tray.ico');
+    if (await trayIcon.exists()) await trayManager.setIcon(trayIcon.path);
     await trayManager.setToolTip('BPB VPN');
     await trayManager.setContextMenu(
       Menu(
