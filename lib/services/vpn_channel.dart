@@ -125,7 +125,11 @@ class VpnChannel {
     _emitWindowsState(VpnStatus.connecting);
     try {
       final result = await _sendWindowsCommand({
-        'command': 'start', 'mode': appMode, 'config': jsonEncode(config),
+        'command': 'start',
+        'mode': appMode,
+        'config': jsonEncode(config),
+        // Do not report CONNECTED until Xray can complete a request through its outbound.
+        'verifyConnection': true,
       });
       if (result['ok'] != true) {
         throw StateError(result['error'] as String? ?? 'BPB core failed to start.');
@@ -248,16 +252,22 @@ class VpnChannel {
   static Future<({bool ok, double? latency})> checkDns(
     Map<String, dynamic> request,
   ) async {
-    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
-      throw UnsupportedError(
-        'DNS server testing is currently available on Android only.',
+    final String? raw;
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
+      final result = await _sendWindowsCommand({
+        'command': 'checkDns',
+        'dns': jsonEncode(request),
+      });
+      raw = result['dns'] as String?;
+    } else if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      raw = await _methods.invokeMethod<String>(
+        'checkDns',
+        jsonEncode(request),
       );
+    } else {
+      throw UnsupportedError('DNS server testing is not available on this platform.');
     }
-    final raw = await _methods.invokeMethod<String>(
-      'checkDns',
-      jsonEncode(request),
-    );
-    if (raw == null) throw StateError('DNS test returned no result.');
+    if (raw == null || raw.isEmpty) throw StateError('DNS test returned no result.');
     final response = Map<String, dynamic>.from(jsonDecode(raw) as Map);
     final ok = response['ok'] == true;
     final latency = response['latency'];
