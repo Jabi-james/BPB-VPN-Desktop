@@ -81,7 +81,7 @@ class ConnectionCard extends StatelessWidget {
       child: Padding(
         padding: EdgeInsets.symmetric(
           horizontal: defaultTargetPlatform == TargetPlatform.windows ? 16 : 24,
-          vertical: defaultTargetPlatform == TargetPlatform.windows ? 12 : 20,
+          vertical: defaultTargetPlatform == TargetPlatform.windows ? 8 : 20,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -186,7 +186,7 @@ class _Row extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return SizedBox(
-      height: 44,
+      height: defaultTargetPlatform == TargetPlatform.windows ? 36 : 44,
       child: Row(
         children: [
           Icon(icon, size: 20, color: theme.colorScheme.onSurfaceVariant),
