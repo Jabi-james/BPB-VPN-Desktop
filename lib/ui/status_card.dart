@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
@@ -72,6 +73,9 @@ class _StatusCardState extends State<StatusCard> {
         ? _green
         : (failed ? scheme.error : scheme.onSurface);
     final muted = scheme.onSurfaceVariant;
+    final compact = defaultTargetPlatform == TargetPlatform.windows;
+    final pad = compact ? 16.0 : _pad;
+    final rowHeight = compact ? 96.0 : _rowHeight;
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12),
@@ -89,13 +93,13 @@ class _StatusCardState extends State<StatusCard> {
         clipBehavior: Clip.none,
         children: [
           Padding(
-            padding: const EdgeInsets.all(_pad),
+            padding: EdgeInsets.all(pad),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Title and hint on the left; space for the button on the right.
                 ConstrainedBox(
-                  constraints: const BoxConstraints(minHeight: _rowHeight),
+                  constraints: BoxConstraints(minHeight: rowHeight),
                   child: Row(
                     children: [
                       Expanded(
@@ -134,8 +138,8 @@ class _StatusCardState extends State<StatusCard> {
             ),
           ),
           Positioned(
-            right: _pad - 8,
-            top: _pad - 8,
+            right: pad - 8,
+            top: pad - 8,
             width: _button + 16,
             height: _button + 16,
             child: const _PowerButton(),
