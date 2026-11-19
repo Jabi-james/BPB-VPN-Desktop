@@ -795,7 +795,10 @@ class AppState extends ChangeNotifier {
       browserDialer:
           mode == ConnectionMode.worker &&
           variant == ConnectionVariant.browserDialer,
-      verifyConnection: mode.verifiesConnection,
+      verifyConnection:
+          mode.verifiesConnection ||
+          (mode == ConnectionMode.serverless &&
+              serverlessMode != ServerlessMode.dns),
     );
   }
 
