@@ -92,13 +92,6 @@ func main() {
 					}
 				}
 			}
-			if res.OK && req.VerifyConnection {
-				if _, err := controller.MeasureDelay("https://www.gstatic.com/generate_204"); err != nil {
-					_ = controller.Stop()
-					_ = restoreSystemProxy()
-					res = response{Error: "connection verification failed: " + err.Error()}
-				}
-			}
 		case "stop":
 			stopErr := controller.Stop()
 			proxyErr := restoreSystemProxy()
