@@ -1582,6 +1582,14 @@ class _GeoAssetsTileState extends State<_GeoAssetsTile> {
         ? 'Preparing download...'
         : 'Downloading $_downloadingFile'
               '${_progress == null ? '' : ' · ${(_progress! * 100).round()}%'}';
+    final updatedAt = AppScope.of(context).geoAssetsUpdatedAt;
+    final updatedLabel = updatedAt == null
+        ? 'Latest Chocolate4U assets'
+        : 'Last updated: ${updatedAt.year.toString().padLeft(4, '0')}-'
+              '${updatedAt.month.toString().padLeft(2, '0')}-'
+              '${updatedAt.day.toString().padLeft(2, '0')} '
+              '${updatedAt.hour.toString().padLeft(2, '0')}:'
+              '${updatedAt.minute.toString().padLeft(2, '0')}';
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1589,7 +1597,7 @@ class _GeoAssetsTileState extends State<_GeoAssetsTile> {
           leading: const Icon(Symbols.update_rounded),
           title: const Text('Update Geo assets'),
           subtitle: Text(
-            _updating ? progressLabel : 'Latest Chocolate4U assets',
+            _updating ? progressLabel : updatedLabel,
           ),
           trailing: _updating
               ? const SizedBox(
