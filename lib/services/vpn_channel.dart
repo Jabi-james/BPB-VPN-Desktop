@@ -6,7 +6,6 @@ import 'dart:io' as io;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:pointycastle/export.dart';
-import 'package:webview_flutter_windows/webview_flutter_windows.dart';
 
 import 'windows_browser_dialer.dart';
 
@@ -246,10 +245,10 @@ class VpnChannel {
           'Windows Browser Dialer currently supports Proxy and System Proxy modes. TUN support is planned for the TUN stage.',
         );
       }
-      if (browserDialer) await WindowsBrowserDialer.prepare();
       if (perAppMode != 'off') {
         throw UnsupportedError('Per-app routing is not available on Windows yet.');
       }
+      if (browserDialer) await WindowsBrowserDialer.prepare();
       if (appMode == 'vpn' && !await _isWindowsElevated()) {
         final executable = Platform.resolvedExecutable.replaceAll("'", "''");
         final script = "try { Start-Process -FilePath '$executable' -Verb RunAs -ArgumentList '--bpb-elevated-tun' -ErrorAction Stop; exit 0 } catch { [Console]::Error.WriteLine(\$_.Exception.Message); exit 1 }";

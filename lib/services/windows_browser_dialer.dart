@@ -1,7 +1,6 @@
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:webview_flutter_windows/webview_flutter_windows.dart';
 
 /// Keeps Xray's Browser Dialer page alive in an invisible WebView2 controller.
@@ -12,7 +11,7 @@ class WindowsBrowserDialer {
   static WebviewController? _controller;
 
   static Future<void> prepare() async {
-    if (!kIsWeb && defaultTargetPlatform != TargetPlatform.windows) return;
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.windows) return;
     if (_controller != null) return;
 
     final version = await WebviewController.getWebViewVersion();
