@@ -436,6 +436,37 @@ if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
     return (name: file['name'] ?? '', content: file['content'] ?? '');
   }
 
+  /// Gracefully asks the Windows Go host to stop Xray and restore system proxy,
+  /// then force-terminates the child if it does not exit promptly.
+  static Future<void> shutdownWindows() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.windows) return;
+    final process = _windowsProcess;
+    if (process == null) {
+      await WindowsBrowserDialer.stop();
+      return;
+    }
+    try {
+      final result = await _sendWindowsCommand({'command': 'shutdown'})
+          .timeout(const Duration(seconds: 8));
+      if (result['ok'] != true) {
+        _appendWindowsLog('Core shutdown reported: ${result['error'] ?? 'unknown error'}');
+      }
+    } catch (error) {
+      _appendWindowsLog('Graceful core shutdown failed: $error');
+    }
+    try {
+      await process.exitCode.timeout(const Duration(seconds: 5));
+    } catch (_) {
+      process.kill();
+      try {
+        await process.exitCode.timeout(const Duration(seconds: 3));
+      } catch (_) {}
+    }
+    if (identical(_windowsProcess, process)) _windowsProcess = null;
+    await WindowsBrowserDialer.stop();
+    _emitWindowsState(VpnStatus.disconnected);
+  }
+
   static Future<void> stop() async {
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
       await _stopWindows();
