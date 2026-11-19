@@ -72,9 +72,7 @@ func main() {
 			if mode == "" {
 				mode = "proxy"
 			}
-			if mode == "vpn" {
-				res = response{Error: "Windows TUN mode is not available yet; use Proxy or System Proxy."}
-			} else if mode != "proxy" && mode != "systemProxy" {
+			if mode != "proxy" && mode != "systemProxy" && mode != "vpn" {
 				res = response{Error: "unsupported connection mode"}
 			} else if req.Config == "" {
 				res = response{Error: "Xray config is required"}
