@@ -870,12 +870,15 @@ class AppState extends ChangeNotifier {
 
   /// Replaces Xray's geo files with the latest Iran-v2ray-rules release's, through the tunnel
   /// when connected (like [checkForUpdate]). A running connection uses them once it reconnects.
-  Future<void> updateGeoAssets() async {
+  Future<void> updateGeoAssets({
+    void Function(String file, int received, int? total)? onProgress,
+  }) async {
     final client = proxiedClient(isConnected ? LocalProxy.port : null);
     try {
-      await VpnChannel.saveGeoAssets(
-        await GeoAssetsDownloader(client).download(),
-      );
+      final files = await GeoAssetsDownloader(
+        client,
+      ).download(onProgress: onProgress);
+      await VpnChannel.saveGeoAssets(files);
     } on GeoAssetsException catch (e) {
       throw StateError(e.message);
     } on PlatformException catch (e) {
