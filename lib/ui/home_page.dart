@@ -33,7 +33,7 @@ class HomePage extends StatelessWidget {
               color: Theme.of(context).colorScheme.primary,
             ),
             const SizedBox(width: 6),
-            const Text('BPB', style: TextStyle(fontWeight: FontWeight.w600)),
+            const Text('BPB VPN', style: TextStyle(fontWeight: FontWeight.w600)),
           ],
         ),
         actions: [
@@ -153,6 +153,8 @@ class _TrafficRow extends StatelessWidget {
               Expanded(
                 child: _TrafficCard(
                   icon: Symbols.arrow_downward_rounded,
+                  label: 'Download',
+                  accent: const Color(0xFF39FF75),
                   rate: state.downSpeed,
                   total: state.totalDown,
                 ),
@@ -161,6 +163,8 @@ class _TrafficRow extends StatelessWidget {
               Expanded(
                 child: _TrafficCard(
                   icon: Symbols.arrow_upward_rounded,
+                  label: 'Upload',
+                  accent: const Color(0xFFFF5555),
                   rate: state.upSpeed,
                   total: state.totalUp,
                 ),
@@ -175,10 +179,14 @@ class _TrafficRow extends StatelessWidget {
 
 class _TrafficCard extends StatelessWidget {
   final IconData icon;
+  final String label;
+  final Color accent;
   final int rate;
   final int total;
   const _TrafficCard({
     required this.icon,
+    required this.label,
+    required this.accent,
     required this.rate,
     required this.total,
   });
@@ -211,7 +219,7 @@ class _TrafficCard extends StatelessWidget {
             Row(
               spacing: 6,
               children: [
-                Icon(icon, size: 18, weight: 600, color: muted),
+                Icon(icon, size: 18, weight: 600, color: accent),
                 Text(
                   '${formatBytes(rate)}/s',
                   style: theme.textTheme.titleMedium
@@ -221,10 +229,10 @@ class _TrafficCard extends StatelessWidget {
               ],
             ),
             Text(
-              'Total ${formatBytes(total)}',
+              '$label  ${formatBytes(total)}',
               // textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium
-                  ?.copyWith(color: muted)
+                  ?.copyWith(color: accent, fontWeight: FontWeight.w600)
                   .merge(_tabular),
             ),
           ],
