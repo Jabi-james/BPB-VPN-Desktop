@@ -13,7 +13,7 @@ final _navigatorKey = GlobalKey<NavigatorState>();
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   final state = AppState();
-  await state.init();
+  await state.init(cleanStart: args.contains('--bpb-clean-start'));
   runApp(BpbApp(state: state));
   WidgetsBinding.instance.addPostFrameCallback((_) {
     unawaited(WindowsLifecycle.initialize(_navigatorKey));
