@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'state/app_state.dart';
@@ -5,11 +7,16 @@ import 'ui/home_page.dart';
 import 'ui/setup_wizard.dart';
 import 'ui/theme.dart';
 
-Future<void> main() async {
+Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   final state = AppState();
   await state.init();
   runApp(BpbApp(state: state));
+  if (args.contains('--bpb-elevated-tun')) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(state.connect());
+    });
+  }
 }
 
 class BpbApp extends StatelessWidget {
