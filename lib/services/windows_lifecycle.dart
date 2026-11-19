@@ -73,6 +73,7 @@ class WindowsLifecycle with WindowListener, TrayListener {
         await _minimize();
         return;
       }
+      if (!context.mounted) return;
       var alwaysUse = false;
       final decision = await showDialog<String>(
         context: context,
