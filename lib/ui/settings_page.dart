@@ -154,7 +154,7 @@ class SettingsPage extends StatelessWidget {
                 'device.lanSharing.enabled',
                 'Share over LAN',
                 icon: Symbols.lan_rounded,
-                subtitle: 'Share a Socks, HTTP proxy on port 10808',
+                subtitle: 'Share a Socks, HTTP proxy on port 10880',
               ),
               if (d.lanSharing) ...[
                 const TextPref(
