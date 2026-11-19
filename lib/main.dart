@@ -14,10 +14,8 @@ Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   final state = AppState();
   await state.init(cleanStart: args.contains('--bpb-clean-start'));
+  await WindowsLifecycle.initialize(_navigatorKey);
   runApp(BpbApp(state: state));
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    unawaited(WindowsLifecycle.initialize(_navigatorKey));
-  });
   if (args.contains('--bpb-elevated-tun')) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Let the unelevated copy and its core process exit before binding port 10880 again.
