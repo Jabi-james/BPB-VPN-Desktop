@@ -1,11 +1,6 @@
 import 'dart:async';
-import 'dart:io' as io;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
-
-import 'services/windows_lifecycle.dart';
-import 'services/vpn_channel.dart';
 
 import 'state/app_state.dart';
 import 'ui/home_page.dart';
@@ -16,12 +11,6 @@ Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   final state = AppState();
   await state.init();
-  if (defaultTargetPlatform == TargetPlatform.windows) {
-    await WindowsLifecycle.initialize(() async {
-      await VpnChannel.stop();
-      io.exit(0);
-    });
-  }
   runApp(BpbApp(state: state));
   if (args.contains('--bpb-elevated-tun')) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -44,7 +33,6 @@ class BpbApp extends StatelessWidget {
         listenable: Listenable.merge([state.themeColor, state.themeMode, state.fontScale]),
         builder: (context, _) => MaterialApp(
           title: 'BPB VPN',
-          navigatorKey: WindowsLifecycle.navigatorKey,
           debugShowCheckedModeBanner: false,
           // Android can draw the app into the navigation bar area (notably with
           // gesture navigation). Keep every route's content above that inset.
