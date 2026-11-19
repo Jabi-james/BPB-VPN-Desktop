@@ -18,13 +18,13 @@ Legend:
 | Serverless connection | Shared; runtime unverified | Shared config builder and Xray core. |
 | Proxy mode | Windows implemented (build only) | Local mixed inbound on 127.0.0.1:10880. |
 | System Proxy mode | Windows implemented (build only) | Windows per-user proxy registry snapshot/restore. |
-| Full-device VPN / TUN | Not implemented | Windows UI has a TUN choice but Go host rejects it. Must implement Wintun, elevation/service lifecycle, routes, DNS, cleanup. |
-| Connection state / connect / disconnect / reconnect | Partial | Windows process bridge exists; no runtime smoke test, and no persisted service/state after app exit. |
+| Full-device VPN / TUN | Windows implemented (build only) | Uses Xray-core's native Windows Wintun inbound, UAC elevation on demand, IPv4/IPv6 routes, adapter DNS and WFP leak protection. Official Wintun DLL and license are bundled; runtime and cleanup still need manual verification. |
+| Connection state / connect / disconnect / reconnect | Windows implemented (build only) | Apply now replaces the running Xray session and restores stale System Proxy settings before restart. Windows waits for outbound verification, exit IP and latency before showing Connected (DNS-only Serverless is exempt). |
 | Traffic counters / ping / Xray logs | Partial | Xray traffic, delay and stdout/stderr log bridge exist; real runtime accuracy unverified. |
 | Psiphon exit / region selection | Not implemented | Android uses Android native library/service; no Windows Psiphon binary/process adapter bundled. Windows start rejects exit modes clearly. |
 | Tor exit / bridges / region selection | Not implemented | Android Tor native service/binary integration is not ported to Windows. Windows start rejects exit modes clearly. |
 | Setup-wizard “Retry with Tor” | Not implemented | Hidden on Windows and uses Android SetupTor service; intentionally deferred rather than attempting a fragile port. |
-| Browser Dialer | Not implemented | Depends on Android WebView/BrowserDialer integration; Windows start rejects this variant clearly. |
+| Browser Dialer | Android only | Depends on Android WebView/BrowserDialer integration; hidden on Windows and falls back to the normal Worker variant if an old setting was saved. |
 
 ## Cloudflare account and deployment
 
@@ -55,14 +55,14 @@ Legend:
 | Upstream proxy / custom CDN / Domain Fronting | Shared config; runtime unverified | Domain-fronting proxy-mode test remains skipped; do not mark verified. |
 | Proxy-chain import and chain configuration | Shared config; file import/export partial | Core parsing/config is shared; any platform file-picker flow must be exercised. |
 | Routing presets/custom domain and IP rules | Shared config | Windows proxy-mode runtime routing behavior not yet tested. |
-| DNS modes / custom DNS / Fake DNS / anti-sanction DNS | Shared config; DNS tester Android only | The DNS settings screen can configure common Xray DNS, but the explicit DNS-test native method is Android-only. |
+| DNS modes / custom DNS / Fake DNS / anti-sanction DNS | Windows implemented (build only) | Shared DNS config; the explicit DNS tester now calls the existing Go networking module on Windows. Runtime tests for UDP/TCP/DoH/DoQ remain. |
 
 ## Other settings and app utilities
 
 | Android capability | Windows status | Notes |
 |---|---|---|
 | Per-app VPN routing / installed-app picker | Android only | Hidden in Windows settings; Windows start rejects a non-off per-app mode rather than silently ignoring it. |
-| MTU / append HTTP proxy | Partial | Android VPN-specific; Windows TUN not available. |
+| MTU / append HTTP proxy | Partial | MTU is passed to the Windows Wintun inbound; append HTTP proxy remains shared. TUN runtime still needs testing. |
 | LAN proxy authentication | Shared model/config; runtime unverified | Must test Windows local proxy auth and LAN exposure. |
 | Logs | Partial | Windows only exposes Xray child stdout/stderr; Tor/Psiphon logs do not exist. |
 | View generated Xray config | Shared | Common config builder. |
@@ -78,11 +78,11 @@ Legend:
 
 ## Windows work order
 
-1. Finish Windows platform bridges and remove/hide Android-only controls that currently fail when clicked.
-2. Test Cloudflare onboarding and actual Worker + Pages deployment with a test Cloudflare account.
-3. Test WARP and MASQUE registration, persistence, config generation, and proxy-mode traffic.
-4. Test scanner, import/export, geo assets, ECH fallback, DNS tools and settings persistence.
-5. Implement and test Wintun/TUN.
-6. Consider Tor/Psiphon only after Windows binaries, process lifecycle, bridge/bootstrap, logs and licensing are handled. Tor setup retry is deferred for now because it is not a small UI-only port.
+1. Re-test Proxy and System Proxy after the Apply/restart and stale-proxy fixes; verify settings restore after exit.
+2. Test TUN on Windows with the UAC prompt, Wintun adapter, IPv4/IPv6 routing, DNS, traffic, disconnect and app shutdown.
+3. Test Worker, Pages, WARP and MASQUE traffic through all three Windows modes.
+4. Test DNS UDP/TCP/DoH/DoQ, scanner, import/export, geo assets, font scaling and settings persistence.
+5. Investigate ECH fallback and Windows trust-store integration.
+6. Consider Tor/Psiphon only after Windows binaries, process lifecycle, bridge/bootstrap, logs and licensing are handled. Both remain deferred.
 
 **No feature is called runtime-verified until it has been exercised on Windows.**
