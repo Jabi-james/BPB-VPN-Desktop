@@ -19,7 +19,7 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
-    final gap = defaultTargetPlatform == TargetPlatform.windows ? 10.0 : 16.0;
+    final gap = defaultTargetPlatform == TargetPlatform.windows ? 6.0 : 16.0;
 
     return Scaffold(
       appBar: AppBar(
@@ -83,11 +83,11 @@ class HomePage extends StatelessWidget {
               if (state.needsReconnect) const _ReconnectBanner(),
               SizedBox(height: gap),
               const ConnectionCard(),
-              const SizedBox(height: 16),
+              SizedBox(height: defaultTargetPlatform == TargetPlatform.windows ? 8 : 16),
               const StatusCard(),
-              const SizedBox(height: 16),
+              SizedBox(height: defaultTargetPlatform == TargetPlatform.windows ? 8 : 16),
               const _TrafficRow(),
-              const SizedBox(height: 16),
+              SizedBox(height: defaultTargetPlatform == TargetPlatform.windows ? 8 : 16),
               // Worker requests only matter for the types that use the worker (Worker).
               if (state.worker != null && state.mode.needsWorker)
                 const _UsageCard(),
@@ -208,12 +208,12 @@ class _TrafficCard extends StatelessWidget {
       elevation: 0,
       child: Padding(
         padding: EdgeInsets.symmetric(
-          vertical: defaultTargetPlatform == TargetPlatform.windows ? 10 : 16,
+          vertical: defaultTargetPlatform == TargetPlatform.windows ? 6 : 16,
           horizontal: defaultTargetPlatform == TargetPlatform.windows ? 14 : 20,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          spacing: 6,
+          spacing: defaultTargetPlatform == TargetPlatform.windows ? 4 : 6,
           children: [
             Row(
               spacing: 6,
@@ -273,7 +273,7 @@ class _InfoCard extends StatelessWidget {
       elevation: 0,
       child: Padding(
         padding: EdgeInsets.symmetric(
-          vertical: defaultTargetPlatform == TargetPlatform.windows ? 12 : 20,
+          vertical: defaultTargetPlatform == TargetPlatform.windows ? 8 : 20,
           horizontal: defaultTargetPlatform == TargetPlatform.windows ? 16 : 24,
         ),
         child: Column(
