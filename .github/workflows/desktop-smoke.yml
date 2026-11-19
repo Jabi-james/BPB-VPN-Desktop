@@ -97,7 +97,7 @@ jobs:
           Set-Content -Path $cmake -Value $cmakeUpdated -Encoding utf8
 
       - name: Resolve dependencies
-        run: flutter pub get --enforce-lockfile
+        run: flutter pub get
 
       - name: Install Node.js for Cloudflare Worker bundling
         uses: actions/setup-node@v4

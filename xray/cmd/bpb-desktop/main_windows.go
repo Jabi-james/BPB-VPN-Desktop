@@ -20,6 +20,7 @@ type request struct {
 	Mode    string `json:"mode,omitempty"`
 	DNS     string `json:"dns,omitempty"`
 	VerifyConnection bool `json:"verifyConnection,omitempty"`
+	BrowserDialer bool `json:"browserDialer,omitempty"`
 }
 
 type response struct {
@@ -30,6 +31,19 @@ type response struct {
 	Traffic string `json:"traffic,omitempty"`
 	Xray    string `json:"xray,omitempty"`
 	DNS     string `json:"dns,omitempty"`
+}
+
+func startController(controller *xray.Controller, req request) error {
+	address := ""
+	if req.BrowserDialer {
+		address = "127.0.0.1:10832"
+	}
+	xray.SetBrowserDialer(address)
+	if err := controller.Start(req.Config, 0); err != nil {
+		xray.SetBrowserDialer("")
+		return err
+	}
+	return nil
 }
 
 func writeResponse(res response) {
@@ -55,6 +69,7 @@ func main() {
 	scanner.Buffer(make([]byte, 4096), 16*1024*1024)
 	defer func() {
 		_ = controller.Stop()
+		xray.SetBrowserDialer("")
 		_ = restoreSystemProxy()
 	}()
 
@@ -82,11 +97,12 @@ func main() {
 					res = response{Error: "stop previous Xray session: " + stopErr.Error()}
 				} else if proxyErr != nil {
 					res = response{Error: "restore previous Windows proxy settings: " + proxyErr.Error()}
-				} else if err := controller.Start(req.Config, 0); err != nil {
+				} else if err := startController(controller, req); err != nil {
 					res = response{Error: err.Error()}
 				} else if mode == "systemProxy" {
 					if err := applySystemProxy("127.0.0.1:10880"); err != nil {
 						_ = controller.Stop()
+						xray.SetBrowserDialer("")
 						_ = restoreSystemProxy()
 						res = response{Error: "could not enable Windows system proxy: " + err.Error()}
 					}
@@ -94,6 +110,7 @@ func main() {
 			}
 		case "stop":
 			stopErr := controller.Stop()
+			xray.SetBrowserDialer("")
 			proxyErr := restoreSystemProxy()
 			if stopErr != nil {
 				res = response{Error: stopErr.Error()}

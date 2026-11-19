@@ -234,11 +234,6 @@ class AppState extends ChangeNotifier {
     };
     final selected = ConnectionVariant.values.asNameMap()[name] ??
         ConnectionVariant.normal;
-    // Browser Dialer relies on Android WebView and is not a Windows transport.
-    if (defaultTargetPlatform == TargetPlatform.windows &&
-        selected == ConnectionVariant.browserDialer) {
-      return ConnectionVariant.normal;
-    }
     return selected;
   }
 

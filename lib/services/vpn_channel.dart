@@ -6,6 +6,9 @@ import 'dart:io' as io;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:pointycastle/export.dart';
+import 'package:webview_flutter_windows/webview_flutter_windows.dart';
+
+import 'windows_browser_dialer.dart';
 
 import 'mitm_ca.dart';
 
@@ -137,6 +140,7 @@ class VpnChannel {
     required Map<String, dynamic> config,
     required String appMode,
     required bool verifyConnection,
+    required bool browserDialer,
   }) async {
     _emitWindowsState(VpnStatus.connecting);
     try {
@@ -144,14 +148,20 @@ class VpnChannel {
         'command': 'start',
         'mode': appMode,
         'config': jsonEncode(config),
+        'browserDialer': browserDialer,
         // Do not report CONNECTED until Xray can complete a request through its outbound.
         'verifyConnection': verifyConnection,
       });
       if (result['ok'] != true) {
         throw StateError(result['error'] as String? ?? 'BPB core failed to start.');
       }
+      if (browserDialer) await WindowsBrowserDialer.load();
       _emitWindowsState(VpnStatus.connected);
     } catch (error) {
+      if (browserDialer) {
+        try { await _sendWindowsCommand({'command': 'stop'}); } catch (_) {}
+        await WindowsBrowserDialer.stop();
+      }
       _emitWindowsState(VpnStatus.disconnected, '$error');
       rethrow;
     }
@@ -159,6 +169,7 @@ class VpnChannel {
 
   static Future<void> _stopWindows() async {
     if (_windowsProcess == null) {
+      await WindowsBrowserDialer.stop();
       _emitWindowsState(VpnStatus.disconnected);
       return;
     }
@@ -172,6 +183,8 @@ class VpnChannel {
     } catch (error) {
       _emitWindowsState(VpnStatus.disconnected, '$error');
       rethrow;
+    } finally {
+      await WindowsBrowserDialer.stop();
     }
   }
 
@@ -228,9 +241,12 @@ class VpnChannel {
       if (exit != null) {
         throw UnsupportedError('Tor and Psiphon exits are not available on Windows yet.');
       }
-      if (browserDialer) {
-        throw UnsupportedError('Browser Dialer is Android-only.');
+      if (browserDialer && appMode == 'vpn') {
+        throw UnsupportedError(
+          'Windows Browser Dialer currently supports Proxy and System Proxy modes. TUN support is planned for the TUN stage.',
+        );
       }
+      if (browserDialer) await WindowsBrowserDialer.prepare();
       if (perAppMode != 'off') {
         throw UnsupportedError('Per-app routing is not available on Windows yet.');
       }
@@ -256,6 +272,7 @@ class VpnChannel {
         config: config,
         appMode: appMode,
         verifyConnection: verifyConnection,
+        browserDialer: browserDialer,
       );
       return;
     }
