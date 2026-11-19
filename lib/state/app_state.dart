@@ -179,6 +179,7 @@ class AppState extends ChangeNotifier {
 
   StreamSubscription<VpnStateEvent>? _stateSub;
   Timer? _trafficTimer;
+  int _windowsVerificationToken = 0;
   Timer? _lanTimer;
 
   bool get isConnected => status == VpnStatus.connected;
@@ -535,6 +536,26 @@ class AppState extends ChangeNotifier {
   // region VPN
 
   void _onVpnState(VpnStateEvent event) {
+    if (defaultTargetPlatform == TargetPlatform.windows &&
+        event.status == VpnStatus.connected) {
+      // Windows Xray can start before its outbound is usable. Keep the UI in CONNECTING
+      // until an exit IP and a successful latency probe have both been obtained.
+      final token = ++_windowsVerificationToken;
+      status = VpnStatus.connecting;
+      error = null;
+      connectedAt = event.connectedAt;
+      exitDetail = event.detail;
+      loadingIps = true;
+      myIps = null;
+      pingMs = null;
+      _trafficTimer?.cancel();
+      upSpeed = downSpeed = 0;
+      notifyListeners();
+      unawaited(_verifyWindowsConnection(event, token));
+      return;
+    }
+
+    _windowsVerificationToken++;
     final wasConnected = status == VpnStatus.connected;
     final sameSession = connectedAt != null && connectedAt == event.connectedAt;
     status = event.status;
@@ -548,7 +569,11 @@ class AppState extends ChangeNotifier {
         totalUp = totalDown = 0;
         // Fetch exit IPs first, then automatically measure latency through the tunnel.
         unawaited(() async {
-          await refreshMyIps();
+          try {
+            await refreshMyIps();
+          } catch (_) {
+            // Latency is still useful when an IP lookup provider is unavailable.
+          }
           await testPing();
         }());
         unawaited(refreshUsage());
@@ -560,10 +585,59 @@ class AppState extends ChangeNotifier {
       if (status == VpnStatus.disconnected) {
         pingMs = null;
         myIps = null;
+        loadingIps = false;
         needsReconnect = false;
       }
     }
     notifyListeners();
+  }
+
+  Future<void> _verifyWindowsConnection(VpnStateEvent event, int token) async {
+    String? failure;
+    try {
+      final ips = await fetchMyIps(proxyPort: LocalProxy.port)
+          .timeout(const Duration(seconds: 24));
+      if (token != _windowsVerificationToken) return;
+      if (ips.cloudflare == null && ips.other == null) {
+        throw StateError('Could not retrieve an exit IP through the connection.');
+      }
+      final delay = await VpnChannel.measureDelay();
+      if (token != _windowsVerificationToken) return;
+      if (delay < 0) {
+        throw StateError('The connection did not pass the latency test.');
+      }
+      myIps = ips;
+      pingMs = delay;
+      status = VpnStatus.connected;
+      error = null;
+      connectedAt = event.connectedAt ?? DateTime.now();
+      needsReconnect = false;
+      totalUp = totalDown = 0;
+      _startTrafficTimer();
+      unawaited(refreshUsage());
+      _redeployDue();
+    } catch (e) {
+      if (token != _windowsVerificationToken) return;
+      failure = 'Connection verification failed: $e';
+      status = VpnStatus.disconnected;
+      error = failure;
+      connectedAt = null;
+      myIps = null;
+      pingMs = null;
+      try {
+        await VpnChannel.stop();
+      } catch (_) {
+        // Keep the original verification failure visible.
+      }
+      status = VpnStatus.disconnected;
+      error = failure;
+      connectedAt = null;
+    } finally {
+      if (token == _windowsVerificationToken) {
+        loadingIps = false;
+        notifyListeners();
+      }
+    }
   }
 
   void _startTrafficTimer() {
