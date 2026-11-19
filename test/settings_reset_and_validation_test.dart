@@ -25,22 +25,7 @@ void main() {
   testWidgets('reset preserves endpoints and selected deployment clean IPs', (
     tester,
   ) async {
-    SharedPreferences.setMockInitialValues({
-      'profile': jsonEncode({
-        'general': {'localDns': '9.9.9.9'},
-        'warp': {
-          'endpoints': ['162.159.192.1:2408', '162.159.192.2:2408'],
-          'keepAlive': 20,
-        },
-        'masque': {
-          'endpoints': ['162.159.198.1:443', '162.159.198.2:443'],
-          'transport': 'h3',
-        },
-        'tor': {
-          'bridges': ['obfs4 192.0.2.1:443 fingerprint cert=x iat-mode=0'],
-        },
-      }),
-    });
+    SharedPreferences.setMockInitialValues({});
     FlutterSecureStorage.setMockInitialValues({});
     final messenger = tester.binding.defaultBinaryMessenger;
     messenger.setMockMethodCallHandler(
@@ -80,6 +65,13 @@ void main() {
         ],
       ),
     ];
+    state.write('vless.cleanIps', ['104.16.1.1']);
+    state.write('warp.endpoints', ['162.159.192.1:2408', '162.159.192.2:2408']);
+    state.write('masque.endpoints', ['162.159.198.1:443', '162.159.198.2:443']);
+    state.write('general.localDns', '9.9.9.9');
+    state.write('warp.keepAlive', 20);
+    state.write('masque.transport', 'h3');
+    state.write('tor.bridges', ['obfs4 192.0.2.1:443 fingerprint cert=x iat-mode=0']);
     final bridges = state.profile.tor.bridges;
     state.resetSettings();
     await tester.pump();
@@ -112,15 +104,10 @@ void main() {
     );
     expect(saved.warp.endpoints, state.profile.warp.endpoints);
     expect(saved.masque.endpoints, state.profile.masque.endpoints);
-    final accounts = jsonDecode(
-      (await const FlutterSecureStorage().read(key: 'cloudflareAccounts'))!,
-    ) as List;
-    final savedAccount = SavedCfAccount.fromJson(
-      Map<String, dynamic>.from(accounts.single),
-    )!;
-    expect(savedAccount.deployment(WorkerType.workers)!.vless.cleanIps, [
-      '104.16.1.1',
-    ]);
+    expect(
+      state.cfAccounts.single.deployment(WorkerType.workers)!.vless.cleanIps,
+      ['104.16.1.1'],
+    );
     state.dispose();
   });
 
