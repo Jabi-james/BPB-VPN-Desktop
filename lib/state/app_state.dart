@@ -37,6 +37,8 @@ class AppState extends ChangeNotifier {
   static const _kGeoAssetsUpdatedAt = 'geoAssetsUpdatedAt';
 
   late SharedPreferences _prefs;
+  late String _portableNamespace;
+  String get _secretAccountsKey => '$_kSecretAccounts.$_portableNamespace';
   final _secrets = const FlutterSecureStorage();
 
   /// The stored profile, without the VLESS part (that's each deployment's).
@@ -344,6 +346,15 @@ class AppState extends ChangeNotifier {
   // region init
 
   Future<void> init() async {
+    // Portable copies keep independent settings/secrets based on their own folder.
+    // Moving a portable folder intentionally starts a separate profile; old folders remain untouched.
+    final executablePath = Platform.resolvedExecutable.toLowerCase();
+    var hash = 0x811c9dc5;
+    for (final unit in executablePath.codeUnits) {
+      hash = ((hash ^ unit) * 0x01000193) & 0xffffffff;
+    }
+    _portableNamespace = hash.toRadixString(16).padLeft(8, '0');
+    SharedPreferences.setPrefix('bpb_$_portableNamespace.');
     _prefs = await SharedPreferences.getInstance();
     _stored = Profile.fromJson(_decodeMap(_prefs.getString(_kProfile)))
         .updated('vless', null);
@@ -353,7 +364,7 @@ class AppState extends ChangeNotifier {
     }
 
     try {
-      final accounts = await _secrets.read(key: _kSecretAccounts);
+      final accounts = await _secrets.read(key: _secretAccountsKey);
       if (accounts != null) {
         cfAccounts = (jsonDecode(accounts) as List)
             .whereType<Map>()
@@ -1191,7 +1202,7 @@ class AppState extends ChangeNotifier {
     _profile = null;
     notifyListeners();
     await _secrets.write(
-      key: _kSecretAccounts,
+      key: _secretAccountsKey,
       value: jsonEncode(cfAccounts.map((a) => a.toJson()).toList()),
     );
   }
