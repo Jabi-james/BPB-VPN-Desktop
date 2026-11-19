@@ -697,7 +697,6 @@ class AppState extends ChangeNotifier {
   Future<void> reconnect() async {
     if (status == VpnStatus.disconnected) return connect();
     // Starting again replaces the running session in the service.
-    needsReconnect = false;
     // Switching from Proxy to VPN mode needs the VPN permission.
     if (!await VpnChannel.prepare(vpn: tunMode)) {
       error = 'VPN permission denied';
@@ -706,6 +705,8 @@ class AppState extends ChangeNotifier {
     }
     try {
       await _start();
+      needsReconnect = false;
+      notifyListeners();
     } catch (e) {
       error = e is StateError ? e.message : '$e';
       notifyListeners();
@@ -722,6 +723,25 @@ class AppState extends ChangeNotifier {
       _ => null,
     };
     final inbounds = (build.config['inbounds'] as List?) ?? const [];
+    if (defaultTargetPlatform == TargetPlatform.windows && tunMode) {
+      // Xray-core owns the Wintun adapter, routes and DNS lifecycle on Windows.
+      final tunInbound = inbounds.where((item) =>
+          item is Map && item['tag'] == 'tun').firstOrNull;
+      if (tunInbound is Map) {
+        final settings = Map<String, dynamic>.from(
+          (tunInbound['settings'] as Map?) ?? const {},
+        );
+        settings.addAll({
+          'desc': 'BPB',
+          'gateway': ['198.18.0.1/30', 'fd00:198:18::1/126'],
+          'dns': ['1.1.1.1', '8.8.8.8'],
+          'autoSystemRoutingTable': ['0.0.0.0/0', '::/0'],
+          'autoOutboundsInterface': 'auto',
+          'autoSystemWfpBlockLeak': ['dns', 'misconfigtun'],
+        });
+        tunInbound['settings'] = settings;
+      }
+    }
     bool hasInbound(String tag) =>
         inbounds.any((i) => i is Map && i['tag'] == tag);
     final dnsMode =
