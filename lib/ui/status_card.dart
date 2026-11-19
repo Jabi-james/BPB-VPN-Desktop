@@ -74,8 +74,9 @@ class _StatusCardState extends State<StatusCard> {
         : (failed ? scheme.error : scheme.onSurface);
     final muted = scheme.onSurfaceVariant;
     final compact = defaultTargetPlatform == TargetPlatform.windows;
-    final pad = compact ? 16.0 : _pad;
-    final rowHeight = compact ? 96.0 : _rowHeight;
+    final pad = compact ? 12.0 : _pad;
+    final rowHeight = compact ? 72.0 : _rowHeight;
+    final buttonSize = compact ? 88.0 : _button;
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12),
@@ -128,11 +129,11 @@ class _StatusCardState extends State<StatusCard> {
                           ],
                         ),
                       ),
-                      const SizedBox(width: 16 + _button),
+                      SizedBox(width: 16 + buttonSize),
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: compact ? 8 : 16),
                 _Metrics(),
               ],
             ),
@@ -140,9 +141,9 @@ class _StatusCardState extends State<StatusCard> {
           Positioned(
             right: pad - 8,
             top: pad - 8,
-            width: _button + 16,
-            height: _button + 16,
-            child: const _PowerButton(),
+            width: buttonSize + 16,
+            height: buttonSize + 16,
+            child: _PowerButton(size: buttonSize),
           ),
         ],
       ),
@@ -215,7 +216,7 @@ class _Metrics extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 14),
+        SizedBox(height: defaultTargetPlatform == TargetPlatform.windows ? 8 : 14),
         // Through the worker alone, Cloudflare-hosted sites see the proxy IP and others the
         // worker's exit IP. WARP, Serverless and the chain / Psiphon exits have a single exit IP.
         Row(
@@ -383,7 +384,8 @@ class _PingButton extends StatelessWidget {
 /// Big round power button. The icon points down while disconnected and flips up when
 /// connecting/connected; it glows when connected and shows a spinning ring while busy.
 class _PowerButton extends StatefulWidget {
-  const _PowerButton();
+  final double size;
+  const _PowerButton({this.size = _button});
 
   @override
   State<_PowerButton> createState() => _PowerButtonState();
@@ -442,8 +444,8 @@ class _PowerButtonState extends State<_PowerButton> {
             child: AnimatedContainer(
               duration: duration,
               curve: Curves.easeOutCubic,
-              width: _button,
-              height: _button,
+              width: widget.size,
+              height: widget.size,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 // A slightly lighter top-left gives the button some depth.
@@ -487,7 +489,7 @@ class _PowerButtonState extends State<_PowerButton> {
                         duration: duration,
                         builder: (context, color, _) => Icon(
                           Symbols.power_settings_new_rounded,
-                          size: 56,
+                          size: widget.size * 0.48,
                           weight: 600,
                           color: color,
                         ),
