@@ -359,7 +359,7 @@ class _PingButton extends StatelessWidget {
                     strokeWidth: 2.5,
                     color: color,
                   ),
-                )
+                ),
               if (state.pinging) const SizedBox(width: 6),
               Text(
                 state.pinging
