@@ -9,6 +9,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
+	"strings"
 	"path/filepath"
 	"sync"
 
@@ -40,6 +42,8 @@ type response struct {
 	Traffic string `json:"traffic,omitempty"`
 	Xray    string `json:"xray,omitempty"`
 	DNS     string `json:"dns,omitempty"`
+	Psiphon string `json:"psiphon,omitempty"`
+	Tor     string `json:"tor,omitempty"`
 }
 
 func startController(controller *xray.Controller, req request) error {
@@ -69,6 +73,13 @@ func writeResponse(res response) {
 
 func writeState(detail string) {
 	writeResponse(response{Event: "state", Detail: detail})
+}
+
+func binaryVersion(path string, args ...string) string {
+	if _, err := os.Stat(path); err != nil { return "" }
+	output, err := exec.Command(path, args...).CombinedOutput()
+	if err != nil { return "" }
+	return strings.TrimSpace(string(output))
 }
 
 func main() {
@@ -183,7 +194,10 @@ func main() {
 				res.DNS = xray.CheckDNSJSON(req.DNS)
 			}
 		case "versions":
+			root := filepath.Dir(executable)
 			res.Xray = xray.Version()
+			res.Psiphon = binaryVersion(filepath.Join(root, "bpb_psiphon.exe"), "-version")
+			res.Tor = binaryVersion(filepath.Join(root, "tor", "tor.exe"), "--version")
 		case "shutdown":
 			stopPsiphonWindows()
 			stopTorWindows()
