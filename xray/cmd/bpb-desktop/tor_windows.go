@@ -33,6 +33,7 @@ var (
 	torMu sync.Mutex
 	torProc *torRuntime
 	bootstrapPattern = regexp.MustCompile(`PROGRESS=(\d+)`)
+	torLogPattern = regexp.MustCompile(`Bootstrapped\s+(\d+)%`)
 )
 
 func startTorWindows(root string, req request, cancel <-chan struct{}) error {
