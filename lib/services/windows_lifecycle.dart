@@ -134,8 +134,11 @@ class WindowsLifecycle with WindowListener, TrayListener {
     if (_exiting) return;
     _exiting = true;
     try {
-      await ScannerChannel.shutdownDesktop();
-      await VpnChannel.shutdownWindows();
+      // Independent helpers shut down concurrently so their waits do not add up.
+      await Future.wait([
+        ScannerChannel.shutdownDesktop(),
+        VpnChannel.shutdownWindows(),
+      ]);
     } finally {
       await trayManager.destroy();
       await windowManager.setPreventClose(false);
