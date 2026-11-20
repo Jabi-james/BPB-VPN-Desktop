@@ -61,6 +61,76 @@ func startController(controller *xray.Controller, req request) error {
 
 var protocolMu sync.Mutex
 
+var (
+	startControlMu sync.Mutex
+	activeStartCancel chan struct{}
+	activeStartDone chan struct{}
+)
+
+func cancelActiveStart() {
+	startControlMu.Lock()
+	cancel := activeStartCancel
+	startControlMu.Unlock()
+	if cancel == nil { return }
+	select { case <-cancel: default: close(cancel) }
+}
+
+func waitForActiveStart() {
+	startControlMu.Lock()
+	done := activeStartDone
+	startControlMu.Unlock()
+	if done != nil { <-done }
+}
+
+func isStartCanceled(cancel <-chan struct{}) bool {
+	select { case <-cancel: return true; default: return false }
+}
+
+func runStart(controller *xray.Controller, root string, req request, cancel <-chan struct{}) response {
+	mode := req.Mode
+	if mode == "" { mode = "proxy" }
+	if mode != "proxy" && mode != "systemProxy" && mode != "vpn" {
+		return response{Error: "unsupported connection mode"}
+	}
+	if req.Config == "" { return response{Error: "Xray config is required"} }
+	stopPsiphonWindows()
+	stopTorWindows()
+	if err := controller.Stop(); err != nil { return response{Error: "stop previous Xray session: " + err.Error()} }
+	if err := restoreSystemProxy(); err != nil { return response{Error: "restore previous Windows proxy settings: " + err.Error()} }
+	if isStartCanceled(cancel) { return response{Error: "Connection attempt canceled."} }
+	if err := startController(controller, req); err != nil { return response{Error: err.Error()} }
+	cleanup := func() {
+		stopPsiphonWindows()
+		stopTorWindows()
+		_ = controller.Stop()
+		xray.SetBrowserDialer("")
+		_ = restoreSystemProxy()
+	}
+	if req.Exit == "tor" {
+		if err := startTorWindows(root, req, cancel); err != nil {
+			cleanup()
+			return response{Error: "start Tor: " + err.Error()}
+		}
+	} else if req.Exit == "psiphon" {
+		if err := startPsiphonWindows(root, req, cancel); err != nil {
+			cleanup()
+			return response{Error: "start Psiphon: " + err.Error()}
+		}
+	} else if req.Exit != "" {
+		cleanup()
+		return response{Error: "unsupported exit process"}
+	}
+	if isStartCanceled(cancel) { cleanup(); return response{Error: "Connection attempt canceled."} }
+	if mode == "systemProxy" {
+		if err := applySystemProxy("127.0.0.1:10880"); err != nil {
+			cleanup()
+			return response{Error: "could not enable Windows system proxy: " + err.Error()}
+		}
+	}
+	return response{OK: true}
+}
+
+
 func writeResponse(res response) {
 	protocolMu.Lock()
 	defer protocolMu.Unlock()
@@ -112,68 +182,30 @@ func main() {
 		res := response{OK: true}
 		switch req.Command {
 		case "start":
-			mode := req.Mode
-			if mode == "" {
-				mode = "proxy"
+			startControlMu.Lock()
+			if activeStartDone != nil {
+				startControlMu.Unlock()
+				writeResponse(response{Error: "A connection attempt is already running."})
+				continue
 			}
-			if mode != "proxy" && mode != "systemProxy" && mode != "vpn" {
-				res = response{Error: "unsupported connection mode"}
-			} else if req.Config == "" {
-				res = response{Error: "Xray config is required"}
-			} else {
-				stopPsiphonWindows()
-				stopTorWindows()
-				stopErr := controller.Stop()
-				proxyErr := restoreSystemProxy()
-				if stopErr != nil {
-					res = response{Error: "stop previous Xray session: " + stopErr.Error()}
-				} else if proxyErr != nil {
-					res = response{Error: "restore previous Windows proxy settings: " + proxyErr.Error()}
-				} else if err := startController(controller, req); err != nil {
-					res = response{Error: err.Error()}
-				} else if req.Exit == "tor" {
-					if err := startTorWindows(filepath.Dir(executable), req); err != nil {
-						stopTorWindows()
-						stopPsiphonWindows()
-						_ = controller.Stop()
-						xray.SetBrowserDialer("")
-						_ = restoreSystemProxy()
-						res = response{Error: "start Tor: " + err.Error()}
-					} else if mode == "systemProxy" {
-						if err := applySystemProxy("127.0.0.1:10880"); err != nil {
-							stopTorWindows()
-							_ = controller.Stop()
-							res = response{Error: "could not enable Windows system proxy: " + err.Error()}
-						}
-					}
-				} else if req.Exit != "" && req.Exit != "psiphon" {
-					_ = controller.Stop()
-					res = response{Error: "unsupported exit process"}
-				} else if req.Exit == "psiphon" {
-					if err := startPsiphonWindows(filepath.Dir(executable), req); err != nil {
-						stopPsiphonWindows()
-						stopTorWindows()
-						_ = controller.Stop()
-						xray.SetBrowserDialer("")
-						_ = restoreSystemProxy()
-						res = response{Error: "start Psiphon: " + err.Error()}
-					} else if mode == "systemProxy" {
-						if err := applySystemProxy("127.0.0.1:10880"); err != nil {
-							stopPsiphonWindows()
-							_ = controller.Stop()
-							res = response{Error: "could not enable Windows system proxy: " + err.Error()}
-						}
-					}
-				} else if mode == "systemProxy" {
-					if err := applySystemProxy("127.0.0.1:10880"); err != nil {
-						_ = controller.Stop()
-						xray.SetBrowserDialer("")
-						_ = restoreSystemProxy()
-						res = response{Error: "could not enable Windows system proxy: " + err.Error()}
-					}
-				}
-			}
+			cancel := make(chan struct{})
+			done := make(chan struct{})
+			activeStartCancel, activeStartDone = cancel, done
+			startControlMu.Unlock()
+			go func() {
+				writeResponse(runStart(controller, filepath.Dir(executable), req, cancel))
+				close(done)
+				startControlMu.Lock()
+				if activeStartDone == done { activeStartCancel, activeStartDone = nil, nil }
+				startControlMu.Unlock()
+			}()
+			continue
+		case "cancel":
+			cancelActiveStart()
+			continue
 		case "stop":
+			cancelActiveStart()
+			waitForActiveStart()
 			stopPsiphonWindows()
 			stopTorWindows()
 			stopErr := controller.Stop()
@@ -207,6 +239,8 @@ func main() {
 			res.Psiphon = binaryVersion(filepath.Join(root, "bpb_psiphon.exe"), "-version")
 			res.Tor = binaryVersion(filepath.Join(root, "tor", "tor.exe"), "--version")
 		case "shutdown":
+			cancelActiveStart()
+			waitForActiveStart()
 			stopPsiphonWindows()
 			stopTorWindows()
 			_ = controller.Stop()
