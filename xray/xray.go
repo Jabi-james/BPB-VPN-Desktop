@@ -164,6 +164,12 @@ func InitEnv(dir string) {
 	os.Setenv(envCert, dir)
 }
 
+// InitCertDir lets desktop builds keep the user's private MITM CA beside the app,
+// separately from the bundled geo assets directory.
+func InitCertDir(dir string) {
+	os.Setenv(envCert, dir)
+}
+
 // StartEchGateway starts the local ECH gateway for the app's Cloudflare API calls (see
 // networking/); it returns an error message, or "" when it runs.
 func StartEchGateway() string {
