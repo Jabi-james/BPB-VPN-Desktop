@@ -655,10 +655,10 @@ if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
     final certPath = '$_windowsMitmCaPath.crt';
     if (!await File(certPath).exists()) return false;
     final escapedPath = certPath.replaceAll("'", "''");
-    final script = r"""
-$cert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new('""" + escapedPath + r"""')
-$match = Get-ChildItem Cert:\\CurrentUser\\Root | Where-Object { $_.Thumbprint -eq $cert.Thumbprint } | Select-Object -First 1
-if ($match) { 'true' } else { 'false' }
+    final script = """
+\$cert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new('$escapedPath')
+\$match = Get-ChildItem -Path 'Cert:\\\\CurrentUser\\\\Root' | Where-Object { \$_.Thumbprint -eq \$cert.Thumbprint } | Select-Object -First 1
+if (\$match) { 'true' } else { 'false' }
 """;
     try {
       final result = await Process.run('powershell.exe', [
