@@ -120,8 +120,9 @@ class VpnChannel {
   }
 
   static Future<Map<String, dynamic>> _sendWindowsCommand(
-    Map<String, dynamic> request,
-  ) async {
+    Map<String, dynamic> request, {
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
     await _ensureWindowsProcess();
     final process = _windowsProcess!;
     if (_windowsPending != null) {
@@ -132,7 +133,7 @@ class VpnChannel {
     try {
       process.stdin.writeln(jsonEncode(request));
       await process.stdin.flush();
-      return await completer.future.timeout(const Duration(seconds: 30));
+      return await completer.future.timeout(timeout);
     } finally {
       if (identical(_windowsPending, completer)) _windowsPending = null;
     }
@@ -176,7 +177,9 @@ class VpnChannel {
         'torCustomBridges': torCustomBridges,
         // Do not report CONNECTED until Xray can complete a request through its outbound.
         'verifyConnection': verifyConnection,
-      });
+      }, timeout: exit == null
+          ? const Duration(seconds: 30)
+          : const Duration(minutes: 16));
       if (result['ok'] != true) {
         throw StateError(result['error'] as String? ?? 'BPB core failed to start.');
       }
