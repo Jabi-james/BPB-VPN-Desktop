@@ -140,6 +140,10 @@ class VpnChannel {
     required String appMode,
     required bool verifyConnection,
     required bool browserDialer,
+    String? exit,
+    bool exitDirect = false,
+    String exitRegion = '',
+    Map<String, dynamic>? psiphonConfig,
   }) async {
     _emitWindowsState(VpnStatus.connecting);
     try {
@@ -148,6 +152,10 @@ class VpnChannel {
         'mode': appMode,
         'config': jsonEncode(config),
         'browserDialer': browserDialer,
+        'exit': exit,
+        'exitDirect': exitDirect,
+        'exitRegion': exitRegion,
+        'psiphonConfig': psiphonConfig == null ? null : jsonEncode(psiphonConfig),
         // Do not report CONNECTED until Xray can complete a request through its outbound.
         'verifyConnection': verifyConnection,
       });
@@ -237,9 +245,6 @@ class VpnChannel {
     bool verifyConnection = false,
   }) async {
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
-      if (exit != null) {
-        throw UnsupportedError('Tor and Psiphon exits are not available on Windows yet.');
-      }
       if (browserDialer && appMode == 'vpn') {
         throw UnsupportedError(
           'Windows Browser Dialer currently supports Proxy and System Proxy modes. TUN support is planned for the TUN stage.',
@@ -272,6 +277,10 @@ class VpnChannel {
         appMode: appMode,
         verifyConnection: verifyConnection,
         browserDialer: browserDialer,
+        exit: exit,
+        exitDirect: exitDirect,
+        exitRegion: exitRegion,
+        psiphonConfig: psiphonConfig,
       );
       return;
     }
