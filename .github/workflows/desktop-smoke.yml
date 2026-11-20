@@ -271,7 +271,7 @@ jobs:
           Name: "{group}\BPB VPN"; Filename: "{app}\BPB-VPN.exe"
           Name: "{autodesktop}\BPB VPN"; Filename: "{app}\BPB-VPN.exe"; Tasks: desktopicon
           [Run]
-          Filename: "{app}\BPB-VPN.exe"; Description: "Launch BPB VPN"; Flags: postinstall nowait skipifsilent
+          Filename: "{app}\BPB-VPN.exe"; Description: "Launch BPB VPN"; Flags: postinstall nowait skipifsilent shellexec
           '@
           New-Item -ItemType Directory -Force "installer-output" | Out-Null
           Set-Content -Path "BPB-VPN.iss" -Value $script -Encoding utf8
