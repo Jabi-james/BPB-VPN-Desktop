@@ -181,6 +181,7 @@ class VpnChannel {
     Map<String, dynamic>? psiphonConfig,
     String? torBridge,
     List<String> torCustomBridges = const [],
+    String? aetherConfigDir,
   }) async {
     _emitWindowsState(VpnStatus.connecting);
     try {
@@ -195,6 +196,7 @@ class VpnChannel {
         'psiphonConfig': psiphonConfig == null ? null : jsonEncode(psiphonConfig),
         'torBridge': torBridge,
         'torCustomBridges': torCustomBridges,
+        'aetherConfigDir': aetherConfigDir,
         // Do not report CONNECTED until Xray can complete a request through its outbound.
         'verifyConnection': verifyConnection,
       }, timeout: exit == null
@@ -294,6 +296,7 @@ class VpnChannel {
     String exitRegion = '',
     String? torBridge,
     List<String> torCustomBridges = const [],
+    String? aetherConfigDir,
     Map<String, dynamic>? psiphonConfig,
     bool browserDialer = false,
     bool verifyConnection = false,
@@ -337,6 +340,7 @@ class VpnChannel {
         psiphonConfig: psiphonConfig,
         torBridge: torBridge,
         torCustomBridges: torCustomBridges,
+        aetherConfigDir: aetherConfigDir,
       );
       return;
     }
@@ -358,6 +362,7 @@ class VpnChannel {
     // Tor type: direct, a built-in bridge transport, or custom (torCustomBridges).
     'torBridge': torBridge,
     'torCustomBridges': torCustomBridges,
+    'aetherConfigDir': aetherConfigDir,
     // Psiphon config fields for the mode, added to the app's psiphon_config.json (see PsiphonExit.kt).
     'psiphonConfig': psiphonConfig == null ? null : jsonEncode(psiphonConfig),
     // Worker's Browser Dialer: Xray's WebSockets are opened by a WebView (see BrowserDialer.kt).
