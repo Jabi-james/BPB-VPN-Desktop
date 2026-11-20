@@ -14,7 +14,7 @@ Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   final state = AppState();
   await state.init(cleanStart: args.contains('--bpb-clean-start'));
-  await WindowsLifecycle.initialize(_navigatorKey);
+  await WindowsLifecycle.initialize(_navigatorKey, state);
   runApp(BpbApp(state: state));
   if (args.contains('--bpb-elevated-tun')) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
