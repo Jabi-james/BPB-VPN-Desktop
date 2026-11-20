@@ -6,6 +6,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -61,6 +62,15 @@ func startController(controller *xray.Controller, req request) error {
 
 var protocolMu sync.Mutex
 
+// Stop both optional exit helpers concurrently; their process waits are bounded.
+func stopExitProcesses() {
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() { defer wg.Done(); stopPsiphonWindows() }()
+	go func() { defer wg.Done(); stopTorWindows() }()
+	wg.Wait()
+}
+
 var (
 	startControlMu sync.Mutex
 	activeStartCancel chan struct{}
@@ -93,15 +103,13 @@ func runStart(controller *xray.Controller, root string, req request, cancel <-ch
 		return response{Error: "unsupported connection mode"}
 	}
 	if req.Config == "" { return response{Error: "Xray config is required"} }
-	stopPsiphonWindows()
-	stopTorWindows()
+	stopExitProcesses()
 	if err := controller.Stop(); err != nil { return response{Error: "stop previous Xray session: " + err.Error()} }
 	if err := restoreSystemProxy(); err != nil { return response{Error: "restore previous Windows proxy settings: " + err.Error()} }
 	if isStartCanceled(cancel) { return response{Error: "Connection attempt canceled."} }
 	if err := startController(controller, req); err != nil { return response{Error: err.Error()} }
 	cleanup := func() {
-		stopPsiphonWindows()
-		stopTorWindows()
+		stopExitProcesses()
 		_ = controller.Stop()
 		xray.SetBrowserDialer("")
 		_ = restoreSystemProxy()
@@ -168,8 +176,7 @@ func main() {
 	defer func() {
 		cancelActiveStart()
 		waitForActiveStart()
-		stopPsiphonWindows()
-		stopTorWindows()
+		stopExitProcesses()
 		_ = controller.Stop()
 		xray.SetBrowserDialer("")
 		_ = restoreSystemProxy()
@@ -208,8 +215,7 @@ func main() {
 		case "stop":
 			cancelActiveStart()
 			waitForActiveStart()
-			stopPsiphonWindows()
-			stopTorWindows()
+			stopExitProcesses()
 			stopErr := controller.Stop()
 			xray.SetBrowserDialer("")
 			proxyErr := restoreSystemProxy()
@@ -243,8 +249,7 @@ func main() {
 		case "shutdown":
 			cancelActiveStart()
 			waitForActiveStart()
-			stopPsiphonWindows()
-			stopTorWindows()
+			stopExitProcesses()
 			_ = controller.Stop()
 			_ = restoreSystemProxy()
 			writeResponse(res)
