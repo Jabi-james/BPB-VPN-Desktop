@@ -83,26 +83,15 @@ func startTorWindows(root string, req request) error {
 	if err != nil { return err }
 	cmd := exec.Command(filepath.Join(torDir, "tor.exe"), "-f", torrc)
 	cmd.Dir = torDir
-	stdout, err := cmd.StdoutPipe()
-	if err != nil { logFile.Close(); return err }
-	stderr, err := cmd.StderrPipe()
-	if err != nil { logFile.Close(); return err }
+	// Direct file redirection prevents inherited child pipe handles from blocking Wait.
+	cmd.Stdout = logFile
+	cmd.Stderr = logFile
 	if err := cmd.Start(); err != nil { logFile.Close(); return fmt.Errorf("launch Tor: %w", err) }
-	runtime := &torRuntime{cmd:cmd, done:make(chan struct{}), log:logFile}
-	torMu.Lock(); torProc=runtime; torMu.Unlock()
-	stdoutDone, stderrDone := make(chan struct{}), make(chan struct{})
-	for _, item := range []struct{pipe interface{Read([]byte)(int,error)}; done chan struct{}; prefix string}{{stdout,stdoutDone,""},{stderr,stderrDone,"[stderr] "}} {
-		go func(p interface{Read([]byte)(int,error)}, done chan struct{}, prefix string) {
-			defer close(done)
-			scanner:=bufio.NewScanner(p)
-			scanner.Buffer(make([]byte,4096),4*1024*1024)
-			for scanner.Scan() { runtime.mu.Lock(); _,_=fmt.Fprintln(runtime.log,prefix+scanner.Text()); runtime.mu.Unlock() }
-		}(item.pipe,item.done,item.prefix)
-	}
-	go func(){ <-stdoutDone; <-stderrDone; runtime.waitErr=cmd.Wait(); close(runtime.done) }()
-
+	runtime := &torRuntime{cmd: cmd, done: make(chan struct{}), log: logFile}
+	torMu.Lock(); torProc = runtime; torMu.Unlock()
+	go func() { runtime.waitErr = cmd.Wait(); close(runtime.done) }()
 	conn, err := waitTorControl(cookie, runtime.done, 15*time.Minute)
-	if err != nil { stopTorWindows(); return err }
+	if err != nil { stopTorWindows(); if tail := torLogTail(root); tail != "" { return fmt.Errorf("%w; Tor log: %s", err, tail) }; return err }
 	defer conn.Close()
 	if err := torAuthenticate(conn, cookie); err != nil { stopTorWindows(); return err }
 	_ = conn.SetDeadline(time.Now().Add(2*time.Second))
@@ -215,10 +204,23 @@ func clearTorRuntime(p *torRuntime){
 	torMu.Lock();if torProc==p{torProc=nil};torMu.Unlock()
 }
 
-func stopTorWindows(){
-	torMu.Lock();p:=torProc;torProc=nil;torMu.Unlock()
-	if p==nil{return}
-	_ = exec.Command("taskkill.exe","/T","/F","/PID",strconv.Itoa(p.cmd.Process.Pid)).Run()
-	select{case <-p.done:case <-time.After(3*time.Second):_ = p.cmd.Process.Kill();<-p.done}
-	p.mu.Lock();_ = p.log.Close();p.mu.Unlock()
+func torLogTail(root string) string {
+	data, err := os.ReadFile(filepath.Join(root, "tor.log"))
+	if err != nil { return "" }
+	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+	if len(lines) > 35 { lines = lines[len(lines)-35:] }
+	return strings.TrimSpace(strings.Join(lines, " | "))
+}
+
+func stopTorWindows() {
+	torMu.Lock(); p := torProc; torProc = nil; torMu.Unlock()
+	if p == nil { return }
+	_ = exec.Command("taskkill.exe", "/T", "/F", "/PID", strconv.Itoa(p.cmd.Process.Pid)).Run()
+	select {
+	case <-p.done:
+	case <-time.After(3 * time.Second):
+		_ = p.cmd.Process.Kill()
+		select { case <-p.done: case <-time.After(2 * time.Second): return }
+	}
+	_ = p.log.Close()
 }
