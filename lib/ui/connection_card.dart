@@ -53,6 +53,7 @@ class ConnectionCard extends StatelessWidget {
     final hasExitNode =
         state.mode != ConnectionMode.psiphon &&
         state.mode != ConnectionMode.tor &&
+        state.mode != ConnectionMode.aether &&
         !isServerlessDns;
     final nodes = switch (state.mode) {
       ConnectionMode.serverless => state.serverlessMode ==
@@ -214,6 +215,7 @@ class _TypeSelector extends StatelessWidget {
     ConnectionMode.warp => 'WireGuard',
     // CONNECT-IP over HTTP/2 or 3: HTTPS either way.
     ConnectionMode.masque => 'HTTPS',
+    ConnectionMode.aether => 'MASQUE',
     ConnectionMode.serverless => 'Direct',
     // Psiphon's tunnels are all SSH based, under various obfuscation layers.
     ConnectionMode.psiphon => 'SSH',
