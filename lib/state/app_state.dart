@@ -557,7 +557,7 @@ class AppState extends ChangeNotifier {
   void _onVpnState(VpnStateEvent event) {
     if (defaultTargetPlatform == TargetPlatform.windows &&
         event.status == VpnStatus.connected &&
-        status != VpnStatus.connected) {
+        event.connectedAt != connectedAt) {
       // Windows Xray can start before its outbound is usable. Keep the UI in CONNECTING
       // until an exit IP and a successful latency probe have both been obtained.
       final token = ++_windowsVerificationToken;
