@@ -140,6 +140,18 @@ class WindowsLifecycle with WindowListener, TrayListener {
   Future<void> _exit() async {
     if (_exiting) return;
     _exiting = true;
+
+    // Close the visible window immediately. Keep this process alive in the
+    // background until every helper/core has finished shutting down.
+    try {
+      await windowManager.hide();
+    } catch (_) {
+      // Continue shutdown even if the window could not be hidden.
+    }
+    unawaited(_finishExit());
+  }
+
+  Future<void> _finishExit() async {
     try {
       // Independent helpers shut down concurrently so their waits do not add up.
       await Future.wait([
@@ -147,9 +159,12 @@ class WindowsLifecycle with WindowListener, TrayListener {
         VpnChannel.shutdownWindows(),
       ]);
     } finally {
-      await trayManager.destroy();
-      await windowManager.setPreventClose(false);
-      await windowManager.destroy();
+      try {
+        await trayManager.destroy();
+      } finally {
+        await windowManager.setPreventClose(false);
+        await windowManager.destroy();
+      }
     }
   }
 
