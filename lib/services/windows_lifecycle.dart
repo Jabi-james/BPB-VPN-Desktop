@@ -144,11 +144,8 @@ class WindowsLifecycle with WindowListener, TrayListener {
           ),
         ),
       );
-      // Dismissing the close-choice dialog by clicking outside means minimize to tray.
-      if (decision == null) {
-        await _minimize();
-        return;
-      }
+      // Clicking outside only dismisses this confirmation dialog; keep the app visible.
+      if (decision == null) return;
       if (alwaysUse) await prefs.setString(_choiceKey, decision);
       if (decision == _minimizeChoice) {
         await _minimize();
