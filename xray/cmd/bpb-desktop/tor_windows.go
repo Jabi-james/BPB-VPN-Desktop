@@ -32,7 +32,7 @@ type torRuntime struct {
 var (
 	torMu sync.Mutex
 	torProc *torRuntime
-	bootstrapPattern = regexp.MustCompile(\`PROGRESS=(\d+)\`)
+	bootstrapPattern = regexp.MustCompile(`PROGRESS=(\d+)`)
 )
 
 func startTorWindows(root string, req request) error {
@@ -171,15 +171,13 @@ func waitTorControl(cookie string, exited <-chan struct{}, timeout time.Duration
 
 func torAuthenticate(conn net.Conn,cookie string)error{
 	raw,err:=os.ReadFile(cookie);if err!=nil{return err}
-	if _,err=fmt.Fprintf(conn,"AUTHENTICATE %s
-",hex.EncodeToString(raw));err!=nil{return err}
+	if _, err = fmt.Fprintf(conn, "AUTHENTICATE %s\r\n", hex.EncodeToString(raw)); err != nil { return err }
 	return torReadOK(bufio.NewReader(conn))
 }
 
 func torReadOK(reader *bufio.Reader)error{
 	for i:=0;i<100;i++{
-		line,err:=reader.ReadString('
-');if err!=nil{return err}
+		line, err := reader.ReadString('\n'); if err != nil { return err }
 		line=strings.TrimSpace(line)
 		if strings.HasPrefix(line,"250 OK"){return nil}
 		if strings.HasPrefix(line,"4")||strings.HasPrefix(line,"5"){return errors.New(line)}
@@ -190,8 +188,7 @@ func torReadOK(reader *bufio.Reader)error{
 func torReadBootstrap(reader *bufio.Reader)(int,error){
 	progress:=-1
 	for i:=0;i<100;i++{
-		line,err:=reader.ReadString('
-');if err!=nil{return progress,err}
+		line, err := reader.ReadString('\n'); if err != nil { return progress, err }
 		if n,ok:=parseTorProgress(line);ok{progress=n}
 		if strings.HasPrefix(strings.TrimSpace(line),"250 OK"){return progress,nil}
 	}
