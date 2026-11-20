@@ -165,9 +165,14 @@ func stopPsiphonWindows() {
 	_ = p.stdin.Close()
 	select {
 	case <-p.wait:
-	case <-time.After(2*time.Second):
-		_ = p.cmd.Process.Kill()
-		<-p.wait
+	case <-time.After(2 * time.Second):
+		_ = exec.Command("taskkill.exe", "/T", "/F", "/PID", fmt.Sprint(p.cmd.Process.Pid)).Run()
+		select {
+		case <-p.wait:
+		case <-time.After(2 * time.Second):
+			_ = p.cmd.Process.Kill()
+			select { case <-p.wait: case <-time.After(time.Second): return }
+		}
 	}
 	p.mu.Lock(); _ = p.log.Close(); p.mu.Unlock()
 }
