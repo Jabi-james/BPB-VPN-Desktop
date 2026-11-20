@@ -30,6 +30,7 @@ type request struct {
 	PsiphonConfig string `json:"psiphonConfig,omitempty"`
 	TorBridge string `json:"torBridge,omitempty"`
 	TorCustomBridges []string `json:"torCustomBridges,omitempty"`
+	AetherConfigDir string `json:"aetherConfigDir,omitempty"`
 }
 
 type response struct {
@@ -64,9 +65,10 @@ var protocolMu sync.Mutex
 // Stop both optional exit helpers concurrently; their process waits are bounded.
 func stopExitProcesses() {
 	var wg sync.WaitGroup
-	wg.Add(2)
+	wg.Add(3)
 	go func() { defer wg.Done(); stopPsiphonWindows() }()
 	go func() { defer wg.Done(); stopTorWindows() }()
+	go func() { defer wg.Done(); stopAetherWindows() }()
 	wg.Wait()
 }
 
@@ -122,6 +124,11 @@ func runStart(controller *xray.Controller, root string, req request, cancel <-ch
 		if err := startPsiphonWindows(root, req, cancel); err != nil {
 			cleanup()
 			return response{Error: "start Psiphon: " + err.Error()}
+		}
+	} else if req.Exit == "aether" {
+		if err := startAetherWindows(root, req, cancel); err != nil {
+			cleanup()
+			return response{Error: "start Aether: " + err.Error()}
 		}
 	} else if req.Exit != "" {
 		cleanup()
