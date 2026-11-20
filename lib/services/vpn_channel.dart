@@ -41,6 +41,7 @@ class VpnChannel {
   // Windows runs BPB's Go/Xray host as a child process. BPB: marks protocol replies,
   // leaving ordinary Xray log lines separate from the command channel.
   static Process? _windowsProcess;
+  static bool _windowsShuttingDown = false;
   static Completer<Map<String, dynamic>>? _windowsPending;
   static Future<void> _windowsCommandTail = Future<void>.value();
   static final _windowsStates = StreamController<VpnStateEvent>.broadcast();
@@ -124,6 +125,7 @@ class VpnChannel {
     Map<String, dynamic> request, {
     Duration timeout = const Duration(seconds: 30),
   }) async {
+    if (_windowsShuttingDown) throw StateError('BPB is shutting down.');
     // Serialize all requests on the single-line Go protocol. Polling must queue
     // behind long startup commands rather than fail as a competing command.
     final previous = _windowsCommandTail;
@@ -131,6 +133,7 @@ class VpnChannel {
     _windowsCommandTail = release.future;
     await previous;
     try {
+      if (_windowsShuttingDown) throw StateError('BPB is shutting down.');
       await _ensureWindowsProcess();
       final process = _windowsProcess!;
       final completer = Completer<Map<String, dynamic>>();
@@ -530,34 +533,43 @@ if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
   /// then force-terminates the child if it does not exit promptly.
   static Future<void> shutdownWindows() async {
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.windows) return;
+    _windowsShuttingDown = true;
     final process = _windowsProcess;
     if (process == null) {
-      await WindowsBrowserDialer.stop();
+      try {
+        await WindowsBrowserDialer.stop().timeout(const Duration(seconds: 1));
+      } catch (_) {}
       return;
     }
     if (_windowsStatus == VpnStatus.connecting) {
       await _cancelWindowsStart(process);
     }
+    // Do not queue shutdown behind periodic status/traffic requests. Send it
+    // directly, then impose a short hard deadline so closing the window stays responsive.
     try {
-      final result = await _sendWindowsCommand({'command': 'shutdown'})
-          .timeout(const Duration(seconds: 10));
-      if (result['ok'] != true) {
-        _appendWindowsLog('Core shutdown reported: ${result['error'] ?? 'unknown error'}');
-      }
+      process.stdin.writeln(jsonEncode({'command': 'shutdown'}));
+      await process.stdin.flush().timeout(const Duration(milliseconds: 700));
     } catch (error) {
-      _appendWindowsLog('Graceful core shutdown failed: $error');
+      _appendWindowsLog('Could not send graceful core shutdown: $error');
     }
     try {
-      await process.exitCode.timeout(const Duration(seconds: 2));
+      await process.exitCode.timeout(const Duration(seconds: 4));
     } catch (_) {
-      await Process.run('taskkill.exe', ['/T', '/F', '/PID', process.pid.toString()]);
+      try {
+        await Process.run('taskkill.exe', ['/T', '/F', '/PID', process.pid.toString()])
+            .timeout(const Duration(seconds: 1));
+      } catch (_) {}
       process.kill();
       try {
-        await process.exitCode.timeout(const Duration(seconds: 2));
+        await process.exitCode.timeout(const Duration(seconds: 1));
       } catch (_) {}
     }
     if (identical(_windowsProcess, process)) _windowsProcess = null;
-    await WindowsBrowserDialer.stop();
+    try {
+      await WindowsBrowserDialer.stop().timeout(const Duration(seconds: 1));
+    } catch (error) {
+      _appendWindowsLog('Browser Dialer shutdown exceeded its deadline: $error');
+    }
     _emitWindowsState(VpnStatus.disconnected);
   }
 
