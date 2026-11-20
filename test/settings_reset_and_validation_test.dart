@@ -146,6 +146,14 @@ void main() {
       final pref = find.byWidgetPredicate(
         (w) => w is ListPref && w.path == scenario.path,
       );
+      final section = switch (scenario.path) {
+        'vless.cleanIps' => 'VLESS',
+        'warp.endpoints' => 'WARP',
+        'masque.endpoints' => 'MASQUE',
+        _ => 'Global',
+      };
+      await tester.tap(find.text(section));
+      await tester.pumpAndSettle();
       await tester.scrollUntilVisible(
         pref,
         300,
