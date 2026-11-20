@@ -83,8 +83,7 @@ class SettingsPage extends StatelessWidget {
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.only(bottom: 32),
+      body: _SettingsSections(
         children: [
           const SectionHeader('Global'),
           SettingsCard(
@@ -724,8 +723,115 @@ class SettingsPage extends StatelessWidget {
               ),
             ],
           ),
+        
         ],
-      ),
+      ),,
+    );
+  }
+}
+
+/// Desktop settings navigation: keep the section list fixed while the selected
+/// section's settings are shown independently on the right.
+class _SettingsSections extends StatefulWidget {
+  final List<Widget> children;
+  const _SettingsSections({required this.children});
+
+  @override
+  State<_SettingsSections> createState() => _SettingsSectionsState();
+}
+
+class _SettingsSectionsState extends State<_SettingsSections> {
+  int _selected = 0;
+
+  List<({String title, List<Widget> children})> _sections() {
+    final result = <({String title, List<Widget> children})>[];
+    String? title;
+    var children = <Widget>[];
+    void finish() {
+      if (title != null) {
+        result.add((title: title!, children: children));
+      }
+    }
+
+    for (final child in widget.children) {
+      if (child is SectionHeader) {
+        finish();
+        title = child.title;
+        children = <Widget>[];
+      } else if (title != null) {
+        children.add(child);
+      }
+    }
+    finish();
+    return result;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sections = _sections();
+    if (sections.isEmpty) return const SizedBox.shrink();
+    final selected = _selected.clamp(0, sections.length - 1);
+    final theme = Theme.of(context);
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(
+          width: 176,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerLow,
+              border: Border(
+                right: BorderSide(color: theme.colorScheme.outlineVariant),
+              ),
+            ),
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 12),
+              itemCount: sections.length,
+              itemBuilder: (context, index) {
+                final active = index == selected;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Material(
+                    color: active
+                        ? theme.colorScheme.secondaryContainer
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(10),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(10),
+                      onTap: () => setState(() => _selected = index),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 11,
+                        ),
+                        child: Text(
+                          sections[index].title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: active
+                                ? theme.colorScheme.onSecondaryContainer
+                                : theme.colorScheme.onSurfaceVariant,
+                            fontWeight:
+                                active ? FontWeight.w700 : FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.only(bottom: 32, top: 4),
+            children: sections[selected].children,
+          ),
+        ),
+      ],
     );
   }
 }
