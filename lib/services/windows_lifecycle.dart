@@ -26,6 +26,18 @@ class WindowsLifecycle with WindowListener, TrayListener {
   static WindowsLifecycle? _instance;
   bool _handlingClose = false;
   bool _exiting = false;
+  late final MenuItem _proxyMenuItem;
+  late final MenuItem _systemProxyMenuItem;
+  late final MenuItem _tunMenuItem;
+
+  /// Keep exactly one check mark beside the connection mode currently selected in the app.
+  void _updateTrayMode() {
+    if (_exiting) return;
+    final mode = appState.device.appMode;
+    _proxyMenuItem.checked = mode == AppMode.proxy;
+    _systemProxyMenuItem.checked = mode == AppMode.systemProxy;
+    _tunMenuItem.checked = mode == AppMode.vpn;
+  }
 
   static Future<void> initialize(GlobalKey<NavigatorState> navigatorKey, AppState appState) async {
     if (defaultTargetPlatform != TargetPlatform.windows || _instance != null) {
@@ -40,14 +52,30 @@ class WindowsLifecycle with WindowListener, TrayListener {
     final trayIcon = File('${File(Platform.resolvedExecutable).parent.path}\\bpb_tray.ico');
     if (await trayIcon.exists()) await trayManager.setIcon(trayIcon.path);
     await trayManager.setToolTip('BPB VPN');
+    lifecycle._proxyMenuItem = MenuItem.checkbox(
+      key: 'mode_proxy',
+      label: 'Proxy service only',
+      checked: appState.device.appMode == AppMode.proxy,
+    );
+    lifecycle._systemProxyMenuItem = MenuItem.checkbox(
+      key: 'mode_system_proxy',
+      label: 'Set system proxy',
+      checked: appState.device.appMode == AppMode.systemProxy,
+    );
+    lifecycle._tunMenuItem = MenuItem.checkbox(
+      key: 'mode_tun',
+      label: 'TUN mode (all apps)',
+      checked: appState.device.appMode == AppMode.vpn,
+    );
+    appState.addListener(lifecycle._updateTrayMode);
     await trayManager.setContextMenu(
       Menu(
         items: [
           MenuItem(key: 'show_window', label: 'Open'),
           MenuItem.separator(),
-          MenuItem(key: 'mode_proxy', label: 'Proxy service only'),
-          MenuItem(key: 'mode_system_proxy', label: 'Set system proxy'),
-          MenuItem(key: 'mode_tun', label: 'TUN mode (all apps)'),
+          lifecycle._proxyMenuItem,
+          lifecycle._systemProxyMenuItem,
+          lifecycle._tunMenuItem,
           MenuItem.separator(),
           MenuItem(key: 'exit_app', label: 'Quit'),
         ],
@@ -152,6 +180,7 @@ class WindowsLifecycle with WindowListener, TrayListener {
   }
 
   Future<void> _finishExit() async {
+    appState.removeListener(_updateTrayMode);
     try {
       // Independent helpers shut down concurrently so their waits do not add up.
       await Future.wait([
