@@ -7,15 +7,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../models/settings.dart';
+import '../state/app_state.dart';
 import 'scanner_channel.dart';
 import 'vpn_channel.dart';
 
 /// Windows close/minimize-to-tray lifecycle. The tray remains available while the
 /// main window is hidden, and Exit always shuts down the Go/Xray child first.
 class WindowsLifecycle with WindowListener, TrayListener {
-  WindowsLifecycle._(this.navigatorKey);
+  WindowsLifecycle._(this.navigatorKey, this.appState);
 
   final GlobalKey<NavigatorState> navigatorKey;
+  final AppState appState;
   static const _choiceKey = 'windows.closeChoice';
   static const _minimizeChoice = 'minimize';
   static const _exitChoice = 'exit';
@@ -24,11 +27,11 @@ class WindowsLifecycle with WindowListener, TrayListener {
   bool _handlingClose = false;
   bool _exiting = false;
 
-  static Future<void> initialize(GlobalKey<NavigatorState> navigatorKey) async {
+  static Future<void> initialize(GlobalKey<NavigatorState> navigatorKey, AppState appState) async {
     if (defaultTargetPlatform != TargetPlatform.windows || _instance != null) {
       return;
     }
-    final lifecycle = WindowsLifecycle._(navigatorKey);
+    final lifecycle = WindowsLifecycle._(navigatorKey, appState);
     _instance = lifecycle;
     await windowManager.ensureInitialized();
     await windowManager.setPreventClose(true);
@@ -40,9 +43,13 @@ class WindowsLifecycle with WindowListener, TrayListener {
     await trayManager.setContextMenu(
       Menu(
         items: [
-          MenuItem(key: 'show_window', label: 'Open BPB VPN'),
+          MenuItem(key: 'show_window', label: 'Open'),
           MenuItem.separator(),
-          MenuItem(key: 'exit_app', label: 'Exit'),
+          MenuItem(key: 'mode_proxy', label: 'Proxy service only'),
+          MenuItem(key: 'mode_system_proxy', label: 'Set system proxy'),
+          MenuItem(key: 'mode_tun', label: 'TUN mode (all apps)'),
+          MenuItem.separator(),
+          MenuItem(key: 'exit_app', label: 'Quit'),
         ],
       ),
     );
@@ -148,15 +155,34 @@ class WindowsLifecycle with WindowListener, TrayListener {
 
   @override
   void onTrayMenuItemClick(MenuItem menuItem) {
-    if (menuItem.key == 'show_window') {
-      unawaited(_showWindow());
-    } else if (menuItem.key == 'exit_app') {
-      unawaited(_exit());
+    switch (menuItem.key) {
+      case 'show_window':
+        unawaited(_showWindow());
+      case 'mode_proxy':
+        unawaited(_selectMode(AppMode.proxy));
+      case 'mode_system_proxy':
+        unawaited(_selectMode(AppMode.systemProxy));
+      case 'mode_tun':
+        unawaited(_selectMode(AppMode.vpn));
+      case 'exit_app':
+        unawaited(_exit());
     }
+  }
+
+  Future<void> _selectMode(AppMode mode) async {
+    if (_exiting || appState.isBusy) return;
+    appState.setAppMode(mode);
+    await _showWindow();
+    await appState.reconnect();
   }
 
   @override
   void onTrayIconMouseDown() {
     unawaited(_showWindow());
+  }
+
+  @override
+  void onTrayIconRightMouseDown() {
+    unawaited(trayManager.popUpContextMenu());
   }
 }
