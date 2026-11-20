@@ -168,7 +168,9 @@ func main() {
 	if err := restoreSystemProxy(); err != nil {
 		fmt.Fprintln(os.Stderr, "restore previous Windows proxy settings:", err)
 	}
-	xray.InitEnv(filepath.Join(filepath.Dir(executable), "assets"))
+	root := filepath.Dir(executable)
+	xray.InitEnv(filepath.Join(root, "assets"))
+	xray.InitCertDir(root)
 	controller := xray.NewController()
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Buffer(make([]byte, 4096), 16*1024*1024)
