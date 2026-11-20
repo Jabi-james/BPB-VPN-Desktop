@@ -275,14 +275,22 @@ class AppState extends ChangeNotifier {
   /// Domain Fronting's CA files (bpb-cert.crt / .key) are on this device.
   Future<bool> hasMitmCa() => VpnChannel.mitmCaExists();
 
-  /// Creates Domain Fronting's CA on first use, then opens Android's CA install. Returns where
-  /// bpb-cert.crt was saved (Android 11+), or null.
-  Future<String?> installMitmCa() async {
+  Future<bool> isMitmCaInstalled() => VpnChannel.mitmCaInstalled();
+
+  /// Creates this device's personal CA without exporting its private key.
+  Future<void> createMitmCa() async {
     if (!await VpnChannel.mitmCaExists()) {
       await VpnChannel.saveMitmCa(await Isolate.run(MitmCa.generate));
     }
+  }
+
+  /// Android creates on first use and opens its certificate installer.
+  Future<String?> installMitmCa() async {
+    await createMitmCa();
     return VpnChannel.installMitmCa();
   }
+
+  Future<void> openMitmCaCertificate() => VpnChannel.openMitmCaCertificate();
 
   void setAppMode(AppMode value) => write('device.appMode', value.name);
 
