@@ -35,7 +35,7 @@ var (
 	bootstrapPattern = regexp.MustCompile(`PROGRESS=(\d+)`)
 )
 
-func startTorWindows(root string, req request) error {
+func startTorWindows(root string, req request, cancel <-chan struct{}) error {
 	stopTorWindows()
 	torDir := filepath.Join(root, "tor")
 	for _, name := range []string{"tor.exe", "lyrebird.exe", "geoip", "geoip6", "pt_config.json"} {
@@ -79,7 +79,7 @@ func startTorWindows(root string, req request) error {
 	}
 	torrc := filepath.Join(dataDir, "torrc")
 	if err := os.WriteFile(torrc, []byte(strings.Join(lines, "\r\n")+"\r\n"), 0600); err != nil { return err }
-	logFile, err := os.OpenFile(filepath.Join(root, "tor.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+	logFile, err := os.OpenFile(filepath.Join(root, "tor.log"), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
 	if err != nil { return err }
 	cmd := exec.Command(filepath.Join(torDir, "tor.exe"), "-f", torrc)
 	cmd.Dir = torDir
@@ -90,7 +90,7 @@ func startTorWindows(root string, req request) error {
 	runtime := &torRuntime{cmd: cmd, done: make(chan struct{}), log: logFile}
 	torMu.Lock(); torProc = runtime; torMu.Unlock()
 	go func() { runtime.waitErr = cmd.Wait(); close(runtime.done) }()
-	conn, err := waitTorControl(cookie, runtime.done, 15*time.Minute)
+	conn, err := waitTorControl(cookie, runtime.done, cancel, 15*time.Minute)
 	if err != nil { stopTorWindows(); if tail := torLogTail(root); tail != "" { return fmt.Errorf("%w; Tor log: %s", err, tail) }; return err }
 	defer conn.Close()
 	if err := torAuthenticate(conn, cookie); err != nil { stopTorWindows(); return err }
@@ -103,12 +103,15 @@ func startTorWindows(root string, req request) error {
 	if progress, err := torReadBootstrap(reader); err == nil {
 		lastProgress = progress
 		writeState(fmt.Sprintf("Tor %d%% · Bootstrapping", progress))
-		if progress >= 100 { return nil }
+		if progress >= 100 { writeState("Tor · Connected"); return nil }
 	}
 	_ = conn.SetReadDeadline(time.Now().Add(1500*time.Millisecond))
 	deadline := time.Now().Add(15*time.Minute)
 	for time.Now().Before(deadline) {
 		select {
+		case <-cancel:
+			stopTorWindows()
+			return errors.New("connection attempt canceled")
 		case <-runtime.done:
 			clearTorRuntime(runtime); runtime.log.Close()
 			err:=runtime.waitErr
@@ -118,7 +121,14 @@ func startTorWindows(root string, req request) error {
 		}
 		line, readErr := reader.ReadString('\n')
 		if readErr != nil {
-			if ne, ok := readErr.(net.Error); ok && ne.Timeout() { continue }
+			if ne, ok := readErr.(net.Error); ok && ne.Timeout() {
+				if progress, ok := torLogProgress(root); ok && progress != lastProgress {
+					lastProgress = progress
+					if progress >= 100 { writeState("Tor · Connected"); return nil }
+					writeState(fmt.Sprintf("Tor %d%% · Bootstrapping", progress))
+				}
+				continue
+			}
 			stopTorWindows()
 			return fmt.Errorf("Tor control connection closed: %w",readErr)
 		}
@@ -127,7 +137,7 @@ func startTorWindows(root string, req request) error {
 				lastProgress = progress
 				writeState(fmt.Sprintf("Tor %d%% · Bootstrapping", progress))
 			}
-			if progress >= 100 { return nil }
+			if progress >= 100 { writeState("Tor · Connected"); return nil }
 		}
 	}
 	stopTorWindows()
@@ -157,14 +167,18 @@ func torBridgesWindows(torDir string, req request) ([]string,error) {
 	return list,nil
 }
 
-func waitTorControl(cookie string, exited <-chan struct{}, timeout time.Duration)(net.Conn,error){
+func waitTorControl(cookie string, exited <-chan struct{}, cancel <-chan struct{}, timeout time.Duration)(net.Conn,error){
 	deadline:=time.Now().Add(timeout)
 	for time.Now().Before(deadline){
-		select { case <-exited: return nil,errors.New("Tor exited before control port opened"); default: }
+		select {
+		case <-cancel: return nil, errors.New("connection attempt canceled")
+		case <-exited: return nil,errors.New("Tor exited before control port opened")
+		default:
+		}
 		if info,err:=os.Stat(cookie);err==nil&&info.Size()==32 {
 			if conn,err:=net.DialTimeout("tcp",torControlPort,700*time.Millisecond);err==nil{return conn,nil}
 		}
-		time.Sleep(200*time.Millisecond)
+		select { case <-cancel: return nil, errors.New("connection attempt canceled"); case <-time.After(200*time.Millisecond): }
 	}
 	return nil,errors.New("Tor control port did not open")
 }
@@ -202,6 +216,15 @@ func parseTorProgress(line string)(int,bool){
 
 func clearTorRuntime(p *torRuntime){
 	torMu.Lock();if torProc==p{torProc=nil};torMu.Unlock()
+}
+
+func torLogProgress(root string) (int, bool) {
+	data, err := os.ReadFile(filepath.Join(root, "tor.log"))
+	if err != nil { return 0, false }
+	matches := torLogPattern.FindAllStringSubmatch(string(data), -1)
+	if len(matches) == 0 { return 0, false }
+	progress, err := strconv.Atoi(matches[len(matches)-1][1])
+	return progress, err == nil
 }
 
 func torLogTail(root string) string {
