@@ -211,15 +211,29 @@ class VpnChannel {
     }
   }
 
+  static Future<void> _cancelWindowsStart(Process process) async {
+    // The Go host accepts this out-of-band command while its start command is
+    // waiting for Tor/Psiphon. It has no reply; the original start request does.
+    try {
+      process.stdin.writeln(jsonEncode({'command': 'cancel'}));
+      await process.stdin.flush();
+    } catch (_) {
+      // The child may already have exited.
+    }
+  }
+
   static Future<void> _stopWindows() async {
     if (_windowsProcess == null) {
       await WindowsBrowserDialer.stop();
       _emitWindowsState(VpnStatus.disconnected);
       return;
     }
+    final wasConnecting = _windowsStatus == VpnStatus.connecting;
     _emitWindowsState(VpnStatus.disconnecting);
+    if (wasConnecting) await _cancelWindowsStart(_windowsProcess!);
     try {
-      final result = await _sendWindowsCommand({'command': 'stop'});
+      final result = await _sendWindowsCommand({'command': 'stop'})
+          .timeout(const Duration(seconds: 12));
       if (result['ok'] != true) {
         throw StateError(result['error'] as String? ?? 'BPB core failed to stop.');
       }
@@ -521,9 +535,12 @@ if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
       await WindowsBrowserDialer.stop();
       return;
     }
+    if (_windowsStatus == VpnStatus.connecting) {
+      await _cancelWindowsStart(process);
+    }
     try {
       final result = await _sendWindowsCommand({'command': 'shutdown'})
-          .timeout(const Duration(seconds: 5));
+          .timeout(const Duration(seconds: 10));
       if (result['ok'] != true) {
         _appendWindowsLog('Core shutdown reported: ${result['error'] ?? 'unknown error'}');
       }
