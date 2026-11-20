@@ -44,6 +44,7 @@ class VpnChannel {
   static Completer<Map<String, dynamic>>? _windowsPending;
   static final _windowsStates = StreamController<VpnStateEvent>.broadcast();
   static DateTime? _windowsConnectedAt;
+  static VpnStatus _windowsStatus = VpnStatus.disconnected;
   static final List<String> _windowsLogLines = [];
   static const int _windowsMaxLogLines = 2000;
 
@@ -55,12 +56,17 @@ class VpnChannel {
     }
   }
 
-  static void _emitWindowsState(VpnStatus status, [String? error]) {
+  static void _emitWindowsState(
+    VpnStatus status, [
+    String? error,
+    String? detail,
+  ]) {
+    _windowsStatus = status;
     _windowsStates.add(VpnStateEvent(
       status,
       error,
       status == VpnStatus.connected ? (_windowsConnectedAt ??= DateTime.now()) : null,
-      null,
+      detail,
     ));
     if (status == VpnStatus.connecting || status == VpnStatus.disconnected) {
       _windowsConnectedAt = null;
@@ -83,6 +89,14 @@ class VpnChannel {
       }
       try {
         final value = jsonDecode(line.substring(4));
+        if (value is Map && value['event'] == 'state') {
+          _emitWindowsState(
+            _windowsStatus,
+            null,
+            value['detail'] as String?,
+          );
+          return;
+        }
         final pending = _windowsPending;
         if (value is Map && pending != null && !pending.isCompleted) {
           pending.complete(Map<String, dynamic>.from(value));
