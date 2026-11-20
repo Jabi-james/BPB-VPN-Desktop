@@ -138,6 +138,18 @@ class SettingsPage extends StatelessWidget {
           SettingsCard(
             children: [
               const SwitchPref(
+                'general.webRtcLeakProtection',
+                'WebRTC Leak Protection',
+                icon: Symbols.security_rounded,
+                subtitle:
+                    'Chrome and Edge · Restrict direct UDP; restart the browser',
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SettingsCard(
+            children: [
+              const SwitchPref(
                 'general.enableIpv6',
                 'IPv6 connection',
                 icon: Symbols.counter_6_rounded,
