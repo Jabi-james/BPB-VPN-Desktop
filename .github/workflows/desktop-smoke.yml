@@ -140,7 +140,7 @@ jobs:
           fi
 
       - name: Compile desktop shell
-        run: flutter build ${{ matrix.platform }} --release --no-pub
+        run: flutter build ${{ matrix.platform }} --release --no-pub --dart-define=BPB_APP_VERSION=1.2.1 --dart-define=BPB_BUILD_NUMBER=${{ github.run_number }}
 
       - name: Install Go
         uses: actions/setup-go@v5
