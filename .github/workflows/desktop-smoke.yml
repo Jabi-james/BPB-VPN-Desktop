@@ -210,7 +210,7 @@ jobs:
           Copy-Item $pt (Join-Path $torDir "lyrebird.exe")
           Copy-Item $geoip (Join-Path $torDir "geoip")
           Copy-Item $geoip6 (Join-Path $torDir "geoip6")
-          Copy-Item "android/app/src/main/assets/tor_pt_config.json" (Join-Path $torDir "tor_pt_config.json")
+          Copy-Item "assets/tor/bridges.json" (Join-Path $torDir "bridges.json")
           Copy-Item "android/app/src/main/assets/psiphon_config.json" (Join-Path $release "psiphon_config.json")
           if (!(Test-Path (Join-Path $release "psiphon_config.json"))) { throw "Psiphon configuration asset missing" }
 
