@@ -523,7 +523,7 @@ if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
     }
     try {
       final result = await _sendWindowsCommand({'command': 'shutdown'})
-          .timeout(const Duration(seconds: 8));
+          .timeout(const Duration(seconds: 5));
       if (result['ok'] != true) {
         _appendWindowsLog('Core shutdown reported: ${result['error'] ?? 'unknown error'}');
       }
@@ -531,11 +531,12 @@ if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
       _appendWindowsLog('Graceful core shutdown failed: $error');
     }
     try {
-      await process.exitCode.timeout(const Duration(seconds: 5));
+      await process.exitCode.timeout(const Duration(seconds: 2));
     } catch (_) {
+      await Process.run('taskkill.exe', ['/T', '/F', '/PID', process.pid.toString()]);
       process.kill();
       try {
-        await process.exitCode.timeout(const Duration(seconds: 3));
+        await process.exitCode.timeout(const Duration(seconds: 2));
       } catch (_) {}
     }
     if (identical(_windowsProcess, process)) _windowsProcess = null;
