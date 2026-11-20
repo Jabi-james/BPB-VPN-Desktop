@@ -216,6 +216,41 @@ jobs:
           Copy-Item "android/app/src/main/assets/psiphon_config.json" (Join-Path $release "psiphon_config.json")
           if (!(Test-Path (Join-Path $release "psiphon_config.json"))) { throw "Psiphon configuration asset missing" }
 
+      - name: Fetch and verify the official Aether Windows core
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $version = "v2.4.0"
+          $name = "aether-windows-x86_64.zip"
+          $archive = Join-Path $env:RUNNER_TEMP $name
+          $url = "https://github.com/CluvexStudio/Aether/releases/download/$version/$name"
+          Invoke-WebRequest -Uri $url -OutFile $archive
+          $expected = "21b1444628d37121e873878e2eddd7932215418af1a2a12470caee5809026f1a"
+          $actual = (Get-FileHash $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne $expected) { throw "Aether archive SHA-256 mismatch: $actual" }
+          $extract = Join-Path $env:RUNNER_TEMP "aether"
+          Expand-Archive -Path $archive -DestinationPath $extract -Force
+          $binary = Join-Path $extract "aether.exe"
+          $pt = Join-Path $extract "pt"
+          $licenses = Join-Path $extract "LICENSES"
+          foreach ($path in @($binary, $pt, $licenses)) {
+            if (!(Test-Path $path)) { throw "Expected Aether bundle item missing: $path" }
+          }
+          $release = "build/windows/x64/runner/Release"
+          $dest = Join-Path $release "aether"
+          New-Item -ItemType Directory -Force $dest | Out-Null
+          Copy-Item $binary (Join-Path $dest "aether.exe")
+          Copy-Item -Recurse $pt (Join-Path $dest "pt")
+          Copy-Item -Recurse $licenses (Join-Path $dest "LICENSES")
+          @"
+          Aether v2.4.0
+          Source: https://github.com/CluvexStudio/Aether
+          License: AGPL-3.0-only
+          Third-party license texts and notices are in the LICENSES directory.
+          "@ | Set-Content -Path (Join-Path $dest "NOTICE.txt") -Encoding utf8
+          if (!(Test-Path (Join-Path $dest "aether.exe"))) { throw "Aether executable was not packaged" }
+          if (!(Test-Path (Join-Path $dest "LICENSES"))) { throw "Aether license bundle was not packaged" }
+
       - name: Fetch and verify the official Wintun runtime
         if: matrix.platform == 'windows'
         shell: pwsh
