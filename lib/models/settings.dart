@@ -418,6 +418,7 @@ class GeneralSettings {
   /// An IP, or DoH; a DoH domain is resolved with the local DNS.
   final String antiSanctionDns;
   final bool enableFakeDns;
+  final bool webRtcLeakProtection;
   final bool enableIpv6;
   final bool preferIpv6;
 
@@ -425,6 +426,7 @@ class GeneralSettings {
     this.localDns = '8.8.8.8',
     this.antiSanctionDns = '178.22.122.100',
     this.enableFakeDns = false,
+    this.webRtcLeakProtection = false,
     this.enableIpv6 = false,
     this.preferIpv6 = false,
   });
@@ -441,6 +443,10 @@ class GeneralSettings {
         d.antiSanctionDns,
       ),
       enableFakeDns: _bool(j['enableFakeDns'], d.enableFakeDns),
+      webRtcLeakProtection: _bool(
+        j['webRtcLeakProtection'],
+        d.webRtcLeakProtection,
+      ),
       enableIpv6: _bool(j['enableIpv6'], d.enableIpv6),
       preferIpv6: _bool(j['preferIpv6'], d.preferIpv6),
     );
@@ -450,6 +456,7 @@ class GeneralSettings {
     'localDns': localDns,
     'antiSanctionDns': antiSanctionDns,
     'enableFakeDns': enableFakeDns,
+    'webRtcLeakProtection': webRtcLeakProtection,
     'enableIpv6': enableIpv6,
     'preferIpv6': preferIpv6,
   };
