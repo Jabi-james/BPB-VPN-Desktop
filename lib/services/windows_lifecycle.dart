@@ -112,7 +112,7 @@ class WindowsLifecycle with WindowListener, TrayListener {
       var alwaysUse = false;
       final decision = await showDialog<String>(
         context: context,
-        barrierDismissible: false,
+        barrierDismissible: true,
         builder: (dialogContext) => StatefulBuilder(
           builder: (dialogContext, setDialogState) => AlertDialog(
             title: const Text('Close BPB VPN?'),
@@ -144,7 +144,11 @@ class WindowsLifecycle with WindowListener, TrayListener {
           ),
         ),
       );
-      if (decision == null) return;
+      // Dismissing the close-choice dialog by clicking outside means minimize to tray.
+      if (decision == null) {
+        await _minimize();
+        return;
+      }
       if (alwaysUse) await prefs.setString(_choiceKey, decision);
       if (decision == _minimizeChoice) {
         await _minimize();
