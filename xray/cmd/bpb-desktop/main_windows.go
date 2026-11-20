@@ -133,7 +133,11 @@ func main() {
 					res = response{Error: err.Error()}
 				} else if req.Exit == "tor" {
 					if err := startTorWindows(filepath.Dir(executable), req); err != nil {
+						stopTorWindows()
+						stopPsiphonWindows()
 						_ = controller.Stop()
+						xray.SetBrowserDialer("")
+						_ = restoreSystemProxy()
 						res = response{Error: "start Tor: " + err.Error()}
 					} else if mode == "systemProxy" {
 						if err := applySystemProxy("127.0.0.1:10880"); err != nil {
@@ -147,7 +151,11 @@ func main() {
 					res = response{Error: "unsupported exit process"}
 				} else if req.Exit == "psiphon" {
 					if err := startPsiphonWindows(filepath.Dir(executable), req); err != nil {
+						stopPsiphonWindows()
+						stopTorWindows()
 						_ = controller.Stop()
+						xray.SetBrowserDialer("")
+						_ = restoreSystemProxy()
 						res = response{Error: "start Psiphon: " + err.Error()}
 					} else if mode == "systemProxy" {
 						if err := applySystemProxy("127.0.0.1:10880"); err != nil {
