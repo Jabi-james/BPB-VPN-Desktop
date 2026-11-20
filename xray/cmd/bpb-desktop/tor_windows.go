@@ -23,7 +23,8 @@ const torControlPort = "127.0.0.1:10831"
 
 type torRuntime struct {
 	cmd *exec.Cmd
-	wait chan error
+	done chan struct{}
+	waitErr error
 	log *os.File
 	mu sync.Mutex
 }
@@ -87,7 +88,7 @@ func startTorWindows(root string, req request) error {
 	stderr, err := cmd.StderrPipe()
 	if err != nil { logFile.Close(); return err }
 	if err := cmd.Start(); err != nil { logFile.Close(); return fmt.Errorf("launch Tor: %w", err) }
-	runtime := &torRuntime{cmd:cmd, wait:make(chan error,1), log:logFile}
+	runtime := &torRuntime{cmd:cmd, done:make(chan struct{}), log:logFile}
 	torMu.Lock(); torProc=runtime; torMu.Unlock()
 	stdoutDone, stderrDone := make(chan struct{}), make(chan struct{})
 	for _, item := range []struct{pipe interface{Read([]byte)(int,error)}; done chan struct{}; prefix string}{{stdout,stdoutDone,""},{stderr,stderrDone,"[stderr] "}} {
@@ -98,9 +99,9 @@ func startTorWindows(root string, req request) error {
 			for scanner.Scan() { runtime.mu.Lock(); _,_=fmt.Fprintln(runtime.log,prefix+scanner.Text()); runtime.mu.Unlock() }
 		}(item.pipe,item.done,item.prefix)
 	}
-	go func(){ <-stdoutDone; <-stderrDone; runtime.wait<-cmd.Wait() }()
+	go func(){ <-stdoutDone; <-stderrDone; runtime.waitErr=cmd.Wait(); close(runtime.done) }()
 
-	conn, err := waitTorControl(cookie, runtime.wait, 15*time.Minute)
+	conn, err := waitTorControl(cookie, runtime.done, 15*time.Minute)
 	if err != nil { stopTorWindows(); return err }
 	defer conn.Close()
 	if err := torAuthenticate(conn, cookie); err != nil { stopTorWindows(); return err }
@@ -114,8 +115,9 @@ func startTorWindows(root string, req request) error {
 	deadline := time.Now().Add(15*time.Minute)
 	for time.Now().Before(deadline) {
 		select {
-		case err := <-runtime.wait:
+		case <-runtime.done:
 			clearTorRuntime(runtime); runtime.log.Close()
+			err:=runtime.waitErr
 			if err == nil { err=errors.New("Tor exited before bootstrap completed") }
 			return fmt.Errorf("Tor exited before ready: %w",err)
 		default:
@@ -155,10 +157,10 @@ func torBridgesWindows(torDir string, req request) ([]string,error) {
 	return list,nil
 }
 
-func waitTorControl(cookie string, exited <-chan error, timeout time.Duration)(net.Conn,error){
+func waitTorControl(cookie string, exited <-chan struct{}, timeout time.Duration)(net.Conn,error){
 	deadline:=time.Now().Add(timeout)
 	for time.Now().Before(deadline){
-		select { case err:=<-exited: if err==nil {err=errors.New("Tor stopped")}; return nil,fmt.Errorf("Tor exited before control port opened: %w",err); default: }
+		select { case <-exited: return nil,errors.New("Tor exited before control port opened"); default: }
 		if info,err:=os.Stat(cookie);err==nil&&info.Size()==32 {
 			if conn,err:=net.DialTimeout("tcp",torControlPort,700*time.Millisecond);err==nil{return conn,nil}
 		}
@@ -209,6 +211,6 @@ func stopTorWindows(){
 	torMu.Lock();p:=torProc;torProc=nil;torMu.Unlock()
 	if p==nil{return}
 	_ = exec.Command("taskkill.exe","/T","/F","/PID",strconv.Itoa(p.cmd.Process.Pid)).Run()
-	select{case <-p.wait:case <-time.After(3*time.Second):_ = p.cmd.Process.Kill();<-p.wait}
+	select{case <-p.done:case <-time.After(3*time.Second):_ = p.cmd.Process.Kill();<-p.done}
 	p.mu.Lock();_ = p.log.Close();p.mu.Unlock()
 }
