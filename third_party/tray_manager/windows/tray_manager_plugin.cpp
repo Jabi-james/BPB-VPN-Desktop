@@ -78,35 +78,9 @@ class TrayManagerPlugin : public flutter::Plugin {
       const flutter::MethodCall<flutter::EncodableValue>& method_call,
       std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
   void TrayManagerPlugin::PopUpContextMenu(
-    const flutter::MethodCall<flutter::EncodableValue>& method_call,
-    std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
-  const flutter::EncodableMap& args =
-      std::get<flutter::EncodableMap>(*method_call.arguments());
-
-  HWND hWnd = GetMainWindow();
-
-  POINT cursorPos;
-  GetCursorPos(&cursorPos);
-
-  // Windows requires the owner window to be foreground before showing a
-  // notification-area popup menu. Without this, clicks outside the menu may
-  // not dismiss it when the application is hidden or inactive.
-  if (hWnd != nullptr) {
-    SetForegroundWindow(hWnd);
-  }
-
-  TrackPopupMenu(hMenu, TPM_BOTTOMALIGN | TPM_LEFTALIGN,
-                 cursorPos.x, cursorPos.y, 0, hWnd, NULL);
-
-  // Complete the standard notification-area popup-menu dismissal sequence.
-  if (hWnd != nullptr) {
-    PostMessage(hWnd, WM_NULL, 0, 0);
-  }
-
-  result->Success(flutter::EncodableValue(true));
-}
-
-void TrayManagerPlugin::GetBounds(
+      const flutter::MethodCall<flutter::EncodableValue>& method_call,
+      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+  void TrayManagerPlugin::GetBounds(
       const flutter::MethodCall<flutter::EncodableValue>& method_call,
       std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
   // Called when a method is called on this plugin's channel from Dart.
@@ -369,24 +343,23 @@ void TrayManagerPlugin::PopUpContextMenu(
 
   HWND hWnd = GetMainWindow();
 
-  double x, y;
-
-  // RECT rect;
-  // Shell_NotifyIconGetRect(&niif, &rect);
-
-  // x = rect.left + ((rect.right - rect.left) / 2);
-  // y = rect.top + ((rect.bottom - rect.top) / 2);
-
   POINT cursorPos;
   GetCursorPos(&cursorPos);
-  x = cursorPos.x;
-  y = cursorPos.y;
 
-  if (bringAppToFront) {
+  // Windows requires the owner window to be foreground before displaying
+  // a notification-area popup menu. This also enables dismissal on outside click.
+  if (hWnd != nullptr) {
     SetForegroundWindow(hWnd);
   }
-  TrackPopupMenu(hMenu, TPM_BOTTOMALIGN | TPM_LEFTALIGN, static_cast<int>(x),
-                 static_cast<int>(y), 0, hWnd, NULL);
+
+  TrackPopupMenu(hMenu, TPM_BOTTOMALIGN | TPM_LEFTALIGN,
+                 cursorPos.x, cursorPos.y, 0, hWnd, NULL);
+
+  // Complete the standard notification-area popup-menu dismissal sequence.
+  if (hWnd != nullptr) {
+    PostMessage(hWnd, WM_NULL, 0, 0);
+  }
+
   result->Success(flutter::EncodableValue(true));
 }
 
