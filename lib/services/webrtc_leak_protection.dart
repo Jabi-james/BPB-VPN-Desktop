@@ -96,7 +96,7 @@ class WebRtcLeakProtection {
     );
     if (result.exitCode != 0) return null;
 
-    final output = result.stdout.toString() + '\n' + result.stderr.toString();
+    final output = '${result.stdout}\n${result.stderr}';
     final match = RegExp(
       RegExp.escape(policy.valueName) + r'\s+REG_SZ\s+([^\r\n]+)',
       caseSensitive: false,
