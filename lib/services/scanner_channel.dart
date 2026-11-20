@@ -119,10 +119,10 @@ class ScannerChannel {
     final process = _desktopProcess;
     if (process == null) return;
     try {
-      await _sendDesktop('close').timeout(const Duration(seconds: 4));
+      await _sendDesktop('close').timeout(const Duration(seconds: 2));
     } catch (_) {}
     try {
-      await process.exitCode.timeout(const Duration(seconds: 3));
+      await process.exitCode.timeout(const Duration(seconds: 1));
     } catch (_) {
       process.kill();
       try {
