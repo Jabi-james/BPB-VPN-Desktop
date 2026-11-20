@@ -60,7 +60,7 @@ func startTorWindows(root string, req request) error {
 		"GeoIPv6File " + quote(filepath.Join(torDir, "geoip6")),
 		"ControlPort " + torControlPort,
 		"CookieAuthentication 1",
-		"Log notice file " + quote(filepath.Join(root, "tor.log")),
+		"Log notice file " + filepath.Join(root, "tor.log"),
 		"ClientOnly 1",
 		"AvoidDiskWrites 1",
 	}
