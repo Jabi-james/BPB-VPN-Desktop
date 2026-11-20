@@ -652,8 +652,8 @@ if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
       final result = await _sendWindowsCommand({'command': 'versions'});
       return (
         xray: result['xray'] as String? ?? '',
-        psiphon: '',
-        tor: '',
+        psiphon: result['psiphon'] as String? ?? '',
+        tor: result['tor'] as String? ?? '',
       );
     }
     final m = await _methods.invokeMapMethod<String, String>('versions') ?? const {};
