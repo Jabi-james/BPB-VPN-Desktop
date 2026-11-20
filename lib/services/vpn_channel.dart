@@ -657,7 +657,7 @@ if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
     final escapedPath = certPath.replaceAll("'", "''");
     final script = """
 \$cert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new('$escapedPath')
-\$match = Get-ChildItem -Path 'Cert:\\\\CurrentUser\\\\Root' | Where-Object { \$_.Thumbprint -eq \$cert.Thumbprint } | Select-Object -First 1
+\$match = Get-ChildItem -Path 'Cert:\\CurrentUser\\Root' | Where-Object { \$_.Thumbprint -eq \$cert.Thumbprint } | Select-Object -First 1
 if (\$match) { 'true' } else { 'false' }
 """;
     try {
