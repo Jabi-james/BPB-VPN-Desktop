@@ -729,11 +729,18 @@ class AppState extends ChangeNotifier {
         await renewMasqueAccount();
       }
       if (mode == ConnectionMode.serverless &&
-          serverlessMode == ServerlessMode.domainFronting &&
-          !await VpnChannel.mitmCaExists()) {
-        throw StateError(
-          'Install the MITM certificate first: Settings → Serverless.',
-        );
+          serverlessMode == ServerlessMode.domainFronting) {
+        if (!await VpnChannel.mitmCaExists()) {
+          throw StateError(
+            'Create the MITM certificate first: Settings → Serverless.',
+          );
+        }
+        if (defaultTargetPlatform == TargetPlatform.windows &&
+            !await VpnChannel.mitmCaInstalled()) {
+          throw StateError(
+            'Install the MITM certificate in Windows Trusted Root: Settings → Serverless.',
+          );
+        }
       }
       await _start();
     } catch (e) {
