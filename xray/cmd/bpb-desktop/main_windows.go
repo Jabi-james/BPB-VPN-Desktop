@@ -166,6 +166,8 @@ func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Buffer(make([]byte, 4096), 16*1024*1024)
 	defer func() {
+		cancelActiveStart()
+		waitForActiveStart()
 		stopPsiphonWindows()
 		stopTorWindows()
 		_ = controller.Stop()
