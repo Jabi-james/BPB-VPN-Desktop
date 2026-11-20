@@ -75,7 +75,10 @@ func startPsiphonWindows(root string, req request) error {
 	ready := make(chan error, 1)
 	var readyOnce sync.Once
 	signalReady := func(err error) { readyOnce.Do(func(){ ready <- err }) }
+	stdoutDone := make(chan struct{})
+	stderrDone := make(chan struct{})
 	go func() {
+		defer close(stdoutDone)
 		scanner := bufio.NewScanner(stdout)
 		scanner.Buffer(make([]byte, 4096), 4*1024*1024)
 		for scanner.Scan() {
@@ -92,13 +95,18 @@ func startPsiphonWindows(root string, req request) error {
 		if err := scanner.Err(); err != nil { signalReady(fmt.Errorf("read Psiphon output: %w", err)) }
 	}()
 	go func() {
+		defer close(stderrDone)
 		scanner := bufio.NewScanner(stderr)
 		scanner.Buffer(make([]byte, 4096), 4*1024*1024)
 		for scanner.Scan() {
 			runtime.mu.Lock(); _, _ = fmt.Fprintln(runtime.log, "[stderr] "+scanner.Text()); runtime.mu.Unlock()
 		}
 	}()
-	go func() { runtime.wait <- cmd.Wait() }()
+	go func() {
+		<-stdoutDone
+		<-stderrDone
+		runtime.wait <- cmd.Wait()
+	}()
 
 	select {
 	case err := <-ready:
