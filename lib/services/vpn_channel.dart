@@ -144,6 +144,8 @@ class VpnChannel {
     bool exitDirect = false,
     String exitRegion = '',
     Map<String, dynamic>? psiphonConfig,
+    String? torBridge,
+    List<String> torCustomBridges = const [],
   }) async {
     _emitWindowsState(VpnStatus.connecting);
     try {
@@ -156,6 +158,8 @@ class VpnChannel {
         'exitDirect': exitDirect,
         'exitRegion': exitRegion,
         'psiphonConfig': psiphonConfig == null ? null : jsonEncode(psiphonConfig),
+        'torBridge': torBridge,
+        'torCustomBridges': torCustomBridges,
         // Do not report CONNECTED until Xray can complete a request through its outbound.
         'verifyConnection': verifyConnection,
       });
@@ -281,6 +285,8 @@ class VpnChannel {
         exitDirect: exitDirect,
         exitRegion: exitRegion,
         psiphonConfig: psiphonConfig,
+        torBridge: torBridge,
+        torCustomBridges: torCustomBridges,
       );
       return;
     }
