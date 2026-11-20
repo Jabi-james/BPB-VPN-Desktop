@@ -29,7 +29,7 @@ var (
 	psiphonProc *psiphonRuntime
 )
 
-func startPsiphonWindows(root string, req request) error {
+func startPsiphonWindows(root string, req request, cancel <-chan struct{}) error {
 	stopPsiphonWindows()
 	exe := filepath.Join(root, "bpb_psiphon.exe")
 	if _, err := os.Stat(exe); err != nil { return fmt.Errorf("Psiphon executable missing: %w", err) }
@@ -136,6 +136,9 @@ func startPsiphonWindows(root string, req request) error {
 	}()
 
 	select {
+	case <-cancel:
+		stopPsiphonWindows()
+		return errors.New("connection attempt canceled")
 	case err := <-ready:
 		if err != nil { stopPsiphonWindows(); return err }
 		return nil
