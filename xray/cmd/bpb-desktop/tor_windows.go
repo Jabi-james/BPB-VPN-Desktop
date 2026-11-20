@@ -110,7 +110,12 @@ func startTorWindows(root string, req request) error {
 	reader := bufio.NewReader(conn)
 	if err := torReadOK(reader); err != nil { stopTorWindows(); return fmt.Errorf("Tor control events: %w",err) }
 	if _, err := fmt.Fprint(conn, "GETINFO status/bootstrap-phase\r\n"); err != nil { stopTorWindows(); return err }
-	if progress, err := torReadBootstrap(reader); err == nil && progress >= 100 { return nil }
+	lastProgress := -1
+	if progress, err := torReadBootstrap(reader); err == nil {
+		lastProgress = progress
+		writeState(fmt.Sprintf("Tor %d%% · Bootstrapping", progress))
+		if progress >= 100 { return nil }
+	}
 	_ = conn.SetReadDeadline(time.Now().Add(1500*time.Millisecond))
 	deadline := time.Now().Add(15*time.Minute)
 	for time.Now().Before(deadline) {
@@ -128,7 +133,13 @@ func startTorWindows(root string, req request) error {
 			stopTorWindows()
 			return fmt.Errorf("Tor control connection closed: %w",readErr)
 		}
-		if progress, ok := parseTorProgress(line); ok && progress >= 100 { return nil }
+		if progress, ok := parseTorProgress(line); ok {
+			if progress != lastProgress {
+				lastProgress = progress
+				writeState(fmt.Sprintf("Tor %d%% · Bootstrapping", progress))
+			}
+			if progress >= 100 { return nil }
+		}
 	}
 	stopTorWindows()
 	return errors.New("Tor did not finish bootstrapping within 15 minutes")
