@@ -204,6 +204,7 @@ class AppState extends ChangeNotifier {
     for (final m in const [
       ConnectionMode.worker,
       ConnectionMode.masque,
+      ConnectionMode.aether,
       ConnectionMode.warp,
       ConnectionMode.psiphon,
       ConnectionMode.tor,
@@ -213,6 +214,7 @@ class AppState extends ChangeNotifier {
         ConnectionMode.worker => deployments.isNotEmpty,
         ConnectionMode.warp => profile.warp.account != null,
         ConnectionMode.masque => profile.masque.account != null,
+        ConnectionMode.aether => defaultTargetPlatform == TargetPlatform.windows,
         _ => true,
       })
         m,
@@ -828,15 +830,18 @@ class AppState extends ChangeNotifier {
         mode == ConnectionMode.serverless &&
         serverlessMode == ServerlessMode.dns;
     // The exit process: "psiphon" or "tor".
+    final aetherMode = mode == ConnectionMode.aether;
     final exit = dnsMode
         ? null
+        : aetherMode
+        ? 'aether'
         : exitType?.name ??
               const [
                 'psiphon',
                 'tor',
               ].where((name) => hasInbound('$name-in')).firstOrNull;
     // The Psiphon / Tor types are already named after their exit.
-    final exitInRemark = exit != null && exitType == null;
+    final exitInRemark = exit != null && exitType == null && !aetherMode;
     await VpnChannel.start(
       config: build.config,
       // Shown after the app name in the notification header: "BPB · Fragment · Psiphon".
@@ -854,7 +859,10 @@ class AppState extends ChangeNotifier {
       proxyOnly: proxyMode,
       appMode: device.appMode.name,
       exit: exit,
-      exitDirect: exitType != null,
+      exitDirect: exitType != null || aetherMode,
+      aetherConfigDir: aetherMode
+          ? '${Platform.environment['LOCALAPPDATA'] ?? Directory.systemTemp.path}${Platform.pathSeparator}BPB VPN${Platform.pathSeparator}aether-$_portableNamespace'
+          : null,
       exitRegion: dnsMode ? '' : device.exitRegion,
       torBridge: mode == ConnectionMode.tor ? device.torBridge : null,
       torCustomBridges: profile.tor.bridges,
