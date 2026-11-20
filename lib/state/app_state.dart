@@ -25,6 +25,7 @@ import '../services/tor_bridges.dart';
 import '../services/updates.dart';
 import '../services/vpn_channel.dart';
 import '../services/warp.dart';
+import '../services/webrtc_leak_protection.dart';
 import '../services/xray_config.dart';
 
 /// The app's state. Settings live in three stores (see models/settings.dart): the profile,
@@ -365,11 +366,18 @@ class AppState extends ChangeNotifier {
     SharedPreferences.setPrefix('bpb_$_portableNamespace.');
     _prefs = await SharedPreferences.getInstance();
     if (cleanStart) {
+      await WebRtcLeakProtection.apply(false, _prefs);
       await _prefs.clear();
       await _secrets.delete(key: _secretAccountsKey);
     }
     _stored = Profile.fromJson(_decodeMap(_prefs.getString(_kProfile)))
         .updated('vless', null);
+    unawaited(
+      WebRtcLeakProtection.apply(
+        _stored.general.webRtcLeakProtection,
+        _prefs,
+      ),
+    );
     device = DeviceSettings.fromJson(_decodeMap(_prefs.getString(_kDevice)));
     if (_prefs.containsKey('configOverrides')) {
       await _prefs.remove('configOverrides');
@@ -461,8 +469,17 @@ class AppState extends ChangeNotifier {
 
   /// Stores [value]; its VLESS part goes to the selected deployment.
   void _setProfile(Profile value) {
+    final oldWebRtcProtection = profile.general.webRtcLeakProtection;
     _stored = value.updated('vless', null);
     _profile = null;
+    if (oldWebRtcProtection != profile.general.webRtcLeakProtection) {
+      unawaited(
+        WebRtcLeakProtection.apply(
+          profile.general.webRtcLeakProtection,
+          _prefs,
+        ),
+      );
+    }
     _prefs.setString(_kProfile, jsonEncode(_stored.toSparseJson()));
     _markChangedWhileConnected();
     if (jsonEncode(value.vless.toJson()) != jsonEncode(vless.toJson())) {
