@@ -155,17 +155,17 @@ class WindowsLifecycle with WindowListener, TrayListener {
 
   @override
   void onTrayMenuItemClick(MenuItem menuItem) {
-    switch (menuItem.key) {
-      case 'show_window':
-        unawaited(_showWindow());
-      case 'mode_proxy':
-        unawaited(_selectMode(AppMode.proxy));
-      case 'mode_system_proxy':
-        unawaited(_selectMode(AppMode.systemProxy));
-      case 'mode_tun':
-        unawaited(_selectMode(AppMode.vpn));
-      case 'exit_app':
-        unawaited(_exit());
+    final key = menuItem.key;
+    if (key == 'show_window') {
+      unawaited(_showWindow());
+    } else if (key == 'mode_proxy') {
+      unawaited(_selectMode(AppMode.proxy));
+    } else if (key == 'mode_system_proxy') {
+      unawaited(_selectMode(AppMode.systemProxy));
+    } else if (key == 'mode_tun') {
+      unawaited(_selectMode(AppMode.vpn));
+    } else if (key == 'exit_app') {
+      unawaited(_exit());
     }
   }
 
