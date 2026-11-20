@@ -25,6 +25,8 @@ type request struct {
 	ExitDirect bool `json:"exitDirect,omitempty"`
 	ExitRegion string `json:"exitRegion,omitempty"`
 	PsiphonConfig string `json:"psiphonConfig,omitempty"`
+	TorBridge string `json:"torBridge,omitempty"`
+	TorCustomBridges []string `json:"torCustomBridges,omitempty"`
 }
 
 type response struct {
@@ -73,6 +75,7 @@ func main() {
 	scanner.Buffer(make([]byte, 4096), 16*1024*1024)
 	defer func() {
 		stopPsiphonWindows()
+		stopTorWindows()
 		_ = controller.Stop()
 		xray.SetBrowserDialer("")
 		_ = restoreSystemProxy()
@@ -97,6 +100,7 @@ func main() {
 				res = response{Error: "Xray config is required"}
 			} else {
 				stopPsiphonWindows()
+				stopTorWindows()
 				stopErr := controller.Stop()
 				proxyErr := restoreSystemProxy()
 				if stopErr != nil {
@@ -105,9 +109,20 @@ func main() {
 					res = response{Error: "restore previous Windows proxy settings: " + proxyErr.Error()}
 				} else if err := startController(controller, req); err != nil {
 					res = response{Error: err.Error()}
+				} else if req.Exit == "tor" {
+					if err := startTorWindows(filepath.Dir(executable), req); err != nil {
+						_ = controller.Stop()
+						res = response{Error: "start Tor: " + err.Error()}
+					} else if mode == "systemProxy" {
+						if err := applySystemProxy("127.0.0.1:10880"); err != nil {
+							stopTorWindows()
+							_ = controller.Stop()
+							res = response{Error: "could not enable Windows system proxy: " + err.Error()}
+						}
+					}
 				} else if req.Exit != "" && req.Exit != "psiphon" {
 					_ = controller.Stop()
-					res = response{Error: "Tor exit is not yet available in this Windows build"}
+					res = response{Error: "unsupported exit process"}
 				} else if req.Exit == "psiphon" {
 					if err := startPsiphonWindows(filepath.Dir(executable), req); err != nil {
 						_ = controller.Stop()
@@ -130,6 +145,7 @@ func main() {
 			}
 		case "stop":
 			stopPsiphonWindows()
+			stopTorWindows()
 			stopErr := controller.Stop()
 			xray.SetBrowserDialer("")
 			proxyErr := restoreSystemProxy()
@@ -159,6 +175,7 @@ func main() {
 			res.Xray = xray.Version()
 		case "shutdown":
 			stopPsiphonWindows()
+			stopTorWindows()
 			_ = controller.Stop()
 			_ = restoreSystemProxy()
 			writeResponse(res)
