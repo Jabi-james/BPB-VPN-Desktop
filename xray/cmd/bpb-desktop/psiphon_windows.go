@@ -77,6 +77,9 @@ func startPsiphonWindows(root string, req request) error {
 	signalReady := func(err error) { readyOnce.Do(func(){ ready <- err }) }
 	stdoutDone := make(chan struct{})
 	stderrDone := make(chan struct{})
+	failedAttempts := 0
+	connected := false
+	lost := false
 	go func() {
 		defer close(stdoutDone)
 		scanner := bufio.NewScanner(stdout)
@@ -84,12 +87,36 @@ func startPsiphonWindows(root string, req request) error {
 		for scanner.Scan() {
 			line := scanner.Text()
 			runtime.mu.Lock(); _, _ = fmt.Fprintln(runtime.log, line); runtime.mu.Unlock()
-			var event struct { Event string `json:"event"`; Message string `json:"message"` }
-			if json.Unmarshal([]byte(line), &event) == nil {
-				switch event.Event {
-				case "ready": signalReady(nil)
-				case "error": signalReady(errors.New(event.Message))
+			var notice struct {
+				Event string `json:"event"`
+				Message string `json:"message"`
+				NoticeType string `json:"noticeType"`
+				Data map[string]any `json:"data"`
+			}
+			if json.Unmarshal([]byte(line), &notice) == nil {
+				switch notice.Event {
+				case "ready":
+					connected = true
+					signalReady(nil)
+					writeState("Psiphon · Connected")
+				case "error":
+					signalReady(errors.New(notice.Message))
 				}
+				if notice.NoticeType == "Tunnels" {
+					count, _ := notice.Data["count"].(float64)
+					if count > 0 {
+						if lost { writeState("Psiphon · Reconnected") }
+						connected = true
+						lost = false
+					} else if connected && !lost {
+						lost = true
+						writeState("Psiphon · Reconnecting…")
+					}
+				}
+			}
+			if !connected && strings.Contains(line, `"message":"failed to connect to `) {
+				failedAttempts++
+				writeState(fmt.Sprintf("Psiphon · %d server attempts failed", failedAttempts))
 			}
 		}
 		if err := scanner.Err(); err != nil { signalReady(fmt.Errorf("read Psiphon output: %w", err)) }
