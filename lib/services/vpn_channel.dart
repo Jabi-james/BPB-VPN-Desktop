@@ -636,10 +636,69 @@ if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
     }
   }
 
-  /// Domain Fronting's CA files (bpb-cert.crt / .key) are in the app's storage.
-  static Future<bool> mitmCaExists() async => await _methods.invokeMethod<bool>('mitmCaExists') ?? false;
+  /// Domain Fronting's CA files (bpb-cert.crt / .key) are stored beside the Windows app,
+  /// or in Android's private app storage.
+  static String get _windowsMitmCaPath =>
+      '${File(Platform.resolvedExecutable).parent.path}${Platform.pathSeparator}bpb-cert';
 
-  static Future<void> saveMitmCa(MitmCa ca) => _methods.invokeMethod('saveMitmCa', {'cert': ca.cert, 'key': ca.key});
+  static Future<bool> mitmCaExists() async {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
+      return await File('$_windowsMitmCaPath.crt').exists() &&
+          await File('$_windowsMitmCaPath.key').exists();
+    }
+    return await _methods.invokeMethod<bool>('mitmCaExists') ?? false;
+  }
+
+  /// Whether this exact generated CA is trusted by the current Windows user.
+  static Future<bool> mitmCaInstalled() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.windows) return false;
+    final certPath = '$_windowsMitmCaPath.crt';
+    if (!await File(certPath).exists()) return false;
+    final escapedPath = certPath.replaceAll("'", "''");
+    final script = r"""
+$cert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new('""" + escapedPath + r"""')
+$match = Get-ChildItem Cert:\\CurrentUser\\Root | Where-Object { $_.Thumbprint -eq $cert.Thumbprint } | Select-Object -First 1
+if ($match) { 'true' } else { 'false' }
+""";
+    try {
+      final result = await Process.run('powershell.exe', [
+        '-NoProfile', '-NonInteractive', '-Command', script,
+      ]);
+      return result.exitCode == 0 &&
+          result.stdout.toString().trim().toLowerCase() == 'true';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<void> saveMitmCa(MitmCa ca) async {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
+      final cert = File('$_windowsMitmCaPath.crt');
+      final key = File('$_windowsMitmCaPath.key');
+      await cert.writeAsString(ca.cert, flush: true);
+      try {
+        await key.writeAsString(ca.key, flush: true);
+      } catch (_) {
+        if (await cert.exists()) await cert.delete();
+        rethrow;
+      }
+      return;
+    }
+    await _methods.invokeMethod('saveMitmCa', {'cert': ca.cert, 'key': ca.key});
+  }
+
+  /// Opens the generated public CA certificate in the Windows certificate viewer.
+  static Future<void> openMitmCaCertificate() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.windows) {
+      throw StateError('Opening the certificate is supported on Windows only.');
+    }
+    final path = '$_windowsMitmCaPath.crt';
+    if (!await File(path).exists()) throw StateError('Create the certificate first.');
+    await Process.start(
+      'rundll32.exe', ['url.dll,FileProtocolHandler', path],
+      mode: ProcessStartMode.detached,
+    );
+  }
 
   /// Opens Android's CA install; on Android 11+ after saving bpb-cert.crt to Downloads,
   /// whose path it returns.
