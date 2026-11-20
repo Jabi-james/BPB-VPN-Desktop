@@ -4,6 +4,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -168,13 +169,15 @@ func stopPsiphonWindows() {
 	_ = p.stdin.Close()
 	select {
 	case <-p.wait:
-	case <-time.After(2 * time.Second):
-		_ = exec.Command("taskkill.exe", "/T", "/F", "/PID", fmt.Sprint(p.cmd.Process.Pid)).Run()
+	case <-time.After(900 * time.Millisecond):
+		ctx, cancel := context.WithTimeout(context.Background(), 1200*time.Millisecond)
+		_ = exec.CommandContext(ctx, "taskkill.exe", "/T", "/F", "/PID", fmt.Sprint(p.cmd.Process.Pid)).Run()
+		cancel()
 		select {
 		case <-p.wait:
-		case <-time.After(2 * time.Second):
+		case <-time.After(900 * time.Millisecond):
 			_ = p.cmd.Process.Kill()
-			select { case <-p.wait: case <-time.After(time.Second): return }
+			select { case <-p.wait: case <-time.After(900 * time.Millisecond): }
 		}
 	}
 	p.mu.Lock(); _ = p.log.Close(); p.mu.Unlock()
