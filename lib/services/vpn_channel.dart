@@ -42,6 +42,7 @@ class VpnChannel {
   // leaving ordinary Xray log lines separate from the command channel.
   static Process? _windowsProcess;
   static Completer<Map<String, dynamic>>? _windowsPending;
+  static Future<void> _windowsCommandTail = Future<void>.value();
   static final _windowsStates = StreamController<VpnStateEvent>.broadcast();
   static DateTime? _windowsConnectedAt;
   static VpnStatus _windowsStatus = VpnStatus.disconnected;
@@ -123,19 +124,35 @@ class VpnChannel {
     Map<String, dynamic> request, {
     Duration timeout = const Duration(seconds: 30),
   }) async {
-    await _ensureWindowsProcess();
-    final process = _windowsProcess!;
-    if (_windowsPending != null) {
-      throw StateError('Another BPB core command is still running.');
-    }
-    final completer = Completer<Map<String, dynamic>>();
-    _windowsPending = completer;
+    // Serialize all requests on the single-line Go protocol. Polling must queue
+    // behind long startup commands rather than fail as a competing command.
+    final previous = _windowsCommandTail;
+    final release = Completer<void>();
+    _windowsCommandTail = release.future;
+    await previous;
     try {
-      process.stdin.writeln(jsonEncode(request));
-      await process.stdin.flush();
-      return await completer.future.timeout(timeout);
+      await _ensureWindowsProcess();
+      final process = _windowsProcess!;
+      final completer = Completer<Map<String, dynamic>>();
+      _windowsPending = completer;
+      try {
+        process.stdin.writeln(jsonEncode(request));
+        await process.stdin.flush();
+        try {
+          return await completer.future.timeout(timeout);
+        } on TimeoutException {
+          // Do not let a late response be consumed as the next command's response.
+          await Process.run('taskkill.exe', ['/T', '/F', '/PID', process.pid.toString()]);
+          process.kill();
+          try { await process.exitCode.timeout(const Duration(seconds: 3)); } catch (_) {}
+          if (identical(_windowsProcess, process)) _windowsProcess = null;
+          throw StateError('BPB core command timed out; the core process was terminated.');
+        }
+      } finally {
+        if (identical(_windowsPending, completer)) _windowsPending = null;
+      }
     } finally {
-      if (identical(_windowsPending, completer)) _windowsPending = null;
+      release.complete();
     }
   }
 
@@ -186,10 +203,9 @@ class VpnChannel {
       if (browserDialer) await WindowsBrowserDialer.load();
       _emitWindowsState(VpnStatus.connected);
     } catch (error) {
-      if (browserDialer) {
-        try { await _sendWindowsCommand({'command': 'stop'}); } catch (_) {}
-        await WindowsBrowserDialer.stop();
-      }
+      // A failed start must release the previous core session before another mode is tried.
+      try { await _sendWindowsCommand({'command': 'stop'}); } catch (_) {}
+      await WindowsBrowserDialer.stop();
       _emitWindowsState(VpnStatus.disconnected, '$error');
       rethrow;
     }
@@ -668,10 +684,12 @@ if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
       // Keep this in sync with the version field in pubspec.yaml until a desktop
       // release channel supplies package metadata.
-      return (version: const String.fromEnvironment(
-        'BPB_APP_VERSION',
-        defaultValue: '1.2.1+4',
-      ), abis: const <String>[]);
+      const version = String.fromEnvironment('BPB_APP_VERSION', defaultValue: '1.2.1');
+      const build = String.fromEnvironment('BPB_BUILD_NUMBER', defaultValue: '');
+      return (
+        version: build.isEmpty ? version : '$version b$build',
+        abis: const <String>[],
+      );
     }
     final m = await _methods.invokeMapMethod<String, dynamic>('appInfo') ?? const {};
     return (
