@@ -749,7 +749,7 @@ class _SettingsSectionsState extends State<_SettingsSections> {
     var children = <Widget>[];
     void finish() {
       if (title != null) {
-        result.add((title: title!, children: children));
+        result.add((title: title, children: children));
       }
     }
 
