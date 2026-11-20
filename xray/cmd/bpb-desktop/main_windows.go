@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"bpb/xray"
 )
@@ -31,6 +32,8 @@ type request struct {
 
 type response struct {
 	OK      bool   `json:"ok"`
+	Event   string `json:"event,omitempty"`
+	Detail  string `json:"detail,omitempty"`
 	Error   string `json:"error,omitempty"`
 	Running bool   `json:"running,omitempty"`
 	Delay   int64  `json:"delay,omitempty"`
@@ -52,12 +55,20 @@ func startController(controller *xray.Controller, req request) error {
 	return nil
 }
 
+var protocolMu sync.Mutex
+
 func writeResponse(res response) {
+	protocolMu.Lock()
+	defer protocolMu.Unlock()
 	encoded, err := json.Marshal(res)
 	if err != nil {
 		return
 	}
 	fmt.Fprintln(os.Stdout, "BPB:"+string(encoded))
+}
+
+func writeState(detail string) {
+	writeResponse(response{Event: "state", Detail: detail})
 }
 
 func main() {
