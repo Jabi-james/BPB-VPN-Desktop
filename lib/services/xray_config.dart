@@ -31,6 +31,9 @@ enum ConnectionMode {
   /// No worker: everything (TCP) exits through Tor, which connects through built-in bridges.
   tor('Tor'),
 
+  /// Independent Cloudflare WARP core, exposed to Xray through its local SOCKS5 listener.
+  aether('Aether'),
+
   /// Direct packet mode: TLS fragmentation for TCP and UDP noise.
   serverless('Serverless');
 
@@ -44,7 +47,7 @@ enum ConnectionMode {
   bool get isWarpLike => this == warp || this == masque;
 
   /// Modes whose running connection is checked before it is reported as connected.
-  bool get verifiesConnection => this == worker || isWarpLike;
+  bool get verifiesConnection => this == worker || isWarpLike || this == aether;
 
   /// Modes that connect through the deployed worker.
   bool get needsWorker => this == worker;
@@ -174,6 +177,8 @@ class XrayConfigBuilder {
   /// The exit process's DNS server, the remote DNS of the Psiphon / Tor types: Tor's DNSPort,
   /// or Psiphon's own resolver (psiphon/dns.go).
   static const exitDnsPort = 10830;
+  static const aetherListenPort = 1819;
+  static const aetherUpstreamPort = 10833;
 
   final Profile profile;
   final DeviceSettings device;
@@ -305,6 +310,7 @@ class XrayConfigBuilder {
   ) {
     if (mode == ConnectionMode.psiphon) return ExitNode.psiphon;
     if (mode == ConnectionMode.tor) return ExitNode.tor;
+    if (mode == ConnectionMode.aether) return ExitNode.worker;
     if (mode == ConnectionMode.serverless &&
         serverlessModeOf(device) == ServerlessMode.dns) {
       return ExitNode.worker;
@@ -459,7 +465,9 @@ class XrayConfigBuilder {
   }) {
     _exit = exitFor(mode, device, profile.chains);
     _mode = mode;
-    _exitType = mode == ConnectionMode.psiphon || mode == ConnectionMode.tor;
+    _exitType = mode == ConnectionMode.psiphon ||
+        mode == ConnectionMode.tor ||
+        mode == ConnectionMode.aether;
     return _build(mode, variant);
   }
 
@@ -918,7 +926,10 @@ class XrayConfigBuilder {
         {
           'tag': 'proxy',
           'protocol': 'socks',
-          'settings': {'address': '127.0.0.1', 'port': exitPort},
+          'settings': {
+            'address': '127.0.0.1',
+            'port': _mode == ConnectionMode.aether ? aetherListenPort : exitPort,
+          },
         },
       ],
       isBalancer: false,
@@ -965,6 +976,14 @@ class XrayConfigBuilder {
       ),
       'inbounds': [
         ..._localInbounds(sniffing),
+        if (_mode == ConnectionMode.aether)
+          {
+            'tag': 'aether-upstream',
+            'listen': '127.0.0.1',
+            'port': aetherUpstreamPort,
+            'protocol': 'socks',
+            'settings': {'auth': 'noauth', 'udp': true, 'ip': '127.0.0.1'},
+          },
         if (_chainedExit)
           {
             'tag': _exitInbound,
@@ -1333,6 +1352,11 @@ class XrayConfigBuilder {
   }) {
     final exitWorkerlessRules = <Map<String, dynamic>>[];
     final rules = <Map<String, dynamic>>[
+      if (_mode == ConnectionMode.aether)
+        {
+          'inboundTag': ['aether-upstream'],
+          'outboundTag': 'direct',
+        },
       {
         'inboundTag': ['tun', 'mixed-in'],
         'port': 53,
@@ -1367,7 +1391,8 @@ class XrayConfigBuilder {
     // Through the connection itself: the remote DNS over VLESS / WARP (also with a Psiphon / Tor
     // exit, like BPB with a chain proxy, since the connection is up first), and Psiphon / Tor
     // reaching their servers as an exit (Serverless: with fragment).
-    if (!_exitType && !_frontedExit && !isServerlessDns) {
+    if ((!_exitType || _mode == ConnectionMode.aether) &&
+        !_frontedExit && !isServerlessDns) {
       add(
         inboundTag: [if (_hasExit) _exitInbound, 'remote-dns'],
         outbound: outTag,
@@ -1381,7 +1406,13 @@ class XrayConfigBuilder {
       }
     }
     // Domain Fronting with an exit: no DNS module tag (its local DNS is localhost, not routed).
-    if (!_frontedExit) add(inboundTag: ['dns'], outbound: 'direct');
+    if (!_frontedExit) {
+      add(
+        inboundTag: ['dns'],
+        outbound: _mode == ConnectionMode.aether ? outTag : 'direct',
+        balancer: _mode == ConnectionMode.aether && isBalancer,
+      );
+    }
     // BitTorrent direct, matched by Xray's sniffers (TCP and uTP, whatever destOverride is), and
     // before the UDP block so its UDP (uTP, DHT) goes direct too.
     if (profile.routing.bypass.isOn('bittorrent')) {
@@ -1431,13 +1462,13 @@ class XrayConfigBuilder {
     // The worker and Tor only carry TCP (the worker also DNS); refuse other UDP so apps fall
     // back to TCP fast. Psiphon carries UDP (over its udpgw), and the chain proxy is the exit
     // for everything, UDP included.
-    final tcpOnly =
-        _exit == ExitNode.tor ||
+    final tcpOnly = _mode != ConnectionMode.aether &&
+        (_exit == ExitNode.tor ||
         (!isServerlessPacket &&
             !isServerlessDns &&
             !isWarp &&
             _exit != ExitNode.psiphon &&
-            _exit != ExitNode.chain);
+            _exit != ExitNode.chain));
     if (tcpOnly) {
       add(network: 'udp', outbound: 'block');
     } else if (profile.routing.block.isOn('quic')) {
