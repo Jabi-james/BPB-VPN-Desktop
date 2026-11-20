@@ -31,6 +31,8 @@ void main() {
         child: const MaterialApp(home: SettingsPage()),
       ),
     );
+    await tester.tap(find.text('About'));
+    await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
       find.text('Donation'),
       500,
