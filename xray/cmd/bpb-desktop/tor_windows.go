@@ -4,6 +4,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -239,12 +240,14 @@ func torLogTail(root string) string {
 func stopTorWindows() {
 	torMu.Lock(); p := torProc; torProc = nil; torMu.Unlock()
 	if p == nil { return }
-	_ = exec.Command("taskkill.exe", "/T", "/F", "/PID", strconv.Itoa(p.cmd.Process.Pid)).Run()
+	ctx, cancel := context.WithTimeout(context.Background(), 1200*time.Millisecond)
+	_ = exec.CommandContext(ctx, "taskkill.exe", "/T", "/F", "/PID", strconv.Itoa(p.cmd.Process.Pid)).Run()
+	cancel()
 	select {
 	case <-p.done:
-	case <-time.After(3 * time.Second):
+	case <-time.After(1500 * time.Millisecond):
 		_ = p.cmd.Process.Kill()
-		select { case <-p.done: case <-time.After(2 * time.Second): return }
+		select { case <-p.done: case <-time.After(1500 * time.Millisecond): }
 	}
 	_ = p.log.Close()
 }
