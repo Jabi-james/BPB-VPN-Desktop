@@ -6,7 +6,6 @@ package main
 
 import (
 	"bufio"
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
