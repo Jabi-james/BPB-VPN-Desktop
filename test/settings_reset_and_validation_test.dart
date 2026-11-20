@@ -157,7 +157,7 @@ void main() {
       await tester.scrollUntilVisible(
         pref,
         300,
-        scrollable: find.byType(Scrollable).first,
+        scrollable: find.byType(Scrollable).last,
       );
       await tester.ensureVisible(pref);
       await tester.pumpAndSettle();
