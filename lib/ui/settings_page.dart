@@ -1251,23 +1251,20 @@ class _WindowsMitmCaTileState extends State<_WindowsMitmCaTile> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Close'),
+            child: const Text('Cancel'),
           ),
-          TextButton(
+          FilledButton(
             onPressed: () async {
               try {
                 await state.openMitmCaCertificate();
+                if (dialogContext.mounted) Navigator.pop(dialogContext);
               } catch (e) {
                 messenger.showSnackBar(
                   SnackBar(content: Text('Could not open the certificate: $e')),
                 );
               }
             },
-            child: const Text('Open certificate'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Done'),
+            child: const Text('Install'),
           ),
         ],
       ),
