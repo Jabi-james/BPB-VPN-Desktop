@@ -805,17 +805,26 @@ class _SettingsSectionsState extends State<_SettingsSections> {
                           horizontal: 12,
                           vertical: 11,
                         ),
-                        child: Text(
-                          sections[index].title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.labelLarge?.copyWith(
-                            color: active
-                                ? theme.colorScheme.onSecondaryContainer
-                                : theme.colorScheme.onSurfaceVariant,
-                            fontWeight:
-                                active ? FontWeight.w700 : FontWeight.w500,
-                          ),
+                        child: Row(
+                          children: [
+                            Icon(_sectionIcon(sections[index].title), size: 18),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                sections[index].title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.labelLarge?.copyWith(
+                                  color: active
+                                      ? theme.colorScheme.onSecondaryContainer
+                                      : theme.colorScheme.onSurfaceVariant,
+                                  fontWeight: active
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -826,15 +835,47 @@ class _SettingsSectionsState extends State<_SettingsSections> {
           ),
         ),
         Expanded(
-          child: ListView(
-            padding: const EdgeInsets.only(bottom: 32, top: 4),
-            children: sections[selected].children,
+          child: Theme(
+            data: theme.copyWith(
+              textTheme: theme.textTheme.copyWith(
+                titleMedium: theme.textTheme.titleMedium?.copyWith(fontSize: 14),
+                bodyMedium: theme.textTheme.bodyMedium?.copyWith(fontSize: 12.5),
+                bodySmall: theme.textTheme.bodySmall?.copyWith(fontSize: 11.5),
+              ),
+              iconTheme: theme.iconTheme.copyWith(size: 18),
+              listTileTheme: theme.listTileTheme.copyWith(
+                visualDensity: VisualDensity.compact,
+                minTileHeight: 44,
+                minVerticalPadding: 4,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+              ),
+            ),
+            child: ListView(
+              padding: const EdgeInsets.only(bottom: 32, top: 4),
+              children: sections[selected].children,
+            ),
           ),
         ),
       ],
     );
   }
 }
+
+
+/// Consistent rounded icons for the Settings navigation.
+IconData _sectionIcon(String title) => switch (title) {
+  'Global' => Icons.tune_rounded,
+  'VLESS' => Icons.code_rounded,
+  'MASQUE' => Icons.cloud_rounded,
+  'WARP' => Icons.shield_rounded,
+  'Tor' => Icons.visibility_off_rounded,
+  'Serverless' => Icons.cloud_queue_rounded,
+  'Routing' => Icons.alt_route_rounded,
+  'Import / Export' => Icons.import_export_rounded,
+  'Appearance' => Icons.palette_rounded,
+  'About' => Icons.info_outline_rounded,
+  _ => Icons.settings_rounded,
+};
 
 /// App-wide text size, independent of the Windows display scaling.
 class _FontScaleTile extends StatelessWidget {
