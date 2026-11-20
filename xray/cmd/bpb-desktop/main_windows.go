@@ -21,6 +21,10 @@ type request struct {
 	DNS     string `json:"dns,omitempty"`
 	VerifyConnection bool `json:"verifyConnection,omitempty"`
 	BrowserDialer bool `json:"browserDialer,omitempty"`
+	Exit string `json:"exit,omitempty"`
+	ExitDirect bool `json:"exitDirect,omitempty"`
+	ExitRegion string `json:"exitRegion,omitempty"`
+	PsiphonConfig string `json:"psiphonConfig,omitempty"`
 }
 
 type response struct {
@@ -68,6 +72,7 @@ func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Buffer(make([]byte, 4096), 16*1024*1024)
 	defer func() {
+		stopPsiphonWindows()
 		_ = controller.Stop()
 		xray.SetBrowserDialer("")
 		_ = restoreSystemProxy()
@@ -91,6 +96,7 @@ func main() {
 			} else if req.Config == "" {
 				res = response{Error: "Xray config is required"}
 			} else {
+				stopPsiphonWindows()
 				stopErr := controller.Stop()
 				proxyErr := restoreSystemProxy()
 				if stopErr != nil {
@@ -99,6 +105,20 @@ func main() {
 					res = response{Error: "restore previous Windows proxy settings: " + proxyErr.Error()}
 				} else if err := startController(controller, req); err != nil {
 					res = response{Error: err.Error()}
+				} else if req.Exit != "" && req.Exit != "psiphon" {
+					_ = controller.Stop()
+					res = response{Error: "Tor exit is not yet available in this Windows build"}
+				} else if req.Exit == "psiphon" {
+					if err := startPsiphonWindows(filepath.Dir(executable), req); err != nil {
+						_ = controller.Stop()
+						res = response{Error: "start Psiphon: " + err.Error()}
+					} else if mode == "systemProxy" {
+						if err := applySystemProxy("127.0.0.1:10880"); err != nil {
+							stopPsiphonWindows()
+							_ = controller.Stop()
+							res = response{Error: "could not enable Windows system proxy: " + err.Error()}
+						}
+					}
 				} else if mode == "systemProxy" {
 					if err := applySystemProxy("127.0.0.1:10880"); err != nil {
 						_ = controller.Stop()
@@ -109,6 +129,7 @@ func main() {
 				}
 			}
 		case "stop":
+			stopPsiphonWindows()
 			stopErr := controller.Stop()
 			xray.SetBrowserDialer("")
 			proxyErr := restoreSystemProxy()
@@ -137,6 +158,7 @@ func main() {
 		case "versions":
 			res.Xray = xray.Version()
 		case "shutdown":
+			stopPsiphonWindows()
 			_ = controller.Stop()
 			_ = restoreSystemProxy()
 			writeResponse(res)
