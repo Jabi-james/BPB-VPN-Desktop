@@ -346,8 +346,16 @@ class VpnChannel {
   /// The end of Xray's log for the current/last connection.
   static Future<String> readLog({String log = 'xray'}) async {
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
-      if (log != 'xray') return '';
-      return _windowsLogLines.join('\n');
+      if (log == 'xray') return _windowsLogLines.join('\n');
+      if (log != 'tor' && log != 'psiphon') return '';
+      final file = File(
+        '${File(Platform.resolvedExecutable).parent.path}${Platform.pathSeparator}${log == 'tor' ? 'tor.log' : 'psiphon.log'}',
+      );
+      try {
+        return await file.readAsString(encoding: utf8);
+      } on FileSystemException {
+        return '';
+      }
     }
     return await _methods.invokeMethod<String>('readLog', {'log': log}) ?? '';
   }
@@ -355,7 +363,19 @@ class VpnChannel {
   /// Bytes in each log ("xray", "tor", "psiphon") since the last connect.
   static Future<Map<String, int>> logSizes() async {
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
-      return {'xray': utf8.encode(_windowsLogLines.join('\n')).length};
+      final root = File(Platform.resolvedExecutable).parent.path;
+      Future<int> sizeOf(String name) async {
+        try {
+          return await File('$root${Platform.pathSeparator}$name').length();
+        } on FileSystemException {
+          return 0;
+        }
+      }
+      return {
+        'xray': utf8.encode(_windowsLogLines.join('\n')).length,
+        'tor': await sizeOf('tor.log'),
+        'psiphon': await sizeOf('psiphon.log'),
+      };
     }
     return (await _methods.invokeMapMethod<String, int>('logSizes')) ?? const {};
   }
@@ -363,6 +383,14 @@ class VpnChannel {
   static Future<void> clearLog() async {
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
       _windowsLogLines.clear();
+      final root = File(Platform.resolvedExecutable).parent.path;
+      for (final name in ['tor.log', 'psiphon.log']) {
+        try {
+          await File('$root${Platform.pathSeparator}$name').writeAsString('');
+        } on FileSystemException {
+          // A log that has not been created yet is already empty.
+        }
+      }
       return;
     }
     await _methods.invokeMethod('clearLog');
