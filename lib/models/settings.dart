@@ -1146,6 +1146,8 @@ class DeviceSettings {
   // Aether settings are device-local; identities remain in Aether's own config files.
   final String aetherScanMode;
   final String aetherIpVersion;
+  final String aetherMasqueDns;
+  final String aetherWgDns;
   final String aetherMasqueTransport;
   final String aetherMasqueNoize;
   final String aetherMasqueSni;
@@ -1206,7 +1208,9 @@ class DeviceSettings {
     this.connectionCore = 'bpb',
     this.aetherScanMode = 'balanced',
     this.aetherIpVersion = 'v4',
-    this.aetherMasqueTransport = 'h3',
+    this.aetherMasqueDns = '1.1.1.1,1.0.0.1',
+    this.aetherWgDns = '1.1.1.1,1.0.0.1',
+    this.aetherMasqueTransport = 'h2',
     this.aetherMasqueNoize = 'firewall',
     this.aetherMasqueSni = 'www.cloudflare.com',
     this.aetherMasqueFragment = false,
@@ -1271,6 +1275,8 @@ class DeviceSettings {
       ),
       aetherScanMode: _choice(aether['scanMode'], const {'turbo','balanced','thorough','verified','ironclad'}, d.aetherScanMode),
       aetherIpVersion: _choice(aether['ipVersion'], const {'v4','v6','both'}, d.aetherIpVersion),
+      aetherMasqueDns: _str(aether['masqueDns'], d.aetherMasqueDns),
+      aetherWgDns: _str(aether['wgDns'], d.aetherWgDns),
       aetherMasqueTransport: _choice(aether['masqueTransport'], const {'h2','h3'}, d.aetherMasqueTransport),
       aetherMasqueNoize: _choice(aether['masqueNoize'], const {'off','light','firewall','balanced','gfw','aggressive'}, d.aetherMasqueNoize),
       aetherMasqueSni: _str(aether['masqueSni'], d.aetherMasqueSni),
@@ -1344,6 +1350,8 @@ class DeviceSettings {
     'aether': {
       'scanMode': aetherScanMode,
       'ipVersion': aetherIpVersion,
+      'masqueDns': aetherMasqueDns,
+      'wgDns': aetherWgDns,
       'masqueTransport': aetherMasqueTransport,
       'masqueNoize': aetherMasqueNoize,
       'masqueSni': aetherMasqueSni,
