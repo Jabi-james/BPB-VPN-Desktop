@@ -166,6 +166,17 @@ class VpnChannel {
     }
   }
 
+  static Future<void> provisionAetherIdentities(String configDir) async {
+    if (!Platform.isWindows) return;
+    final result = await _sendWindowsCommand({
+      'command': 'provisionAether',
+      'aetherConfigDir': configDir,
+    }, timeout: const Duration(seconds: 15));
+    if (result['ok'] != true) {
+      throw StateError(result['error'] as String? ?? 'Aether first-run provisioning failed.');
+    }
+  }
+
   static Future<List<String>> scanAetherEndpoints({
     required String protocol,
     required String configDir,
