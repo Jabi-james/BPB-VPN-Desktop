@@ -241,8 +241,8 @@ class AppState extends ChangeNotifier {
   /// Types with a Mode row on the home page: Worker's and WARP's variant, Serverless's mode or
   /// Tor's bridge.
   bool get hasModeOption =>
-      mode.hasVariants ||
-      mode == ConnectionMode.masque ||
+      (core == CoreType.bpb &&
+          (mode.hasVariants || mode == ConnectionMode.masque)) ||
       mode == ConnectionMode.serverless ||
       mode == ConnectionMode.tor;
 
