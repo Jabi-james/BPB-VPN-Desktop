@@ -195,6 +195,7 @@ class AppState extends ChangeNotifier {
   Timer? _trafficTimer;
   int _windowsVerificationToken = 0;
   Timer? _lanTimer;
+  Future<void>? _aetherProvisioning;
 
   bool get isConnected => status == VpnStatus.connected;
   bool get isBusy =>
@@ -400,7 +401,8 @@ class AppState extends ChangeNotifier {
     device = DeviceSettings.fromJson(_decodeMap(_prefs.getString(_kDevice)));
     if (Platform.isWindows) {
       // Register both Aether identities in the background on first launch; existing files are kept.
-      unawaited(VpnChannel.provisionAetherIdentities(_aetherConfigDir).catchError((_) {}));
+      _aetherProvisioning = VpnChannel.provisionAetherIdentities(_aetherConfigDir);
+      unawaited(_aetherProvisioning!.catchError((_) {}));
     }
     if (_prefs.containsKey('configOverrides')) {
       await _prefs.remove('configOverrides');
@@ -849,6 +851,8 @@ class AppState extends ChangeNotifier {
   Future<bool> get hasAetherMasqueIdentity async {
     if (defaultTargetPlatform != TargetPlatform.windows) return false;
     try {
+      final provisioning = _aetherProvisioning;
+      if (provisioning != null) await provisioning;
       final file = File('$_aetherConfigDir${Platform.pathSeparator}aether-masque.toml');
       return await file.exists() && await file.length() > 0;
     } catch (_) {
