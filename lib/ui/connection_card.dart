@@ -92,6 +92,18 @@ class ConnectionCard extends StatelessWidget {
               label: 'Connection',
               selector: _TypeSelector(),
             ),
+            if (state.showCoreSelector)
+              _Row(
+                icon: Symbols.memory_rounded,
+                label: 'Core',
+                selector: ChipMenu(
+                  values: CoreType.values,
+                  selected: state.core,
+                  label: (core) => core.label,
+                  onSelected: state.setCore,
+                  enabled: !state.isBusy,
+                ),
+              ),
             // The variant (Worker, WARP, MASQUE), Serverless's mode or Tor's bridges.
             AnimatedSize(
               duration: _rowAnimation,
