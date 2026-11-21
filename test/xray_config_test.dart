@@ -535,6 +535,11 @@ void main() {
       (rule) => (rule['inboundTag'] as List?)?.contains('aether-dns') == true,
     );
     expect(bootstrapDnsRule['outboundTag'], 'aether-direct');
+    final catchAllRule = (c['routing']['rules'] as List).cast<Map>().firstWhere(
+      (rule) => (rule['ip'] as List?)?.contains('0.0.0.0/0') == true,
+    );
+    expect(catchAllRule['outboundTag'], 'proxy');
+    expect(outbounds.any((o) => o['tag'] == 'exit'), isFalse);
   });
 
   test('Aether core without a chain uses its own SOCKS as the proxy', () async {
