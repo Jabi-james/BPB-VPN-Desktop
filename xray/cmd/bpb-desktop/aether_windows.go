@@ -17,7 +17,6 @@ import (
 
 const (
 	aetherSocksAddress = "127.0.0.1:1819"
-	aetherUpstreamURL  = "socks5://127.0.0.1:10833"
 )
 
 type aetherRuntime struct {
@@ -56,25 +55,36 @@ func startAetherWindows(root string, req request, cancel <-chan struct{}) error 
 		return fmt.Errorf("create Aether data directory: %w", err)
 	}
 
+	if err := ensureAetherIdentities(exe, absoluteDir); err != nil {
+		return err
+	}
+
 	logPath := filepath.Join(absoluteDir, "aether.log")
 	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
 		return fmt.Errorf("open Aether log: %w", err)
 	}
 
+	protocol := strings.ToLower(strings.TrimSpace(req.AetherProtocol))
+	if protocol == "" { protocol = "masque" }
+	if protocol != "masque" && protocol != "wg" {
+		_ = logFile.Close()
+		return fmt.Errorf("unsupported Aether protocol %q", protocol)
+	}
+	protocolFlag := "--masque"
+	if protocol == "wg" { protocolFlag = "--wg" }
 	args := []string{
-		"--masque",
+		protocolFlag,
 		"--scan", "balanced",
 		"-4",
 		"--bind", aetherSocksAddress,
-		"--upstream", aetherUpstreamURL,
 		"--stats",
 	}
 	cmd := exec.Command(exe, args...)
 	cmd.Dir = absoluteDir
 	cmd.Stdout = logFile
 	cmd.Stderr = logFile
-	cmd.Env = aetherEnvironment(os.Environ(), absoluteDir)
+	cmd.Env = append(aetherEnvironment(os.Environ(), absoluteDir), "AETHER_PROTOCOL="+protocol)
 	if err := cmd.Start(); err != nil {
 		_ = logFile.Close()
 		return fmt.Errorf("launch Aether: %w", err)
@@ -126,6 +136,30 @@ func startAetherWindows(root string, req request, cancel <-chan struct{}) error 
 			}
 		}
 	}
+}
+
+func ensureAetherIdentities(exe, configDir string) error {
+	identities := []struct{ name, file string }{
+		{name: "masque", file: "aether-masque.toml"},
+		{name: "wg", file: "aether-wg.toml"},
+	}
+	for _, identity := range identities {
+		path := filepath.Join(configDir, identity.file)
+		if info, err := os.Stat(path); err == nil && info.Size() > 0 { continue }
+		env := append(aetherEnvironment(os.Environ(), configDir), "AETHER_REGISTER="+identity.name)
+		cmd := exec.Command(exe)
+		cmd.Dir = configDir
+		cmd.Env = env
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("register Aether %s identity: %w; %s", identity.name, err, strings.TrimSpace(string(output)))
+		}
+		info, err := os.Stat(path)
+		if err != nil || info.Size() == 0 {
+			return fmt.Errorf("Aether %s registration completed without creating %s: %s", identity.name, path, strings.TrimSpace(string(output)))
+		}
+	}
+	return nil
 }
 
 func aetherEnvironment(inherited []string, configDir string) []string {
