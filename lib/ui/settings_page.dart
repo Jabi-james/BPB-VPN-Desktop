@@ -990,10 +990,12 @@ class _AetherScannerPageState extends State<AetherScannerPage> {
                           try {
                             await AppScope.of(context).cancelAetherEndpointScan();
                           } catch (error) {
-                            if (mounted) setState(() {
-                              _stopping = false;
-                              _error = '$error';
-                            });
+                            if (mounted) {
+                              setState(() {
+                                _stopping = false;
+                                _error = '$error';
+                              });
+                            }
                           }
                         },
                   icon: const Icon(Icons.stop_rounded),
