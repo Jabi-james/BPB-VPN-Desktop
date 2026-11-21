@@ -47,6 +47,7 @@ type response struct {
 	DNS     string `json:"dns,omitempty"`
 	Psiphon string `json:"psiphon,omitempty"`
 	Tor     string `json:"tor,omitempty"`
+	AetherEndpoints []string `json:"aetherEndpoints,omitempty"`
 }
 
 func startController(controller *xray.Controller, req request) error {
@@ -260,6 +261,17 @@ func main() {
 				res = response{Error: "DNS test request is required"}
 			} else {
 				res.DNS = xray.CheckDNSJSON(req.DNS)
+			}
+		case "scanAether":
+			if controller.IsRunning() {
+				res = response{Error: "Disconnect before scanning Aether endpoints."}
+			} else {
+				endpoints, err := scanAetherWindows(filepath.Dir(executable), req)
+				if err != nil {
+					res = response{Error: err.Error()}
+				} else {
+					res = response{OK: true, AetherEndpoints: endpoints}
+				}
 			}
 		case "versions":
 			root := filepath.Dir(executable)
