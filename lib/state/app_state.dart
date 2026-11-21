@@ -822,7 +822,8 @@ class AppState extends ChangeNotifier {
     return {
       'AETHER_SCAN': device.aetherScanMode,
       'AETHER_IP': device.aetherIpVersion,
-      'AETHER_NOIZE': masque ? device.aetherMasqueNoize : device.aetherWgNoize,
+      if (!masque || device.aetherMasqueTransport == 'h3')
+        'AETHER_NOIZE': masque ? device.aetherMasqueNoize : device.aetherWgNoize,
       'AETHER_DNS': (masque ? device.aetherMasqueDns : device.aetherWgDns).replaceAll(' ', ''),
       if (masque) ...{
         'AETHER_MASQUE_HTTP2': device.aetherMasqueTransport == 'h2' ? '1' : '0',
