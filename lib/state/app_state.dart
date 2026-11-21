@@ -393,6 +393,10 @@ class AppState extends ChangeNotifier {
       ),
     );
     device = DeviceSettings.fromJson(_decodeMap(_prefs.getString(_kDevice)));
+    if (Platform.isWindows) {
+      // Register both Aether identities in the background on first launch; existing files are kept.
+      unawaited(VpnChannel.provisionAetherIdentities(_aetherConfigDir).catchError((_) {}));
+    }
     if (_prefs.containsKey('configOverrides')) {
       await _prefs.remove('configOverrides');
     }
