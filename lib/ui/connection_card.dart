@@ -257,6 +257,15 @@ class _ModeSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
+    if (state.mode == ConnectionMode.masque && state.core == CoreType.aether) {
+      return ChipMenu<bool>(
+        values: const [false, true],
+        selected: state.device.aetherMasqueFragment,
+        label: (fragment) => fragment ? 'Fragment' : 'Normal',
+        onSelected: state.setAetherMasqueFragment,
+        enabled: !state.isBusy,
+      );
+    }
     if (state.mode == ConnectionMode.masque) {
       return ChipMenu(
         values: MasqueVariant.values,
