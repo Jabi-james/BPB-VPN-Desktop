@@ -32,6 +32,7 @@ type request struct {
 	TorCustomBridges []string `json:"torCustomBridges,omitempty"`
 	AetherConfigDir string `json:"aetherConfigDir,omitempty"`
 	AetherProtocol string `json:"aetherProtocol,omitempty"`
+	AetherEnvironment map[string]string `json:"aetherEnvironment,omitempty"`
 }
 
 type response struct {
