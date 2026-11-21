@@ -181,6 +181,7 @@ func aetherEnvironment(inherited []string, configDir string, settings map[string
 	)
 	allowed := map[string]bool{
 		"AETHER_SCAN": true, "AETHER_IP": true, "AETHER_NOIZE": true,
+		"AETHER_PEER": true, "AETHER_WG_PEER": true,
 		"AETHER_MASQUE_HTTP2": true, "AETHER_MASQUE_SNI": true,
 		"AETHER_QUIC_V2": true, "AETHER_MASQUE_H2_FRAGMENT": true,
 		"AETHER_MASQUE_H2_FRAGMENT_SIZE": true, "AETHER_MASQUE_H2_FRAGMENT_DELAY": true,
