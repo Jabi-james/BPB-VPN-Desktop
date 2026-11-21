@@ -495,6 +495,25 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  /// Applies WebRTC protection and reports only a registry-verified result.
+  Future<bool> setWebRtcLeakProtection(bool enabled) async {
+    final updated = profile.updated('general.webRtcLeakProtection', enabled);
+    _stored = updated.updated('vless', null);
+    _profile = null;
+    await _prefs.setString(_kProfile, jsonEncode(_stored.toSparseJson()));
+    _markChangedWhileConnected();
+    notifyListeners();
+    final verified = await WebRtcLeakProtection.apply(enabled, _prefs);
+    if (enabled && !verified) {
+      _stored = profile.updated('general.webRtcLeakProtection', false).updated('vless', null);
+      _profile = null;
+      await _prefs.setString(_kProfile, jsonEncode(_stored.toSparseJson()));
+      await WebRtcLeakProtection.apply(false, _prefs);
+      notifyListeners();
+    }
+    return verified;
+  }
+
   /// Stores [value]; its VLESS part goes to the selected deployment.
   void _setProfile(Profile value) {
     final oldWebRtcProtection = profile.general.webRtcLeakProtection;

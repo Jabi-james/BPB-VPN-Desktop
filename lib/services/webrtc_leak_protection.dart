@@ -30,11 +30,11 @@ class WebRtcLeakProtection {
   ///
   /// Existing policies are never overwritten. If an administrator or another
   /// utility has configured a different value, BPB leaves it untouched.
-  static Future<void> apply(
+  static Future<bool> apply(
     bool enabled,
     SharedPreferences preferences,
   ) async {
-    if (!Platform.isWindows) return;
+    if (!Platform.isWindows) return false;
 
     for (final policy in _policies) {
       final owned = preferences.getBool(policy.ownershipKey) ?? false;
@@ -95,6 +95,14 @@ class WebRtcLeakProtection {
         await preferences.remove(policy.ownershipKey);
       }
     }
+
+    // Verify the effective registry values after all writes/removals.
+    for (final policy in _policies) {
+      final current = await _read(policy);
+      if (enabled && current != policy.value) return false;
+      if (!enabled && current != null) return false;
+    }
+    return true;
   }
 
   static Future<String?> _read(_BrowserPolicy policy) async {

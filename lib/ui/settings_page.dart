@@ -25,6 +25,35 @@ import 'prefs.dart';
 import 'routing_page.dart';
 import 'tor_bridges_page.dart';
 
+class _WebRtcProtectionPref extends StatelessWidget {
+  const _WebRtcProtectionPref();
+
+  @override
+  Widget build(BuildContext context) {
+    final state = AppScope.of(context);
+    final enabled = state.readBool('general.webRtcLeakProtection');
+    return SwitchListTile(
+      secondary: const Icon(Symbols.security_rounded),
+      title: const Text('WebRTC Leak Protection'),
+      subtitle: const Text('Chrome and Edge · Restart the browser to apply policy changes'),
+      value: enabled,
+      onChanged: (value) async {
+        final messenger = ScaffoldMessenger.of(context);
+        final verified = await state.setWebRtcLeakProtection(value);
+        if (!context.mounted) return;
+        messenger.showSnackBar(SnackBar(
+          content: Text(!verified
+              ? 'WebRTC Leak Protection could not be verified. Check Windows browser policies.'
+              : value
+                  ? 'WebRTC Leak Protection Enabled. You are Secure.'
+                  : 'WebRTC Leak Protection Disabled. You are not Secure.'),
+          duration: const Duration(seconds: 4),
+        ));
+      },
+    );
+  }
+}
+
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
 
@@ -137,13 +166,7 @@ class SettingsPage extends StatelessWidget {
           const SizedBox(height: 16),
           SettingsCard(
             children: [
-              const SwitchPref(
-                'general.webRtcLeakProtection',
-                'WebRTC Leak Protection',
-                icon: Symbols.security_rounded,
-                subtitle:
-                    'Chrome and Edge · Restrict direct UDP; restart the browser',
-              ),
+              const _WebRtcProtectionPref(),
             ],
           ),
           const SizedBox(height: 16),
