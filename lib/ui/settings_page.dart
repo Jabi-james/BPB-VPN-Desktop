@@ -573,31 +573,21 @@ class SettingsPage extends StatelessWidget {
                 hint: '1.1.1.1,1.0.0.1',
                 help: 'DNS resolvers used inside the Aether MASQUE tunnel. Separate multiple resolvers with commas.',
               ),
-              const ChoicePref('device.aether.masqueTransport', 'Transport', {
-                'h2': 'H2 · TCP',
-                'h3': 'H3 · QUIC',
-              }, icon: Symbols.swap_horiz_rounded),
-              if (d.aetherMasqueTransport == 'h3')
-                const ChoicePref('device.aether.masqueNoize', 'QUIC obfuscation profile', {
-                  'off': 'Off',
-                  'light': 'Light',
-                  'firewall': 'Firewall',
-                  'balanced': 'Balanced',
-                  'gfw': 'GFW',
-                  'aggressive': 'Aggressive',
-                }, icon: Symbols.shield_rounded)
-              else
-                const ListTile(
-                  leading: Icon(Symbols.shield_rounded),
-                  title: Text('H2 obfuscation'),
-                  subtitle: Text('Use Normal/Fragment mode on the main screen; QUIC obfuscation profiles apply to H3, not H2.'),
-                ),
               const TextPref(
                 'device.aether.masqueSni',
                 'MASQUE SNI',
                 icon: Symbols.host_rounded,
                 hint: 'www.cloudflare.com',
                 validator: validateHost,
+              ),
+              const ChoicePref('device.aether.masqueTransport', 'Transport', {
+                'h2': 'H2 · TCP',
+                'h3': 'H3 · QUIC',
+              }, icon: Symbols.swap_horiz_rounded),
+              const ListTile(
+                leading: Icon(Symbols.fingerprint_rounded),
+                title: Text('TLS Fingerprint'),
+                subtitle: Text('Chrome · Aether uses its built-in BoringSSL fingerprint'),
               ),
               if (d.aetherMasqueFragment) ...const [
                 TextPref(
@@ -613,6 +603,21 @@ class SettingsPage extends StatelessWidget {
                   hint: '2-10',
                 ),
               ],
+              if (d.aetherMasqueTransport == 'h3')
+                const ChoicePref('device.aether.masqueNoize', 'QUIC obfuscation profile', {
+                  'off': 'Off',
+                  'light': 'Light',
+                  'firewall': 'Firewall',
+                  'balanced': 'Balanced',
+                  'gfw': 'GFW',
+                  'aggressive': 'Aggressive',
+                }, icon: Symbols.shield_rounded)
+              else
+                const ListTile(
+                  leading: Icon(Symbols.shield_rounded),
+                  title: Text('H2 obfuscation'),
+                  subtitle: Text('Normal/Fragment mode controls H2; QUIC obfuscation profiles apply to H3, not H2.'),
+                ),
               const SwitchPref(
                 'device.aether.quicV2',
                 'QUIC v2 opener',
@@ -688,6 +693,11 @@ class SettingsPage extends StatelessWidget {
                 min: 1,
                 max: 120,
                 suffix: ' s',
+              ),
+              const ListTile(
+                leading: Icon(Symbols.data_array_rounded),
+                title: Text('Reserved bytes'),
+                subtitle: Text('Not exposed by Aether’s WireGuard implementation'),
               ),
               const SwitchPref(
                 'device.aether.wgNoProfileRetry',
