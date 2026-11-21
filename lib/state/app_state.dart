@@ -803,6 +803,57 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  Map<String, String> _aetherEnvironmentFor(
+    String protocol, {
+    bool includeSavedEndpoint = true,
+  }) {
+    final masque = protocol == 'masque';
+    return {
+      'AETHER_SCAN': device.aetherScanMode,
+      'AETHER_IP': device.aetherIpVersion,
+      'AETHER_NOIZE': masque ? device.aetherMasqueNoize : device.aetherWgNoize,
+      if (masque) ...{
+        'AETHER_MASQUE_HTTP2': device.aetherMasqueTransport == 'h2' ? '1' : '0',
+        'AETHER_MASQUE_SNI': device.aetherMasqueSni,
+        if (!device.aetherQuicV2) 'AETHER_QUIC_V2': '0',
+        if (device.aetherMasqueFragment) ...{
+          'AETHER_MASQUE_H2_FRAGMENT': '1',
+          'AETHER_MASQUE_H2_FRAGMENT_SIZE': device.aetherMasqueFragmentSize,
+          'AETHER_MASQUE_H2_FRAGMENT_DELAY': device.aetherMasqueFragmentDelay,
+        },
+        if (includeSavedEndpoint && device.aetherMasqueEndpoints.isNotEmpty)
+          'AETHER_PEER': device.aetherMasqueEndpoints.first,
+      },
+      if (!masque) ...{
+        'AETHER_WG_KEEPALIVE': '${device.aetherWgKeepalive}',
+        if (device.aetherWgNoProfileRetry) 'AETHER_WG_NO_PROFILE_RETRY': '1',
+        if (includeSavedEndpoint && device.aetherWgEndpoints.isNotEmpty)
+          'AETHER_WG_PEER': device.aetherWgEndpoints.first,
+      },
+    };
+  }
+
+  /// Runs Aether's own protocol verifier and saves up to ten healthy endpoints.
+  Future<List<String>> scanAetherEndpoints(String protocol) async {
+    if (defaultTargetPlatform != TargetPlatform.windows) {
+      throw UnsupportedError('Aether endpoint scanning is available on Windows only.');
+    }
+    if (isBusy || isConnected) {
+      throw StateError('Disconnect before scanning Aether endpoints.');
+    }
+    if (protocol != 'masque' && protocol != 'wg') {
+      throw ArgumentError.value(protocol, 'protocol');
+    }
+    final endpoints = await VpnChannel.scanAetherEndpoints(
+      protocol: protocol,
+      configDir: _aetherConfigDir,
+      environment: _aetherEnvironmentFor(protocol, includeSavedEndpoint: false),
+    );
+    if (endpoints.isEmpty) throw StateError('Aether did not find any healthy endpoints.');
+    write('device.aether.${protocol == 'masque' ? 'masqueEndpoints' : 'wgEndpoints'}', endpoints);
+    return endpoints;
+  }
+
   Future<void> _start() async {
     final build = await buildConfig();
     // The Psiphon / Tor types connect directly. As an exit, Psiphon / Tor run only when the
@@ -867,27 +918,9 @@ class AppState extends ChangeNotifier {
       exit: exit,
       exitDirect: exitType != null,
       aetherProtocol: aetherMode ? (mode == ConnectionMode.masque ? 'masque' : 'wg') : null,
-      aetherEnvironment: aetherMode ? <String, String>{
-        'AETHER_SCAN': device.aetherScanMode,
-        'AETHER_IP': device.aetherIpVersion,
-        'AETHER_NOIZE': mode == ConnectionMode.masque
-            ? device.aetherMasqueNoize
-            : device.aetherWgNoize,
-        if (mode == ConnectionMode.masque) ...{
-          'AETHER_MASQUE_HTTP2': device.aetherMasqueTransport == 'h2' ? '1' : '0',
-          'AETHER_MASQUE_SNI': device.aetherMasqueSni,
-          if (!device.aetherQuicV2) 'AETHER_QUIC_V2': '0',
-          if (device.aetherMasqueFragment) ...{
-            'AETHER_MASQUE_H2_FRAGMENT': '1',
-            'AETHER_MASQUE_H2_FRAGMENT_SIZE': device.aetherMasqueFragmentSize,
-            'AETHER_MASQUE_H2_FRAGMENT_DELAY': device.aetherMasqueFragmentDelay,
-          },
-        },
-        if (mode == ConnectionMode.warp) ...{
-          'AETHER_WG_KEEPALIVE': '${device.aetherWgKeepalive}',
-          if (device.aetherWgNoProfileRetry) 'AETHER_WG_NO_PROFILE_RETRY': '1',
-        },
-      } : null,
+      aetherEnvironment: aetherMode
+          ? _aetherEnvironmentFor(mode == ConnectionMode.masque ? 'masque' : 'wg')
+          : null,
       aetherConfigDir: aetherMode ? _aetherConfigDir : null,
       exitRegion: dnsMode ? '' : device.exitRegion,
       torBridge: mode == ConnectionMode.tor ? device.torBridge : null,
