@@ -47,7 +47,7 @@ func scanAetherWindows(root string, req request) ([]string, error) {
 	if _, err := os.Stat(exe); err != nil {
 		return nil, fmt.Errorf("Aether executable missing: %w", err)
 	}
-	if err := ensureAetherIdentities(exe, absoluteDir, req.AetherEnvironment); err != nil {
+	if err := ensureAetherIdentities(exe, absoluteDir, req.AetherEnvironment, ""); err != nil {
 		return nil, err
 	}
 
