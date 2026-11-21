@@ -36,7 +36,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.text('Donation'),
       500,
-      scrollable: find.byType(Scrollable).first,
+      scrollable: find.byType(Scrollable).last,
     );
     await tester.pumpAndSettle();
     expect(

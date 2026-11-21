@@ -152,6 +152,15 @@ void main() {
         'masque.endpoints' => 'MASQUE',
         _ => 'Global',
       };
+      final group = switch (scenario.path) {
+        'vless.cleanIps' => 'BPB Core',
+        'warp.endpoints' || 'masque.endpoints' => 'Aether Core',
+        _ => null,
+      };
+      if (group != null) {
+        await tester.tap(find.text(group));
+        await tester.pumpAndSettle();
+      }
       await tester.tap(find.text(section));
       await tester.pumpAndSettle();
       await tester.scrollUntilVisible(
