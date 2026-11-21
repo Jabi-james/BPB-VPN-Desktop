@@ -111,15 +111,9 @@ func runStart(controller *xray.Controller, root string, req request, cancel <-ch
 	if err := controller.Stop(); err != nil { return response{Error: "stop previous Xray session: " + err.Error()} }
 	if err := restoreSystemProxy(); err != nil { return response{Error: "restore previous Windows proxy settings: " + err.Error()} }
 	if isStartCanceled(cancel) { return response{Error: "Connection attempt canceled."} }
-	// Aether is the base tunnel: establish it before Xray, so Xray's Chain Proxy
-	// can dial through Aether's SOCKS listener (Desktop -> Aether -> Chain -> destination).
-	if req.AetherProtocol != "" {
-		if err := startAetherWindows(root, req, cancel); err != nil {
-			return response{Error: "start Aether: " + err.Error()}
-		}
-	}
+	// Xray starts first only to expose a dedicated DIRECT bootstrap SOCKS listener
+	// for Aether's own control-plane. User traffic still follows Aether -> Chain -> destination.
 	if err := startController(controller, req); err != nil {
-		stopAetherWindows()
 		return response{Error: err.Error()}
 	}
 	cleanup := func() {
@@ -127,6 +121,12 @@ func runStart(controller *xray.Controller, root string, req request, cancel <-ch
 		_ = controller.Stop()
 		xray.SetBrowserDialer("")
 		_ = restoreSystemProxy()
+	}
+	if req.AetherProtocol != "" {
+		if err := startAetherWindows(root, req, cancel); err != nil {
+			cleanup()
+			return response{Error: "start Aether: " + err.Error()}
+		}
 	}
 	if req.Exit == "tor" {
 		if err := startTorWindows(root, req, cancel); err != nil {
