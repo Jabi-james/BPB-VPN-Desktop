@@ -1275,7 +1275,7 @@ class DeviceSettings {
       aetherMasqueFragmentDelay: _str(aether['masqueFragmentDelay'], d.aetherMasqueFragmentDelay),
       aetherQuicV2: _bool(aether['quicV2'], d.aetherQuicV2),
       aetherWgNoize: _choice(aether['wgNoize'], const {'off','light','firewall','balanced','gfw','aggressive'}, d.aetherWgNoize),
-      aetherWgKeepalive: _int(aether['wgKeepalive'], d.aetherWgKeepalive).clamp(1, 120),
+      aetherWgKeepalive: _int(aether['wgKeepalive'], d.aetherWgKeepalive).clamp(1, 120).toInt(),
       aetherWgNoProfileRetry: _bool(aether['wgNoProfileRetry'], d.aetherWgNoProfileRetry),
       workerVariant: _choice(
         _str(
