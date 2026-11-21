@@ -867,6 +867,27 @@ class AppState extends ChangeNotifier {
       exit: exit,
       exitDirect: exitType != null,
       aetherProtocol: aetherMode ? (mode == ConnectionMode.masque ? 'masque' : 'wg') : null,
+      aetherEnvironment: aetherMode ? <String, String>{
+        'AETHER_SCAN': device.aetherScanMode,
+        'AETHER_IP': device.aetherIpVersion,
+        'AETHER_NOIZE': mode == ConnectionMode.masque
+            ? device.aetherMasqueNoize
+            : device.aetherWgNoize,
+        if (mode == ConnectionMode.masque) ...{
+          'AETHER_MASQUE_HTTP2': device.aetherMasqueTransport == 'h2' ? '1' : '0',
+          'AETHER_MASQUE_SNI': device.aetherMasqueSni,
+          if (!device.aetherQuicV2) 'AETHER_QUIC_V2': '0',
+          if (device.aetherMasqueFragment) ...{
+            'AETHER_MASQUE_H2_FRAGMENT': '1',
+            'AETHER_MASQUE_H2_FRAGMENT_SIZE': device.aetherMasqueFragmentSize,
+            'AETHER_MASQUE_H2_FRAGMENT_DELAY': device.aetherMasqueFragmentDelay,
+          },
+        },
+        if (mode == ConnectionMode.warp) ...{
+          'AETHER_WG_KEEPALIVE': '${device.aetherWgKeepalive}',
+          if (device.aetherWgNoProfileRetry) 'AETHER_WG_NO_PROFILE_RETRY': '1',
+        },
+      } : null,
       aetherConfigDir: aetherMode ? _aetherConfigDir : null,
       exitRegion: dnsMode ? '' : device.exitRegion,
       torBridge: mode == ConnectionMode.tor ? device.torBridge : null,
