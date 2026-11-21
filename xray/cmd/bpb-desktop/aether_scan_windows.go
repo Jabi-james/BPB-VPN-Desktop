@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -95,7 +96,25 @@ func scanAetherWindows(root string, req request) ([]string, error) {
 	wait := make(chan error, 1)
 	go func() { wait <- cmd.Wait() }()
 
-	found := make(map[string]float64)
+	found := make(map[string]aetherScanHit)
+	addCandidate := func(line string) {
+		match := aetherCandidateLine.FindStringSubmatch(line)
+		if len(match) != 3 {
+			return
+		}
+		endpoint := normalizeAetherEndpoint(match[1])
+		rtt, ok := parseAetherRttMs(match[2])
+		if !ok || endpoint == "" {
+			return
+		}
+		key := endpoint
+		if host, _, err := net.SplitHostPort(endpoint); err == nil {
+			key = host // keep only the fastest verified port for each distinct IP
+		}
+		if previous, exists := found[key]; !exists || rtt < previous.rttMs {
+			found[key] = aetherScanHit{endpoint: endpoint, rttMs: rtt}
+		}
+	}
 	var waitErr error
 	finished := false
 	for !finished && len(found) < 10 {
@@ -105,18 +124,7 @@ func scanAetherWindows(root string, req request) ([]string, error) {
 				lines = nil
 				continue
 			}
-			match := aetherCandidateLine.FindStringSubmatch(line)
-			if len(match) != 3 {
-				continue
-			}
-			endpoint := normalizeAetherEndpoint(match[1])
-			rtt, ok := parseAetherRttMs(match[2])
-			if !ok || endpoint == "" {
-				continue
-			}
-			if previous, exists := found[endpoint]; !exists || rtt < previous {
-				found[endpoint] = rtt
-			}
+			addCandidate(line)
 		case waitErr = <-wait:
 			finished = true
 		case <-ctx.Done():
@@ -141,24 +149,13 @@ func scanAetherWindows(root string, req request) ([]string, error) {
 	}
 	// Drain lines already written before the process exited or was stopped at ten results.
 	for line := range lines {
-		match := aetherCandidateLine.FindStringSubmatch(line)
-		if len(match) != 3 {
-			continue
-		}
-		endpoint := normalizeAetherEndpoint(match[1])
-		rtt, ok := parseAetherRttMs(match[2])
-		if !ok || endpoint == "" {
-			continue
-		}
-		if previous, exists := found[endpoint]; !exists || rtt < previous {
-			found[endpoint] = rtt
-		}
+		addCandidate(line)
 	}
 	_ = reader.Close()
 
 	hits := make([]aetherScanHit, 0, len(found))
-	for endpoint, rtt := range found {
-		hits = append(hits, aetherScanHit{endpoint: endpoint, rttMs: rtt})
+	for _, hit := range found {
+		hits = append(hits, hit)
 	}
 	sort.Slice(hits, func(i, j int) bool { return hits[i].rttMs < hits[j].rttMs })
 
