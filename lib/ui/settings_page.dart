@@ -228,6 +228,7 @@ class SettingsPage extends StatelessWidget {
             ],
           ),
 
+          const CoreGroupHeader('BPB Core'),
           const SectionHeader('VLESS'),
           SettingsCard(
             children: [
@@ -561,6 +562,108 @@ class SettingsPage extends StatelessWidget {
           const SizedBox(height: 16),
           SettingsCard(children: [const _WarpAccountTile()]),
 
+          const CoreGroupHeader('Aether Core'),
+          const SectionHeader('MASQUE'),
+          SettingsCard(
+            children: [
+              const ChoicePref('device.aether.scanMode', 'Scan mode', {
+                'turbo': 'Turbo',
+                'balanced': 'Balanced',
+                'thorough': 'Thorough',
+                'verified': 'Verified',
+                'ironclad': 'Ironclad',
+              }, icon: Symbols.speed_rounded),
+              const ChoicePref('device.aether.ipVersion', 'IP version', {
+                'v4': 'IPv4',
+                'v6': 'IPv6',
+                'both': 'IPv4 + IPv6',
+              }, icon: Symbols.language_rounded),
+              const ChoicePref('device.aether.masqueTransport', 'Transport', {
+                'h3': 'H3 · QUIC',
+                'h2': 'H2 · TCP',
+              }, icon: Symbols.swap_horiz_rounded),
+              const ChoicePref('device.aether.masqueNoize', 'Obfuscation profile', {
+                'off': 'Off',
+                'light': 'Light',
+                'firewall': 'Firewall',
+                'balanced': 'Balanced',
+                'gfw': 'GFW',
+                'aggressive': 'Aggressive',
+              }, icon: Symbols.shield_rounded),
+              const TextPref(
+                'device.aether.masqueSni',
+                'MASQUE SNI',
+                icon: Symbols.host_rounded,
+                hint: 'www.cloudflare.com',
+                validator: validateHost,
+              ),
+              const SwitchPref(
+                'device.aether.masqueFragment',
+                'TLS fragmentation',
+                icon: Symbols.content_cut_rounded,
+                subtitle: 'Fragment the H2 and WARP API ClientHello',
+              ),
+              const TextPref(
+                'device.aether.masqueFragmentSize',
+                'Fragment size (bytes)',
+                icon: Symbols.straighten_rounded,
+                hint: '8-16',
+              ),
+              const TextPref(
+                'device.aether.masqueFragmentDelay',
+                'Fragment delay (ms)',
+                icon: Symbols.timer_rounded,
+                hint: '2-10',
+              ),
+              const SwitchPref(
+                'device.aether.quicV2',
+                'QUIC v2 opener',
+                icon: Symbols.network_check_rounded,
+                subtitle: 'Keep enabled unless the network blocks it',
+              ),
+            ],
+          ),
+          const SectionHeader('WARP'),
+          SettingsCard(
+            children: [
+              const ChoicePref('device.aether.scanMode', 'Scan mode', {
+                'turbo': 'Turbo',
+                'balanced': 'Balanced',
+                'thorough': 'Thorough',
+                'verified': 'Verified',
+                'ironclad': 'Ironclad',
+              }, icon: Symbols.speed_rounded),
+              const ChoicePref('device.aether.ipVersion', 'IP version', {
+                'v4': 'IPv4',
+                'v6': 'IPv6',
+                'both': 'IPv4 + IPv6',
+              }, icon: Symbols.language_rounded),
+              const ChoicePref('device.aether.wgNoize', 'Obfuscation profile', {
+                'off': 'Off',
+                'light': 'Light',
+                'firewall': 'Firewall',
+                'balanced': 'Balanced',
+                'gfw': 'GFW',
+                'aggressive': 'Aggressive',
+              }, icon: Symbols.shield_rounded),
+              const IntPref(
+                'device.aether.wgKeepalive',
+                'Keep alive interval (s)',
+                icon: Symbols.timer_rounded,
+                min: 1,
+                max: 120,
+                suffix: ' s',
+              ),
+              const SwitchPref(
+                'device.aether.wgNoProfileRetry',
+                'Disable profile retry',
+                icon: Symbols.repeat_rounded,
+                subtitle: 'Do not retry other obfuscation profiles during scan',
+              ),
+            ],
+          ),
+          const CoreGroupEnd(),
+
           const SectionHeader('Tor'),
           SettingsCard(
             children: [
@@ -757,37 +860,168 @@ class _SettingsSections extends StatefulWidget {
   State<_SettingsSections> createState() => _SettingsSectionsState();
 }
 
-class _SettingsSectionsState extends State<_SettingsSections> {
-  int _selected = 0;
+class CoreGroupHeader extends StatelessWidget {
+  final String title;
+  const CoreGroupHeader(this.title, {super.key});
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
+}
 
-  List<({String title, List<Widget> children})> _sections() {
-    final result = <({String title, List<Widget> children})>[];
-    String? title;
-    var children = <Widget>[];
-    void finish() {
-      if (title != null) {
-        result.add((title: title, children: children));
+class CoreGroupEnd extends StatelessWidget {
+  const CoreGroupEnd({super.key});
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
+}
+
+class _SettingsSectionEntry {
+  final String id;
+  final String title;
+  final List<Widget> children;
+  const _SettingsSectionEntry(this.id, this.title, this.children);
+}
+
+class _SettingsGroupEntry {
+  final String title;
+  final List<_SettingsSectionEntry> sections;
+  const _SettingsGroupEntry(this.title, this.sections);
+}
+
+class _SettingsSectionsState extends State<_SettingsSections> {
+  String _selectedId = 'root::Global';
+  final Set<String> _expandedGroups = {};
+
+  List<Object> _navigation() {
+    final result = <Object>[];
+    final groupSections = <_SettingsSectionEntry>[];
+    String? groupTitle;
+    String? sectionTitle;
+    var sectionChildren = <Widget>[];
+
+    void finishSection() {
+      if (sectionTitle == null) return;
+      final id = groupTitle == null
+          ? 'root::$sectionTitle'
+          : '$groupTitle::$sectionTitle';
+      final section = _SettingsSectionEntry(id, sectionTitle!, sectionChildren);
+      if (groupTitle == null) {
+        result.add(section);
+      } else {
+        groupSections.add(section);
       }
+      sectionTitle = null;
+      sectionChildren = <Widget>[];
+    }
+
+    void finishGroup() {
+      if (groupTitle == null) return;
+      result.add(_SettingsGroupEntry(groupTitle!, List.of(groupSections)));
+      groupSections.clear();
+      groupTitle = null;
     }
 
     for (final child in widget.children) {
-      if (child is SectionHeader) {
-        finish();
-        title = child.title;
-        children = <Widget>[];
-      } else if (title != null) {
-        children.add(child);
+      if (child is CoreGroupHeader) {
+        finishSection();
+        finishGroup();
+        groupTitle = child.title;
+      } else if (child is CoreGroupEnd) {
+        finishSection();
+        finishGroup();
+      } else if (child is SectionHeader) {
+        finishSection();
+        sectionTitle = child.title;
+      } else if (sectionTitle != null) {
+        sectionChildren.add(child);
       }
     }
-    finish();
+    finishSection();
+    finishGroup();
     return result;
+  }
+
+  Widget _sectionTile(
+    BuildContext context,
+    _SettingsSectionEntry section,
+    bool active,
+    ThemeData theme, {
+    bool nested = false,
+  }) =>
+      Padding(
+        padding: EdgeInsets.only(left: nested ? 18 : 0, bottom: 2),
+        child: Material(
+          color: active ? theme.colorScheme.secondaryContainer : Colors.transparent,
+          borderRadius: BorderRadius.circular(9),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(9),
+            onTap: () => setState(() => _selectedId = section.id),
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: nested ? 10 : 12, vertical: 10),
+              child: Row(
+                children: [
+                  Icon(_sectionIcon(section.title), size: 17),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      section.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: active ? theme.colorScheme.onSecondaryContainer : theme.colorScheme.onSurfaceVariant,
+                        fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+  Widget _groupTile(BuildContext context, _SettingsGroupEntry group, ThemeData theme) {
+    final expanded = _expandedGroups.contains(group.title);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(9),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(9),
+          onTap: () => setState(() {
+            if (expanded) {
+              _expandedGroups.remove(group.title);
+            } else {
+              _expandedGroups.add(group.title);
+            }
+          }),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+            child: Row(
+              children: [
+                Icon(_sectionIcon(group.title), size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(group.title, style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700)),
+                ),
+                Icon(expanded ? Icons.expand_less_rounded : Icons.chevron_right_rounded, size: 18),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final sections = _sections();
-    if (sections.isEmpty) return const SizedBox.shrink();
-    final selected = _selected.clamp(0, sections.length - 1);
+    final navigation = _navigation();
+    final allSections = <_SettingsSectionEntry>[
+      for (final item in navigation)
+        if (item is _SettingsSectionEntry) item
+        else if (item is _SettingsGroupEntry) ...item.sections,
+    ];
+    if (allSections.isEmpty) return const SizedBox.shrink();
+    final selected = allSections.where((s) => s.id == _selectedId).firstOrNull ?? allSections.first;
     final theme = Theme.of(context);
 
     return Row(
@@ -798,56 +1032,21 @@ class _SettingsSectionsState extends State<_SettingsSections> {
           child: DecoratedBox(
             decoration: BoxDecoration(
               color: theme.colorScheme.surfaceContainerLow,
-              border: Border(
-                right: BorderSide(color: theme.colorScheme.outlineVariant),
-              ),
+              border: Border(right: BorderSide(color: theme.colorScheme.outlineVariant)),
             ),
-            child: ListView.builder(
+            child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 12),
-              itemCount: sections.length,
-              itemBuilder: (context, index) {
-                final active = index == selected;
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2),
-                  child: Material(
-                    color: active
-                        ? theme.colorScheme.secondaryContainer
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(10),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(10),
-                      onTap: () => setState(() => _selected = index),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 11,
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(_sectionIcon(sections[index].title), size: 18),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                sections[index].title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: theme.textTheme.labelLarge?.copyWith(
-                                  color: active
-                                      ? theme.colorScheme.onSecondaryContainer
-                                      : theme.colorScheme.onSurfaceVariant,
-                                  fontWeight: active
-                                      ? FontWeight.w700
-                                      : FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
+              children: [
+                for (final item in navigation)
+                  if (item is _SettingsSectionEntry)
+                    _sectionTile(context, item, item.id == selected.id, theme)
+                  else if (item is _SettingsGroupEntry) ...[
+                    _groupTile(context, item, theme),
+                    if (_expandedGroups.contains(item.title))
+                      for (final section in item.sections)
+                        _sectionTile(context, section, section.id == selected.id, theme, nested: true),
+                  ],
+              ],
             ),
           ),
         ),
@@ -869,7 +1068,7 @@ class _SettingsSectionsState extends State<_SettingsSections> {
             ),
             child: ListView(
               padding: const EdgeInsets.only(bottom: 32, top: 4),
-              children: sections[selected].children,
+              children: selected.children,
             ),
           ),
         ),
@@ -883,6 +1082,8 @@ class _SettingsSectionsState extends State<_SettingsSections> {
 IconData _sectionIcon(String title) => switch (title) {
   'Global' => Icons.tune_rounded,
   'VLESS' => Icons.code_rounded,
+  'BPB Core' => Icons.memory_rounded,
+  'Aether Core' => Icons.hub_rounded,
   'MASQUE' => Icons.cloud_rounded,
   'WARP' => Icons.shield_rounded,
   'Tor' => Icons.visibility_off_rounded,
