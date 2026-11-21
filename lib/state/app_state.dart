@@ -215,8 +215,8 @@ class AppState extends ChangeNotifier {
     ])
       if (switch (m) {
         ConnectionMode.worker => deployments.isNotEmpty,
-        ConnectionMode.warp => profile.warp.account != null || (defaultTargetPlatform == TargetPlatform.windows && core == CoreType.aether),
-        ConnectionMode.masque => profile.masque.account != null || (defaultTargetPlatform == TargetPlatform.windows && core == CoreType.aether),
+        ConnectionMode.warp => profile.warp.account != null || defaultTargetPlatform == TargetPlatform.windows,
+        ConnectionMode.masque => profile.masque.account != null || defaultTargetPlatform == TargetPlatform.windows,
         _ => true,
       })
         m,
