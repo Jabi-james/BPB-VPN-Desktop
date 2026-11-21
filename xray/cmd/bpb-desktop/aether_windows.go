@@ -55,7 +55,7 @@ func startAetherWindows(root string, req request, cancel <-chan struct{}) error 
 		return fmt.Errorf("create Aether data directory: %w", err)
 	}
 
-	if err := ensureAetherIdentities(exe, absoluteDir); err != nil {
+	if err := ensureAetherIdentities(exe, absoluteDir, req.AetherEnvironment); err != nil {
 		return err
 	}
 
@@ -84,7 +84,7 @@ func startAetherWindows(root string, req request, cancel <-chan struct{}) error 
 	cmd.Dir = absoluteDir
 	cmd.Stdout = logFile
 	cmd.Stderr = logFile
-	cmd.Env = append(aetherEnvironment(os.Environ(), absoluteDir), "AETHER_PROTOCOL="+protocol)
+	cmd.Env = append(aetherEnvironment(os.Environ(), absoluteDir, req.AetherEnvironment), "AETHER_PROTOCOL="+protocol)
 	if err := cmd.Start(); err != nil {
 		_ = logFile.Close()
 		return fmt.Errorf("launch Aether: %w", err)
@@ -138,7 +138,7 @@ func startAetherWindows(root string, req request, cancel <-chan struct{}) error 
 	}
 }
 
-func ensureAetherIdentities(exe, configDir string) error {
+func ensureAetherIdentities(exe, configDir string, settings map[string]string) error {
 	identities := []struct{ name, file string }{
 		{name: "masque", file: "aether-masque.toml"},
 		{name: "wg", file: "aether-wg.toml"},
@@ -146,7 +146,7 @@ func ensureAetherIdentities(exe, configDir string) error {
 	for _, identity := range identities {
 		path := filepath.Join(configDir, identity.file)
 		if info, err := os.Stat(path); err == nil && info.Size() > 0 { continue }
-		env := append(aetherEnvironment(os.Environ(), configDir), "AETHER_REGISTER="+identity.name)
+		env := append(aetherEnvironment(os.Environ(), configDir, settings), "AETHER_REGISTER="+identity.name)
 		cmd := exec.Command(exe)
 		cmd.Dir = configDir
 		cmd.Env = env
@@ -162,7 +162,7 @@ func ensureAetherIdentities(exe, configDir string) error {
 	return nil
 }
 
-func aetherEnvironment(inherited []string, configDir string) []string {
+func aetherEnvironment(inherited []string, configDir string, settings map[string]string) []string {
 	env := make([]string, 0, len(inherited)+6)
 	for _, entry := range inherited {
 		name, _, _ := strings.Cut(entry, "=")
@@ -179,6 +179,18 @@ func aetherEnvironment(inherited []string, configDir string) []string {
 		"AETHER_LOG_LEVEL=info",
 		"NO_COLOR=1",
 	)
+	allowed := map[string]bool{
+		"AETHER_SCAN": true, "AETHER_IP": true, "AETHER_NOIZE": true,
+		"AETHER_MASQUE_HTTP2": true, "AETHER_MASQUE_SNI": true,
+		"AETHER_QUIC_V2": true, "AETHER_MASQUE_H2_FRAGMENT": true,
+		"AETHER_MASQUE_H2_FRAGMENT_SIZE": true, "AETHER_MASQUE_H2_FRAGMENT_DELAY": true,
+		"AETHER_WG_KEEPALIVE": true, "AETHER_WG_NO_PROFILE_RETRY": true,
+	}
+	for key, value := range settings {
+		if allowed[key] && strings.TrimSpace(value) != "" {
+			env = append(env, key+"="+value)
+		}
+	}
 	return env
 }
 
