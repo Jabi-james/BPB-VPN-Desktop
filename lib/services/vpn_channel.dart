@@ -171,7 +171,7 @@ class VpnChannel {
     final result = await _sendWindowsCommand({
       'command': 'provisionAether',
       'aetherConfigDir': configDir,
-    }, timeout: const Duration(seconds: 15));
+    }, timeout: const Duration(minutes: 5));
     if (result['ok'] != true) {
       throw StateError(result['error'] as String? ?? 'Aether first-run provisioning failed.');
     }
