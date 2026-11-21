@@ -1071,7 +1071,7 @@ class _SettingsGroupEntry {
 
 class _SettingsSectionsState extends State<_SettingsSections> {
   String _selectedId = 'root::Global';
-  final Set<String> _expandedGroups = {'BPB Core'};
+  final Set<String> _expandedGroups = {};
 
   List<Object> _navigation() {
     final result = <Object>[];

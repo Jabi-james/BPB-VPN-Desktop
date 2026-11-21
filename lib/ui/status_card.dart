@@ -81,7 +81,7 @@ class _StatusCardState extends State<StatusCard> {
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12),
-      color: scheme.surfaceContainer,
+      color: scheme.surfaceContainer.withValues(alpha: 0.80),
       elevation: 0,
       shape: roundedShape(
         kHeroRadius,
@@ -430,6 +430,24 @@ class _PowerButtonState extends State<_PowerButton> {
       child: Stack(
         alignment: Alignment.center,
         children: [
+          if (state.status == VpnStatus.connected || state.status == VpnStatus.disconnected)
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.86, end: 1.18),
+              duration: const Duration(milliseconds: 1500),
+              curve: Curves.easeOut,
+              builder: (context, value, _) => Container(
+                width: widget.size * value,
+                height: widget.size * value,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: (state.status == VpnStatus.connected ? _green : Colors.red)
+                        .withValues(alpha: (1.18 - value).clamp(0.0, 0.22)),
+                    width: 3,
+                  ),
+                ),
+              ),
+            ),
           if (busy)
             Positioned.fill(
               child: CircularProgressIndicator(
@@ -485,15 +503,13 @@ class _PowerButtonState extends State<_PowerButton> {
                       turns: _turns!,
                       duration: const Duration(milliseconds: 700),
                       curve: Curves.easeOutBack,
-                      child: TweenAnimationBuilder<Color?>(
-                        tween: ColorTween(end: iconColor),
-                        duration: duration,
-                        builder: (context, color, _) => Icon(
-                          Symbols.power_settings_new_rounded,
-                          size: widget.size * 0.48,
-                          weight: 600,
-                          color: color,
-                        ),
+                      child: Image.asset(
+                        state.status == VpnStatus.connected
+                            ? 'images/icon/Connected.png'
+                            : 'images/icon/Disconnected.png',
+                        width: widget.size,
+                        height: widget.size,
+                        fit: BoxFit.contain,
                       ),
                     ),
                   ),

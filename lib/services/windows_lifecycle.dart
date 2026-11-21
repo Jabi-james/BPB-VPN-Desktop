@@ -115,30 +115,37 @@ class WindowsLifecycle with WindowListener, TrayListener {
         barrierDismissible: true,
         builder: (dialogContext) => StatefulBuilder(
           builder: (dialogContext, setDialogState) => AlertDialog(
-            title: const Text('Close BPB VPN?'),
+            title: const Text('What would you like to do?'),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Would you like to minimize BPB VPN to the system tray or close it completely?'),
-                const SizedBox(height: 12),
+                const Text('Minimize BPB VPN to the system tray or close it completely?'),
+                const SizedBox(height: 6),
                 CheckboxListTile(
                   contentPadding: EdgeInsets.zero,
                   value: alwaysUse,
                   controlAffinity: ListTileControlAffinity.leading,
-                  title: const Text('Always Use This Choice'),
+                  title: const Text('Always use this choice', style: TextStyle(fontSize: 12)),
                   onChanged: (value) => setDialogState(() => alwaysUse = value ?? false),
                 ),
               ],
             ),
             actions: [
-              TextButton(
+              FilledButton.tonalIcon(
+                autofocus: true,
                 onPressed: () => Navigator.of(dialogContext).pop('minimize'),
-                child: const Text('Minimize'),
+                icon: const Icon(Icons.minimize_rounded),
+                label: const Text('Minimize'),
               ),
-              FilledButton(
+              FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.red.shade700,
+                  foregroundColor: Colors.white,
+                ),
                 onPressed: () => Navigator.of(dialogContext).pop('exit'),
-                child: const Text('Close'),
+                icon: const Icon(Icons.close_rounded),
+                label: const Text('Close'),
               ),
             ],
           ),

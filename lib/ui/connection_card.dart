@@ -77,7 +77,7 @@ class ConnectionCard extends StatelessWidget {
           width: 0.75,
         ),
       ),
-      color: scheme.surfaceContainer,
+      color: scheme.surfaceContainer.withValues(alpha: 0.80),
       elevation: 0,
       child: Padding(
         padding: EdgeInsets.symmetric(

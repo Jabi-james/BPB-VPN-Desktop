@@ -176,6 +176,8 @@ class AppState extends ChangeNotifier {
   /// Bytes sent/received since the current connection started.
   int totalUp = 0;
   int totalDown = 0;
+  int allTimeUp = 0;
+  int allTimeDown = 0;
   int? pingMs;
   bool pinging = false;
 
@@ -385,6 +387,8 @@ class AppState extends ChangeNotifier {
     VpnChannel.configureAetherLogPath(_aetherConfigDir);
     SharedPreferences.setPrefix('bpb_$_portableNamespace.');
     _prefs = await SharedPreferences.getInstance();
+    allTimeUp = _prefs.getInt('traffic.allTimeUp') ?? 0;
+    allTimeDown = _prefs.getInt('traffic.allTimeDown') ?? 0;
     if (cleanStart) {
       await WebRtcLeakProtection.apply(false, _prefs);
       await _prefs.clear();
@@ -736,6 +740,10 @@ class AppState extends ChangeNotifier {
           // these values are deltas; accumulate them for the session totals.
           totalUp += t.up;
           totalDown += t.down;
+          allTimeUp += t.up;
+          allTimeDown += t.down;
+          unawaited(_prefs.setInt('traffic.allTimeUp', allTimeUp));
+          unawaited(_prefs.setInt('traffic.allTimeDown', allTimeDown));
         } else {
           // Android's TrafficMeter already returns cumulative session totals.
           totalUp = t.totalUp;

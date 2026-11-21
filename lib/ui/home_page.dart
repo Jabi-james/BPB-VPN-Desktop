@@ -78,14 +78,11 @@ class HomePage extends StatelessWidget {
         children: [
           Positioned.fill(
             child: IgnorePointer(
-              child: Opacity(
-                opacity: 0.20,
-                child: Image.asset(
+              child: Image.asset(
                   'images/icon/bg.jpg',
                   fit: BoxFit.cover,
                   errorBuilder: (_, _, _) => const SizedBox.shrink(),
                 ),
-              ),
             ),
           ),
           SafeArea(
@@ -172,6 +169,7 @@ class _TrafficRow extends StatelessWidget {
                   label: 'Download',
                   accent: const Color(0xFF39FF75),
                   rate: state.downSpeed,
+                  total: state.allTimeDown,
                   ),
               ),
               const SizedBox(width: 16),
@@ -181,6 +179,7 @@ class _TrafficRow extends StatelessWidget {
                   label: 'Upload',
                   accent: const Color(0xFFFF5555),
                   rate: state.upSpeed,
+                  total: state.allTimeUp,
                   ),
               ),
             ],
@@ -196,12 +195,14 @@ class _TrafficCard extends StatelessWidget {
   final String label;
   final Color accent;
   final int rate;
+  final int total;
 
   const _TrafficCard({
     required this.icon,
     required this.label,
     required this.accent,
     required this.rate,
+    required this.total,
   });
 
   @override
