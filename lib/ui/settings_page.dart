@@ -618,12 +618,13 @@ class SettingsPage extends StatelessWidget {
                   title: Text('H2 obfuscation'),
                   subtitle: Text('Normal/Fragment mode controls H2; QUIC obfuscation profiles apply to H3, not H2.'),
                 ),
-              const SwitchPref(
-                'device.aether.quicV2',
-                'QUIC v2 opener',
-                icon: Symbols.network_check_rounded,
-                subtitle: 'Keep enabled unless the network blocks it',
-              ),
+              if (d.aetherMasqueTransport == 'h3')
+                const SwitchPref(
+                  'device.aether.quicV2',
+                  'QUIC v2 opener',
+                  icon: Symbols.network_check_rounded,
+                  subtitle: 'Keep enabled unless the network blocks it',
+                ),
             ],
           ),
           const SizedBox(height: 12),
