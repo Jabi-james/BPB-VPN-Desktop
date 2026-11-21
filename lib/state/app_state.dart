@@ -524,7 +524,7 @@ class AppState extends ChangeNotifier {
         WebRtcLeakProtection.apply(
           profile.general.webRtcLeakProtection,
           _prefs,
-        ),
+        ).then((_) {}),
       );
     }
     _prefs.setString(_kProfile, jsonEncode(_stored.toSparseJson()));
