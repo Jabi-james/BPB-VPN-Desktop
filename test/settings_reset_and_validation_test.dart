@@ -171,9 +171,15 @@ void main() {
       await tester.ensureVisible(sectionTile);
       await tester.tap(sectionTile);
       await tester.pumpAndSettle();
+
+      // The VLESS clean-IP editor is farther down its settings list and may
+      // not be built until the content ListView is scrolled to it.
+      await tester.scrollUntilVisible(
+        pref,
+        300,
+        scrollable: find.byType(Scrollable).last,
+      );
       expect(pref, findsOneWidget);
-      await tester.ensureVisible(pref);
-      await tester.pumpAndSettle();
       await tester.tap(pref);
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), '');
