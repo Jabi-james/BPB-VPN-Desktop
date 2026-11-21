@@ -933,8 +933,8 @@ class XrayConfigBuilder {
     return XrayBuild(_clean(config));
   }
 
-  /// Aether establishes the base tunnel first; Xray uses its SOCKS listener as the
-  /// underlying dialer. A selected Chain Proxy is dialed through that base tunnel.
+  /// Aether is the base for user traffic. Xray's separate direct bootstrap listener
+  /// keeps Aether's own control-plane outside that tunnel; Chain Proxy is dialed through Aether.
   Future<XrayBuild> _buildAether() async {
     final config = await _buildConfig(
       outbounds: _chainOutbounds(),
@@ -1478,8 +1478,8 @@ class XrayConfigBuilder {
     if (!_frontedExit) {
       add(
         inboundTag: ['dns'],
-        outbound: _mode == ConnectionMode.aether ? outTag : 'direct',
-        balancer: _mode == ConnectionMode.aether && isBalancer,
+        outbound: (_mode == ConnectionMode.aether || _aetherCore) ? outTag : 'direct',
+        balancer: (_mode == ConnectionMode.aether || _aetherCore) && isBalancer,
       );
     }
     // BitTorrent direct, matched by Xray's sniffers (TCP and uTP, whatever destOverride is), and
