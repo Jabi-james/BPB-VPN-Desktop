@@ -103,7 +103,13 @@ void main() {
     expect(
       rules.any((rule) =>
           (rule['inboundTag'] as List?)?.contains('aether-upstream') == true &&
-          rule['outboundTag'] == 'direct'),
+          rule['outboundTag'] == 'aether-direct'),
+      isTrue,
+    );
+    expect(
+      outbounds.any((item) =>
+          item['tag'] == 'aether-direct' &&
+          ((item['streamSettings'] as Map)['sockopt'] as Map)['domainStrategy'] == 'AsIs'),
       isTrue,
     );
     expect(

@@ -1002,6 +1002,23 @@ class XrayConfigBuilder {
             'protocol': 'socks',
             'settings': {'address': '127.0.0.1', 'port': exitPort},
           },
+        if (_mode == ConnectionMode.aether)
+          {
+            'protocol': 'freedom',
+            'streamSettings': {
+              'sockopt': {
+                // Resolve Aether's own control-plane hosts outside its tunnel.
+                'domainStrategy': 'AsIs',
+                'happyEyeballs': {
+                  'tryDelayMs': 250,
+                  'prioritizeIPv6': false,
+                  'interleave': 2,
+                  'maxConcurrentTry': 4,
+                },
+              },
+            },
+            'tag': 'aether-direct',
+          },
         {
           'protocol': 'freedom',
           'streamSettings': {
@@ -1358,7 +1375,7 @@ class XrayConfigBuilder {
       if (_mode == ConnectionMode.aether)
         {
           'inboundTag': ['aether-upstream'],
-          'outboundTag': 'direct',
+          'outboundTag': 'aether-direct',
         },
       {
         'inboundTag': ['tun', 'mixed-in'],
