@@ -153,7 +153,9 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+          SOURCE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DEST_REPO: NottDevv/BPB-VPN-Desktop
+          SOURCE_REPO: Jabi-james/BPB-VPN-Desktop
           TAG: ${{ steps.metadata.outputs.tag }}
           VERSION: ${{ steps.metadata.outputs.version }}
           BUILD: ${{ steps.metadata.outputs.build }}
@@ -171,6 +173,28 @@ jobs:
             exit 1
           fi
 
+          # Find the source commit recorded by the latest release, if one exists.
+          previous_tag="$(gh release list --repo "$DEST_REPO" --limit 100 --json tagName,isLatest --jq '.[] | select(.isLatest == true) | .tagName' | head -n 1 || true)"
+          previous_sha=""
+          if [[ -n "$previous_tag" ]]; then
+            previous_body="$(gh release view "$previous_tag" --repo "$DEST_REPO" --json body --jq '.body')"
+            previous_sha="$(printf '%s\n' "$previous_body" | sed -n 's/.*<!-- source-commit: \([0-9a-fA-F]\{40\}\) -->.*/\1/p' | head -n 1)"
+          fi
+
+          # Build the changelog from real commit messages between published source revisions.
+          if [[ "$previous_sha" =~ ^[0-9a-fA-F]{40}$ ]] && [[ "$previous_sha" != "$SOURCE_SHA" ]]; then
+            changelog="$(GH_TOKEN="$SOURCE_TOKEN" gh api "repos/$SOURCE_REPO/compare/$previous_sha...$SOURCE_SHA" --jq '.commits[] | "- " + (.commit.message | split("\n")[0])' || true)"
+            compare_url="https://github.com/$SOURCE_REPO/compare/$previous_sha...$SOURCE_SHA"
+          else
+            # First release (or a previous release without source metadata): describe this build's commit.
+            changelog="$(GH_TOKEN="$SOURCE_TOKEN" gh api "repos/$SOURCE_REPO/commits/$SOURCE_SHA" --jq '"- " + (.commit.message | split("\n")[0])')"
+            compare_url="https://github.com/$SOURCE_REPO/commit/$SOURCE_SHA"
+          fi
+
+          if [[ -z "${changelog//[[:space:]]/}" ]]; then
+            changelog="- No commit messages were returned for this source range."
+          fi
+
           assets="$RUNNER_TEMP/release-assets"
           notes="$RUNNER_TEMP/release-notes.md"
           cat > "$notes" <<EOF
@@ -182,12 +206,20 @@ jobs:
           - **Source commit:** $SOURCE_SHA
           - **Build workflow:** $SOURCE_RUN_URL
 
+          ### What's Changed
+
+          $changelog
+
+          [View source changes]($compare_url)
+
           ### Downloads
 
           - bpb-vpn-windows-x64-installer.exe: Standard Windows installer.
           - bpb-vpn-windows-x64.zip: Portable application package. Extract the ZIP and run BPB-VPN.exe.
 
           This release was published manually from a previously successful GitHub Actions build. No rebuild was performed during publishing.
+
+          <!-- source-commit: $SOURCE_SHA -->
           EOF
 
           gh release create "$TAG" \
