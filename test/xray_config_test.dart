@@ -521,6 +521,12 @@ void main() {
     expect(outbounds[1]['tag'], 'proxy');
     expect(outbounds[1]['streamSettings']['sockopt']['dialerProxy'], 'aether-base');
     expect(outbounds.any((o) => o['tag'] == 'exit-dialer'), isFalse);
+    expect((c['inbounds'] as List).any((i) => i['tag'] == 'aether-upstream'), isTrue);
+    expect(outbounds.any((o) => o['tag'] == 'aether-direct'), isTrue);
+    final bootstrapRule = (c['routing']['rules'] as List).cast<Map>().firstWhere(
+      (rule) => (rule['inboundTag'] as List?)?.contains('aether-upstream') == true,
+    );
+    expect(bootstrapRule['outboundTag'], 'aether-direct');
   });
 
   test('Aether core without a chain uses its own SOCKS as the proxy', () async {
