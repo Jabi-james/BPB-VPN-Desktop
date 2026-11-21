@@ -174,6 +174,67 @@ func ensureAetherIdentities(exe, configDir string, settings map[string]string, u
 	return nil
 }
 
+// renewAetherMasqueIdentity registers a fresh MASQUE identity in a temporary file first.
+ // The existing identity remains intact unless registration and file validation both succeed.
+func renewAetherMasqueIdentity(exe, configDir string) error {
+	aetherProvisionMu.Lock()
+	defer aetherProvisionMu.Unlock()
+	if strings.TrimSpace(configDir) == "" {
+		return errors.New("Aether data directory was not provided")
+	}
+	if err := os.MkdirAll(configDir, 0700); err != nil {
+		return fmt.Errorf("create Aether data directory: %w", err)
+	}
+	original := filepath.Join(configDir, "aether-masque.toml")
+	temp := filepath.Join(configDir, fmt.Sprintf("aether-masque-renew-%d.toml", time.Now().UnixNano()))
+	defer os.Remove(temp)
+
+	env := aetherEnvironment(os.Environ(), configDir, nil)
+	filtered := env[:0]
+	for _, entry := range env {
+		name, _, _ := strings.Cut(entry, "=")
+		if !strings.EqualFold(name, "AETHER_MASQUE_CONFIG") {
+			filtered = append(filtered, entry)
+		}
+	}
+	env = append(filtered, "AETHER_MASQUE_CONFIG="+temp)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, exe, "--register", "masque")
+	cmd.Dir = configDir
+	cmd.Env = env
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("register fresh Aether MASQUE identity: %w; %s", err, strings.TrimSpace(string(output)))
+	}
+	info, err := os.Stat(temp)
+	if err != nil || info.Size() == 0 {
+		return fmt.Errorf("Aether MASQUE registration did not create a valid identity: %s", strings.TrimSpace(string(output)))
+	}
+
+	backup := original + ".renew-backup"
+	_ = os.Remove(backup)
+	hadOriginal := false
+	if _, err := os.Stat(original); err == nil {
+		if err := os.Rename(original, backup); err != nil {
+			return fmt.Errorf("preserve current Aether MASQUE identity: %w", err)
+		}
+		hadOriginal = true
+	}
+	if err := os.Rename(temp, original); err != nil {
+		if hadOriginal {
+			_ = os.Rename(backup, original)
+		}
+		return fmt.Errorf("activate renewed Aether MASQUE identity: %w", err)
+	}
+	if hadOriginal {
+		_ = os.Remove(backup)
+	}
+	_ = os.Remove(filepath.Join(configDir, "aether-masque-lastconn.toml"))
+	return nil
+}
+
 func aetherEnvironment(inherited []string, configDir string, settings map[string]string) []string {
 	env := make([]string, 0, len(inherited)+6)
 	for _, entry := range inherited {
@@ -192,7 +253,7 @@ func aetherEnvironment(inherited []string, configDir string, settings map[string
 		"NO_COLOR=1",
 	)
 	allowed := map[string]bool{
-		"AETHER_SCAN": true, "AETHER_IP": true, "AETHER_NOIZE": true,
+		"AETHER_SCAN": true, "AETHER_IP": true, "AETHER_NOIZE": true, "AETHER_DNS": true,
 		"AETHER_PEER": true, "AETHER_WG_PEER": true,
 		"AETHER_MASQUE_HTTP2": true, "AETHER_MASQUE_SNI": true,
 		"AETHER_QUIC_V2": true, "AETHER_MASQUE_H2_FRAGMENT": true,
