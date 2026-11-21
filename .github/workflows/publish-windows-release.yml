@@ -30,7 +30,7 @@ jobs:
         with:
           script: |
             const runIdText = process.env.RUN_ID || '';
-            if (!/^\\d+$/.test(runIdText)) {
+            if (!/^\d+$/.test(runIdText)) {
               core.setFailed('Run ID must contain digits only.');
               return;
             }
@@ -81,7 +81,7 @@ jobs:
               throw new Error('Could not read the build workflow at the selected commit.');
             }
             const workflowText = Buffer.from(workflowFile.content, 'base64').toString('utf8');
-            const versionMatch = workflowText.match(/BPB_APP_VERSION=([0-9]+\\.[0-9]+\\.[0-9]+)/);
+            const versionMatch = workflowText.match(/BPB_APP_VERSION=([0-9]+\.[0-9]+\.[0-9]+)/);
             if (!versionMatch) {
               throw new Error('Could not determine BPB_APP_VERSION from the selected build workflow.');
             }
