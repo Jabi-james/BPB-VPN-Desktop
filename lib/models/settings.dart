@@ -1143,6 +1143,20 @@ class DeviceSettings {
   /// BPB or Aether implementation for WARP / MASQUE.
   final String connectionCore;
 
+  // Aether settings are device-local; identities remain in Aether's own config files.
+  final String aetherScanMode;
+  final String aetherIpVersion;
+  final String aetherMasqueTransport;
+  final String aetherMasqueNoize;
+  final String aetherMasqueSni;
+  final bool aetherMasqueFragment;
+  final String aetherMasqueFragmentSize;
+  final String aetherMasqueFragmentDelay;
+  final bool aetherQuicV2;
+  final String aetherWgNoize;
+  final int aetherWgKeepalive;
+  final bool aetherWgNoProfileRetry;
+
   /// Worker's and WARP's ConnectionVariant names.
   final String workerVariant;
   final String warpVariant;
@@ -1188,6 +1202,18 @@ class DeviceSettings {
     this.lanPassword,
     this.connectionType = 'worker',
     this.connectionCore = 'bpb',
+    this.aetherScanMode = 'balanced',
+    this.aetherIpVersion = 'v4',
+    this.aetherMasqueTransport = 'h3',
+    this.aetherMasqueNoize = 'firewall',
+    this.aetherMasqueSni = 'www.cloudflare.com',
+    this.aetherMasqueFragment = false,
+    this.aetherMasqueFragmentSize = '8-16',
+    this.aetherMasqueFragmentDelay = '2-10',
+    this.aetherQuicV2 = true,
+    this.aetherWgNoize = 'balanced',
+    this.aetherWgKeepalive = 5,
+    this.aetherWgNoProfileRetry = false,
     this.workerVariant = 'normal',
     this.warpVariant = 'normal',
     this.masqueVariant = 'normal',
@@ -1209,6 +1235,7 @@ class DeviceSettings {
     final perApp = _map(j['perAppProxy']);
     final lan = _map(j['lanSharing']);
     final connection = _map(j['connection']);
+    final aether = _map(j['aether']);
     final exit = _map(j['exit']);
     final theme = _map(j['theme']);
     final region = _str(exit['region'], d.exitRegion);
@@ -1238,6 +1265,18 @@ class DeviceSettings {
         const {'bpb', 'aether'},
         d.connectionCore,
       ),
+      aetherScanMode: _choice(aether['scanMode'], const {'turbo','balanced','thorough','verified','ironclad'}, d.aetherScanMode),
+      aetherIpVersion: _choice(aether['ipVersion'], const {'v4','v6','both'}, d.aetherIpVersion),
+      aetherMasqueTransport: _choice(aether['masqueTransport'], const {'h2','h3'}, d.aetherMasqueTransport),
+      aetherMasqueNoize: _choice(aether['masqueNoize'], const {'off','light','firewall','balanced','gfw','aggressive'}, d.aetherMasqueNoize),
+      aetherMasqueSni: _str(aether['masqueSni'], d.aetherMasqueSni),
+      aetherMasqueFragment: _bool(aether['masqueFragment'], d.aetherMasqueFragment),
+      aetherMasqueFragmentSize: _str(aether['masqueFragmentSize'], d.aetherMasqueFragmentSize),
+      aetherMasqueFragmentDelay: _str(aether['masqueFragmentDelay'], d.aetherMasqueFragmentDelay),
+      aetherQuicV2: _bool(aether['quicV2'], d.aetherQuicV2),
+      aetherWgNoize: _choice(aether['wgNoize'], const {'off','light','firewall','balanced','gfw','aggressive'}, d.aetherWgNoize),
+      aetherWgKeepalive: _int(aether['wgKeepalive'], d.aetherWgKeepalive).clamp(1, 120),
+      aetherWgNoProfileRetry: _bool(aether['wgNoProfileRetry'], d.aetherWgNoProfileRetry),
       workerVariant: _choice(
         _str(
           connection['workerVariant'],
@@ -1295,6 +1334,20 @@ class DeviceSettings {
       'masqueVariant': masqueVariant,
       'serverlessMode': serverlessMode,
       'torBridge': torBridge,
+    },
+    'aether': {
+      'scanMode': aetherScanMode,
+      'ipVersion': aetherIpVersion,
+      'masqueTransport': aetherMasqueTransport,
+      'masqueNoize': aetherMasqueNoize,
+      'masqueSni': aetherMasqueSni,
+      'masqueFragment': aetherMasqueFragment,
+      'masqueFragmentSize': aetherMasqueFragmentSize,
+      'masqueFragmentDelay': aetherMasqueFragmentDelay,
+      'quicV2': aetherQuicV2,
+      'wgNoize': aetherWgNoize,
+      'wgKeepalive': aetherWgKeepalive,
+      'wgNoProfileRetry': aetherWgNoProfileRetry,
     },
     'exit': {
       'node': exitNode.name,
