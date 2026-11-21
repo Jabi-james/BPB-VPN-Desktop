@@ -189,6 +189,7 @@ class VpnChannel {
     String? torBridge,
     List<String> torCustomBridges = const [],
     String? aetherConfigDir,
+    String? aetherProtocol,
   }) async {
     _emitWindowsState(VpnStatus.connecting);
     try {
@@ -204,9 +205,10 @@ class VpnChannel {
         'torBridge': torBridge,
         'torCustomBridges': torCustomBridges,
         'aetherConfigDir': aetherConfigDir,
+        'aetherProtocol': aetherProtocol,
         // Do not report CONNECTED until Xray can complete a request through its outbound.
         'verifyConnection': verifyConnection,
-      }, timeout: exit == null
+      }, timeout: exit == null && aetherProtocol == null
           ? const Duration(seconds: 30)
           : const Duration(minutes: 16));
       if (result['ok'] != true) {
@@ -304,6 +306,7 @@ class VpnChannel {
     String? torBridge,
     List<String> torCustomBridges = const [],
     String? aetherConfigDir,
+    String? aetherProtocol,
     Map<String, dynamic>? psiphonConfig,
     bool browserDialer = false,
     bool verifyConnection = false,
@@ -348,6 +351,7 @@ class VpnChannel {
         torBridge: torBridge,
         torCustomBridges: torCustomBridges,
         aetherConfigDir: aetherConfigDir,
+        aetherProtocol: aetherProtocol,
       );
       return;
     }
