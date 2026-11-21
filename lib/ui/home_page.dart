@@ -218,7 +218,7 @@ class _TrafficCard extends StatelessWidget {
           width: 0.75,
         ),
       ),
-      color: theme.colorScheme.surfaceContainer,
+      color: theme.colorScheme.surfaceContainer.withValues(alpha: 0.80),
       elevation: 0,
       child: Padding(
         padding: EdgeInsets.symmetric(
@@ -245,6 +245,13 @@ class _TrafficCard extends StatelessWidget {
               style: theme.textTheme.titleMedium
                   ?.copyWith(fontWeight: FontWeight.w700)
                   .merge(_tabular),
+            ),
+            Text(
+              'Total  ${formatBytes(total)}',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
