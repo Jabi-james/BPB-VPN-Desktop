@@ -590,7 +590,7 @@ class SettingsPage extends StatelessWidget {
                 const ListTile(
                   leading: Icon(Symbols.shield_rounded),
                   title: Text('H2 obfuscation'),
-                  subtitle: Text('Use TLS fragmentation below; QUIC obfuscation profiles apply to H3, not H2.'),
+                  subtitle: Text('Use Normal/Fragment mode on the main screen; QUIC obfuscation profiles apply to H3, not H2.'),
                 ),
               const TextPref(
                 'device.aether.masqueSni',
