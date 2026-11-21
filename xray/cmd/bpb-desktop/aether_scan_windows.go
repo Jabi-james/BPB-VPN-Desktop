@@ -56,7 +56,11 @@ func scanAetherWindows(root string, req request) ([]string, error) {
 	if protocol == "wg" {
 		protocolFlag = "--wg"
 	}
-	args := []string{protocolFlag, "--scan", "thorough", "--bind", "127.0.0.1:0"}
+	scanMode := strings.TrimSpace(req.AetherEnvironment["AETHER_SCAN"])
+	if scanMode == "" {
+		scanMode = "balanced"
+	}
+	args := []string{protocolFlag, "--scan", scanMode, "--bind", "127.0.0.1:0"}
 	ctx, cancel := context.WithTimeout(context.Background(), 150*time.Second)
 	defer cancel()
 
@@ -66,7 +70,7 @@ func scanAetherWindows(root string, req request) ([]string, error) {
 	for key, value := range req.AetherEnvironment {
 		settings[key] = value
 	}
-	settings["AETHER_SCAN"] = "thorough"
+	settings["AETHER_SCAN"] = scanMode
 	cmd.Env = append(aetherEnvironment(os.Environ(), absoluteDir, settings), "AETHER_PROTOCOL="+protocol)
 
 	reader, writer, err := os.Pipe()

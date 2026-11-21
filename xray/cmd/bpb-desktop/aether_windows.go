@@ -174,9 +174,22 @@ func ensureAetherIdentities(exe, configDir string, settings map[string]string, u
 	return nil
 }
 
-// renewAetherMasqueIdentity registers a fresh MASQUE identity in a temporary file first.
- // The existing identity remains intact unless registration and file validation both succeed.
+// renewAetherMasqueIdentity registers a fresh MASQUE identity atomically.
 func renewAetherMasqueIdentity(exe, configDir string) error {
+	return renewAetherIdentity(exe, configDir, "masque")
+}
+
+// renewAetherWgIdentity registers a fresh WireGuard/WARP identity atomically.
+func renewAetherWgIdentity(exe, configDir string) error {
+	return renewAetherIdentity(exe, configDir, "wg")
+}
+
+// MASQUE and WireGuard have separate config and last-connection files.
+// Register into a temporary file first; only replace the active identity after validation.
+func renewAetherIdentity(exe, configDir, protocol string) error {
+	if protocol != "masque" && protocol != "wg" {
+		return fmt.Errorf("unsupported Aether identity protocol %q", protocol)
+	}
 	aetherProvisionMu.Lock()
 	defer aetherProvisionMu.Unlock()
 	if strings.TrimSpace(configDir) == "" {
@@ -185,32 +198,39 @@ func renewAetherMasqueIdentity(exe, configDir string) error {
 	if err := os.MkdirAll(configDir, 0700); err != nil {
 		return fmt.Errorf("create Aether data directory: %w", err)
 	}
-	original := filepath.Join(configDir, "aether-masque.toml")
-	temp := filepath.Join(configDir, fmt.Sprintf("aether-masque-renew-%d.toml", time.Now().UnixNano()))
+
+	fileName := "aether-masque.toml"
+	configVariable := "AETHER_MASQUE_CONFIG"
+	if protocol == "wg" {
+		fileName = "aether-wg.toml"
+		configVariable = "AETHER_WG_CONFIG"
+	}
+	original := filepath.Join(configDir, fileName)
+	temp := filepath.Join(configDir, fmt.Sprintf("aether-%s-renew-%d.toml", protocol, time.Now().UnixNano()))
 	defer os.Remove(temp)
 
 	env := aetherEnvironment(os.Environ(), configDir, nil)
 	filtered := env[:0]
 	for _, entry := range env {
 		name, _, _ := strings.Cut(entry, "=")
-		if !strings.EqualFold(name, "AETHER_MASQUE_CONFIG") {
+		if !strings.EqualFold(name, configVariable) && !strings.EqualFold(name, "AETHER_REGISTER") {
 			filtered = append(filtered, entry)
 		}
 	}
-	env = append(filtered, "AETHER_MASQUE_CONFIG="+temp)
+	env = append(filtered, configVariable+"="+temp, "AETHER_REGISTER="+protocol)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, exe, "--register", "masque")
+	cmd := exec.CommandContext(ctx, exe)
 	cmd.Dir = configDir
 	cmd.Env = env
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("register fresh Aether MASQUE identity: %w; %s", err, strings.TrimSpace(string(output)))
+		return fmt.Errorf("register fresh Aether %s identity: %w; %s", protocol, err, strings.TrimSpace(string(output)))
 	}
 	info, err := os.Stat(temp)
 	if err != nil || info.Size() == 0 {
-		return fmt.Errorf("Aether MASQUE registration did not create a valid identity: %s", strings.TrimSpace(string(output)))
+		return fmt.Errorf("Aether %s registration did not create a valid identity: %s", protocol, strings.TrimSpace(string(output)))
 	}
 
 	backup := original + ".renew-backup"
@@ -218,7 +238,7 @@ func renewAetherMasqueIdentity(exe, configDir string) error {
 	hadOriginal := false
 	if _, err := os.Stat(original); err == nil {
 		if err := os.Rename(original, backup); err != nil {
-			return fmt.Errorf("preserve current Aether MASQUE identity: %w", err)
+			return fmt.Errorf("preserve current Aether %s identity: %w", protocol, err)
 		}
 		hadOriginal = true
 	}
@@ -226,12 +246,12 @@ func renewAetherMasqueIdentity(exe, configDir string) error {
 		if hadOriginal {
 			_ = os.Rename(backup, original)
 		}
-		return fmt.Errorf("activate renewed Aether MASQUE identity: %w", err)
+		return fmt.Errorf("activate renewed Aether %s identity: %w", protocol, err)
 	}
 	if hadOriginal {
 		_ = os.Remove(backup)
 	}
-	_ = os.Remove(filepath.Join(configDir, "aether-masque-lastconn.toml"))
+	_ = os.Remove(filepath.Join(configDir, strings.TrimSuffix(fileName, ".toml")+"-lastconn.toml"))
 	return nil
 }
 

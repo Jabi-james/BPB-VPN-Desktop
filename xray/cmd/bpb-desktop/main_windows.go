@@ -282,6 +282,18 @@ func main() {
 					res = response{OK: true}
 				}
 			}
+		case "renewAetherWg":
+			if controller.IsRunning() {
+				res = response{Error: "Disconnect before renewing the Aether WARP identity."}
+			} else {
+				root := filepath.Dir(executable)
+				exe := filepath.Join(root, "aether", "aether.exe")
+				if err := renewAetherWgIdentity(exe, req.AetherConfigDir); err != nil {
+					res = response{Error: err.Error()}
+				} else {
+					res = response{OK: true}
+				}
+			}
 		case "scanAether":
 			if controller.IsRunning() {
 				res = response{Error: "Disconnect before scanning Aether endpoints."}

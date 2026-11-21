@@ -603,21 +603,11 @@ class SettingsPage extends StatelessWidget {
                   hint: '2-10',
                 ),
               ],
-              if (d.aetherMasqueTransport == 'h3')
-                const ChoicePref('device.aether.masqueNoize', 'QUIC obfuscation profile', {
-                  'off': 'Off',
-                  'light': 'Light',
-                  'firewall': 'Firewall',
-                  'balanced': 'Balanced',
-                  'gfw': 'GFW',
-                  'aggressive': 'Aggressive',
-                }, icon: Symbols.shield_rounded)
-              else
-                const ListTile(
-                  leading: Icon(Symbols.shield_rounded),
-                  title: Text('H2 obfuscation'),
-                  subtitle: Text('Normal/Fragment mode controls H2; QUIC obfuscation profiles apply to H3, not H2.'),
-                ),
+              const ChoicePref('device.aether.masqueNoize', 'Obfuscation profile', {
+                'off': 'Off',
+                'firewall': 'Firewall',
+                'gfw': 'GFW',
+              }, icon: Symbols.shield_rounded),
               if (d.aetherMasqueTransport == 'h3')
                 const SwitchPref(
                   'device.aether.quicV2',
@@ -625,23 +615,6 @@ class SettingsPage extends StatelessWidget {
                   icon: Symbols.network_check_rounded,
                   subtitle: 'Keep enabled unless the network blocks it',
                 ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          SettingsCard(
-            children: [
-              const ChoicePref('device.aether.scanMode', 'Scan mode', {
-                'turbo': 'Turbo',
-                'balanced': 'Balanced',
-                'thorough': 'Thorough',
-                'verified': 'Verified',
-                'ironclad': 'Ironclad',
-              }, icon: Symbols.speed_rounded),
-              const ChoicePref('device.aether.ipVersion', 'IP version', {
-                'v4': 'IPv4',
-                'v6': 'IPv6',
-                'both': 'IPv4 + IPv6',
-              }, icon: Symbols.language_rounded),
             ],
           ),
           const SizedBox(height: 12),
@@ -655,10 +628,15 @@ class SettingsPage extends StatelessWidget {
                 help: 'Up to ten MASQUE endpoints verified by Aether. The fastest is used first.',
                 itemValidator: validateEndpoint,
               ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SettingsCard(
+            children: [
               ListTile(
                 leading: const Icon(Symbols.manage_search_rounded),
-                title: const Text('Scan for Endpoints'),
-                subtitle: const Text('Find up to 10 healthy MASQUE endpoints'),
+                title: const Text('Scanner settings'),
+                subtitle: const Text('Choose scan mode and scan MASQUE endpoints'),
                 trailing: const Icon(Symbols.chevron_right_rounded),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const AetherScannerPage(protocol: 'masque')),
@@ -682,9 +660,7 @@ class SettingsPage extends StatelessWidget {
               const ChoicePref('device.aether.wgNoize', 'Obfuscation profile', {
                 'off': 'Off',
                 'light': 'Light',
-                'firewall': 'Firewall',
                 'balanced': 'Balanced',
-                'gfw': 'GFW',
                 'aggressive': 'Aggressive',
               }, icon: Symbols.shield_rounded),
               const IntPref(
@@ -711,23 +687,6 @@ class SettingsPage extends StatelessWidget {
           const SizedBox(height: 12),
           SettingsCard(
             children: [
-              const ChoicePref('device.aether.scanMode', 'Scan mode', {
-                'turbo': 'Turbo',
-                'balanced': 'Balanced',
-                'thorough': 'Thorough',
-                'verified': 'Verified',
-                'ironclad': 'Ironclad',
-              }, icon: Symbols.speed_rounded),
-              const ChoicePref('device.aether.ipVersion', 'IP version', {
-                'v4': 'IPv4',
-                'v6': 'IPv6',
-                'both': 'IPv4 + IPv6',
-              }, icon: Symbols.language_rounded),
-            ],
-          ),
-          const SizedBox(height: 12),
-          SettingsCard(
-            children: [
               const ListPref(
                 'device.aether.wgEndpoints',
                 'Endpoints',
@@ -736,10 +695,15 @@ class SettingsPage extends StatelessWidget {
                 help: 'Up to ten WireGuard endpoints verified by Aether. The fastest is used first.',
                 itemValidator: validateEndpoint,
               ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SettingsCard(
+            children: [
               ListTile(
                 leading: const Icon(Symbols.manage_search_rounded),
-                title: const Text('Scan for Endpoints'),
-                subtitle: const Text('Find up to 10 healthy WireGuard endpoints'),
+                title: const Text('Scanner settings'),
+                subtitle: const Text('Choose scan mode and scan WireGuard endpoints'),
                 trailing: const Icon(Symbols.chevron_right_rounded),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const AetherScannerPage(protocol: 'wg')),
@@ -747,6 +711,8 @@ class SettingsPage extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 12),
+          SettingsCard(children: [const _AetherWgAccountTile()]),
           const CoreGroupEnd(),
 
           const SectionHeader('Tor'),
@@ -944,26 +910,32 @@ class AetherScannerPage extends StatefulWidget {
 }
 
 class _AetherScannerPageState extends State<AetherScannerPage> {
-  bool _loading = true;
+  bool _loading = false;
+  bool _hasScanned = false;
   String? _error;
   List<String> _endpoints = const [];
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scan());
-  }
-
   Future<void> _scan() async {
-    if (!mounted) return;
-    setState(() { _loading = true; _error = null; });
+    if (!mounted || _loading) return;
+    setState(() {
+      _loading = true;
+      _hasScanned = true;
+      _error = null;
+      _endpoints = const [];
+    });
     try {
       final endpoints = await AppScope.of(context).scanAetherEndpoints(widget.protocol);
       if (!mounted) return;
-      setState(() { _endpoints = endpoints; _loading = false; });
+      setState(() {
+        _endpoints = endpoints;
+        _loading = false;
+      });
     } catch (error) {
       if (!mounted) return;
-      setState(() { _error = '$error'; _loading = false; });
+      setState(() {
+        _error = '$error';
+        _loading = false;
+      });
     }
   }
 
@@ -977,19 +949,45 @@ class _AetherScannerPageState extends State<AetherScannerPage> {
         padding: const EdgeInsets.all(20),
         children: [
           Text(
-            'Aether verifies endpoints with the selected protocol. Up to ten healthy results are saved in Settings.',
+            'Choose how Aether scans the network. These are Aether-native options, not BPB scanner settings.',
             style: theme.textTheme.bodyMedium,
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 16),
+          SettingsCard(
+            children: [
+              const ChoicePref('device.aether.scanMode', 'Scan mode', {
+                'turbo': 'Turbo',
+                'balanced': 'Balanced',
+                'thorough': 'Thorough',
+                'stealth': 'Stealth',
+                'ironclad': 'Ironclad',
+              }, icon: Symbols.speed_rounded),
+              const ChoicePref('device.aether.ipVersion', 'IP version', {
+                'v4': 'IPv4',
+                'v6': 'IPv6',
+                'both': 'IPv4 + IPv6',
+              }, icon: Symbols.language_rounded),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: FilledButton.icon(
+              onPressed: _loading ? null : _scan,
+              icon: Icon(_hasScanned ? Symbols.refresh_rounded : Symbols.manage_search_rounded),
+              label: Text(_hasScanned ? 'Scan again' : 'Scan'),
+            ),
+          ),
           if (_loading) ...[
+            const SizedBox(height: 18),
             const LinearProgressIndicator(),
             const SizedBox(height: 12),
-            const Center(child: Text('Scanning and verifying endpoints…')),
+            const Center(child: Text('Aether is scanning and verifying endpoints…')),
           ] else if (_error != null) ...[
+            const SizedBox(height: 16),
             Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
-            const SizedBox(height: 12),
-            Align(alignment: Alignment.centerLeft, child: FilledButton.icon(onPressed: _scan, icon: const Icon(Icons.refresh), label: const Text('Try again'))),
-          ] else ...[
+          ] else if (_hasScanned) ...[
+            const SizedBox(height: 18),
             Text('${_endpoints.length} healthy endpoint(s) saved', style: theme.textTheme.titleMedium),
             const SizedBox(height: 8),
             for (final (index, endpoint) in _endpoints.indexed)
@@ -1003,8 +1001,6 @@ class _AetherScannerPageState extends State<AetherScannerPage> {
                   onPressed: () => Clipboard.setData(ClipboardData(text: endpoint)),
                 ),
               ),
-            const SizedBox(height: 12),
-            Align(alignment: Alignment.centerLeft, child: OutlinedButton.icon(onPressed: _scan, icon: const Icon(Icons.refresh), label: const Text('Scan again'))),
           ],
         ],
       ),
@@ -1930,6 +1926,72 @@ class _AetherMasqueAccountTile extends StatelessWidget {
                             await state.renewAetherMasqueIdentity();
                             messenger.showSnackBar(
                               const SnackBar(content: Text('Aether MASQUE identity updated')),
+                            );
+                          } catch (e) {
+                            messenger.showSnackBar(SnackBar(content: Text('$e')));
+                          }
+                        },
+                ),
+        );
+      },
+    );
+  }
+}
+
+/// Shows Aether's independent WireGuard/WARP identity and can register or renew it.
+class _AetherWgAccountTile extends StatelessWidget {
+  const _AetherWgAccountTile();
+
+  @override
+  Widget build(BuildContext context) {
+    final state = AppScope.of(context);
+    return FutureBuilder<bool>(
+      future: state.hasAetherWgIdentity,
+      builder: (context, snapshot) {
+        final registered = snapshot.data == true;
+        return ListTile(
+          leading: const Icon(Symbols.vpn_key_rounded),
+          title: const Text('WARP account'),
+          subtitle: Text(snapshot.connectionState == ConnectionState.waiting
+              ? 'Checking…'
+              : registered ? 'Registered' : 'Not registered'),
+          trailing: state.renewingAetherWg
+              ? const SizedBox(width: 24, height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2))
+              : FilledButton.tonalIcon(
+                  icon: const Icon(Symbols.autorenew_rounded, size: 18),
+                  label: Text(registered ? 'Renew' : 'Register'),
+                  onPressed: snapshot.connectionState == ConnectionState.waiting ||
+                          state.isConnected || state.isBusy
+                      ? null
+                      : () async {
+                          final messenger = ScaffoldMessenger.of(context);
+                          if (registered) {
+                            final ok = await showDialog<bool>(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Renew Aether WARP identity'),
+                                content: const Text(
+                                  'A new WireGuard/WARP identity will replace the current one without changing the MASQUE identity. Continue?',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.of(context).pop(false),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  FilledButton(
+                                    onPressed: () => Navigator.of(context).pop(true),
+                                    child: const Text('Renew'),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (ok != true) return;
+                          }
+                          try {
+                            await state.renewAetherWgIdentity();
+                            messenger.showSnackBar(
+                              const SnackBar(content: Text('Aether WARP identity updated')),
                             );
                           } catch (e) {
                             messenger.showSnackBar(SnackBar(content: Text('$e')));

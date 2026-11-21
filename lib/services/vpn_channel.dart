@@ -190,6 +190,19 @@ class VpnChannel {
     }
   }
 
+  static Future<void> renewAetherWgIdentity(String configDir) async {
+    if (!Platform.isWindows) {
+      throw UnsupportedError('Aether WARP identity renewal is available on Windows only.');
+    }
+    final result = await _sendWindowsCommand({
+      'command': 'renewAetherWg',
+      'aetherConfigDir': configDir,
+    }, timeout: const Duration(minutes: 5));
+    if (result['ok'] != true) {
+      throw StateError(result['error'] as String? ?? 'Aether WARP identity renewal failed.');
+    }
+  }
+
   static Future<List<String>> scanAetherEndpoints({
     required String protocol,
     required String configDir,

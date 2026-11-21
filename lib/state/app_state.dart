@@ -823,9 +823,12 @@ class AppState extends ChangeNotifier {
     final masque = protocol == 'masque';
     return {
       'AETHER_SCAN': device.aetherScanMode,
-      'AETHER_IP': device.aetherIpVersion,
-      if (!masque || device.aetherMasqueTransport == 'h3')
-        'AETHER_NOIZE': masque ? device.aetherMasqueNoize : device.aetherWgNoize,
+      'AETHER_IP': switch (device.aetherIpVersion) {
+        'v6' => '6',
+        'both' => 'dual',
+        _ => '4',
+      },
+      'AETHER_NOIZE': masque ? device.aetherMasqueNoize : device.aetherWgNoize,
       'AETHER_DNS': (masque ? device.aetherMasqueDns : device.aetherWgDns).replaceAll(' ', ''),
       if (masque) ...{
         'AETHER_MASQUE_HTTP2': device.aetherMasqueTransport == 'h2' ? '1' : '0',
@@ -873,6 +876,35 @@ class AppState extends ChangeNotifier {
       await VpnChannel.renewAetherMasqueIdentity(_aetherConfigDir);
     } finally {
       renewingAetherMasque = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> get hasAetherWgIdentity async {
+    if (defaultTargetPlatform != TargetPlatform.windows) return false;
+    try {
+      final provisioning = _aetherProvisioning;
+      if (provisioning != null) await provisioning;
+      final file = File('$_aetherConfigDir${Platform.pathSeparator}aether-wg.toml');
+      return await file.exists() && await file.length() > 0;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  bool renewingAetherWg = false;
+
+  Future<void> renewAetherWgIdentity() async {
+    if (renewingAetherWg) return;
+    if (isConnected || isBusy) {
+      throw StateError('Disconnect before renewing the Aether WARP identity.');
+    }
+    renewingAetherWg = true;
+    notifyListeners();
+    try {
+      await VpnChannel.renewAetherWgIdentity(_aetherConfigDir);
+    } finally {
+      renewingAetherWg = false;
       notifyListeners();
     }
   }
