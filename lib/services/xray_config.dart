@@ -1007,8 +1007,8 @@ class XrayConfigBuilder {
             'protocol': 'freedom',
             'streamSettings': {
               'sockopt': {
-                // Resolve Aether's own control-plane hosts outside its tunnel.
-                'domainStrategy': 'AsIs',
+                // Resolve Aether's own control-plane hosts through the dedicated uplink DNS.
+                'domainStrategy': 'UseIP',
                 'happyEyeballs': {
                   'tryDelayMs': 250,
                   'prioritizeIPv6': false,
@@ -1213,6 +1213,23 @@ class XrayConfigBuilder {
       }
     }
 
+    if (_mode == ConnectionMode.aether) {
+      // Only Aether's bootstrap/API names use a direct DNS server. Normal app DNS
+      // remains on remote-dns and therefore travels through Aether itself.
+      final bootstrapDns = localDNS == 'localhost' ? '8.8.8.8' : localDNS;
+      servers.add(
+        _dnsServer(
+          bootstrapDns,
+          domains: const [
+            'domain:api.devices.cloudflare.com',
+            'domain:api.cloudflareclient.com',
+            'domain:cloudflare-ech.com',
+          ],
+          skipFallback: true,
+          tag: 'aether-dns',
+        ),
+      );
+    }
     if (!isServerlessPacket && !isServerlessDns) {
       servers.add(
         _dnsServer(
@@ -1375,6 +1392,11 @@ class XrayConfigBuilder {
       if (_mode == ConnectionMode.aether)
         {
           'inboundTag': ['aether-upstream'],
+          'outboundTag': 'aether-direct',
+        },
+      if (_mode == ConnectionMode.aether)
+        {
+          'inboundTag': ['aether-dns'],
           'outboundTag': 'aether-direct',
         },
       {

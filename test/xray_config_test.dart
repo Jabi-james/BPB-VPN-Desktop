@@ -109,7 +109,21 @@ void main() {
     expect(
       outbounds.any((item) =>
           item['tag'] == 'aether-direct' &&
-          ((item['streamSettings'] as Map)['sockopt'] as Map)['domainStrategy'] == 'AsIs'),
+          ((item['streamSettings'] as Map)['sockopt'] as Map)['domainStrategy'] == 'UseIP'),
+      isTrue,
+    );
+    expect(
+      rules.any((rule) =>
+          (rule['inboundTag'] as List?)?.contains('aether-dns') == true &&
+          rule['outboundTag'] == 'aether-direct'),
+      isTrue,
+    );
+    final dnsServers = ((config['dns'] as Map)['servers'] as List).cast<Map>();
+    expect(
+      dnsServers.any((server) =>
+          server['tag'] == 'aether-dns' &&
+          (server['domains'] as List).contains('domain:api.devices.cloudflare.com') &&
+          server['skipFallback'] == true),
       isTrue,
     );
     expect(
