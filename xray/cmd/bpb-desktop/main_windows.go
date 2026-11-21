@@ -270,6 +270,18 @@ func main() {
 			} else {
 				res = response{OK: true}
 			}
+		case "renewAetherMasque":
+			if controller.IsRunning() {
+				res = response{Error: "Disconnect before renewing the Aether MASQUE identity."}
+			} else {
+				root := filepath.Dir(executable)
+				exe := filepath.Join(root, "aether", "aether.exe")
+				if err := renewAetherMasqueIdentity(exe, req.AetherConfigDir); err != nil {
+					res = response{Error: err.Error()}
+				} else {
+					res = response{OK: true}
+				}
+			}
 		case "scanAether":
 			if controller.IsRunning() {
 				res = response{Error: "Disconnect before scanning Aether endpoints."}
