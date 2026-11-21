@@ -1140,6 +1140,9 @@ class DeviceSettings {
   /// Connection type name (see ConnectionMode) and its mode choices.
   final String connectionType;
 
+  /// BPB or Aether implementation for WARP / MASQUE.
+  final String connectionCore;
+
   /// Worker's and WARP's ConnectionVariant names.
   final String workerVariant;
   final String warpVariant;
@@ -1184,6 +1187,7 @@ class DeviceSettings {
     this.lanUsername,
     this.lanPassword,
     this.connectionType = 'worker',
+    this.connectionCore = 'bpb',
     this.workerVariant = 'normal',
     this.warpVariant = 'normal',
     this.masqueVariant = 'normal',
@@ -1226,8 +1230,14 @@ class DeviceSettings {
       connectionType: switch (type) {
         'normal' || 'fragment' => 'worker',
         'warpPro' => 'warp',
+        'aether' => 'masque', // migrate the old standalone Aether connection
         _ => type,
       },
+      connectionCore: _choice(
+        connection['core'] ?? (type == 'aether' ? 'aether' : null),
+        const {'bpb', 'aether'},
+        d.connectionCore,
+      ),
       workerVariant: _choice(
         _str(
           connection['workerVariant'],
@@ -1279,6 +1289,7 @@ class DeviceSettings {
     },
     'connection': {
       'type': connectionType,
+      'core': connectionCore,
       'workerVariant': workerVariant,
       'warpVariant': warpVariant,
       'masqueVariant': masqueVariant,
