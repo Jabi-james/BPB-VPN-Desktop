@@ -695,7 +695,7 @@ class SettingsPage extends StatelessWidget {
                 suffix: ' s',
               ),
               const ListTile(
-                leading: Icon(Symbols.data_array_rounded),
+                leading: Icon(Symbols.numbers_rounded),
                 title: Text('Reserved bytes'),
                 subtitle: Text('Not exposed by Aether’s WireGuard implementation'),
               ),
