@@ -245,6 +245,8 @@ class AppState extends ChangeNotifier {
   bool get hasModeOption =>
       (core == CoreType.bpb &&
           (mode.hasVariants || mode == ConnectionMode.masque)) ||
+      (core == CoreType.aether && mode == ConnectionMode.masque &&
+          device.aetherMasqueTransport == 'h2') ||
       mode == ConnectionMode.serverless ||
       mode == ConnectionMode.tor;
 
@@ -279,6 +281,9 @@ class AppState extends ChangeNotifier {
 
   void setMasqueVariant(MasqueVariant value) =>
       write('device.connection.masqueVariant', value.name);
+
+  void setAetherMasqueFragment(bool value) =>
+      write('device.aether.masqueFragment', value);
 
   ServerlessMode get serverlessMode =>
       XrayConfigBuilder.serverlessModeOf(device);
@@ -818,6 +823,7 @@ class AppState extends ChangeNotifier {
       'AETHER_SCAN': device.aetherScanMode,
       'AETHER_IP': device.aetherIpVersion,
       'AETHER_NOIZE': masque ? device.aetherMasqueNoize : device.aetherWgNoize,
+      'AETHER_DNS': (masque ? device.aetherMasqueDns : device.aetherWgDns).replaceAll(' ', ''),
       if (masque) ...{
         'AETHER_MASQUE_HTTP2': device.aetherMasqueTransport == 'h2' ? '1' : '0',
         'AETHER_MASQUE_SNI': device.aetherMasqueSni,
@@ -837,6 +843,33 @@ class AppState extends ChangeNotifier {
           'AETHER_WG_PEER': device.aetherWgEndpoints.first,
       },
     };
+  }
+
+  Future<bool> get hasAetherMasqueIdentity async {
+    if (defaultTargetPlatform != TargetPlatform.windows) return false;
+    try {
+      final file = File('$_aetherConfigDir${Platform.pathSeparator}aether-masque.toml');
+      return await file.exists() && await file.length() > 0;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  bool renewingAetherMasque = false;
+
+  Future<void> renewAetherMasqueIdentity() async {
+    if (renewingAetherMasque) return;
+    if (isConnected || isBusy) {
+      throw StateError('Disconnect before renewing the Aether MASQUE identity.');
+    }
+    renewingAetherMasque = true;
+    notifyListeners();
+    try {
+      await VpnChannel.renewAetherMasqueIdentity(_aetherConfigDir);
+    } finally {
+      renewingAetherMasque = false;
+      notifyListeners();
+    }
   }
 
   /// Runs Aether's own protocol verifier and saves up to ten healthy endpoints.
