@@ -57,7 +57,7 @@ func startAetherWindows(root string, req request, cancel <-chan struct{}) error 
 		return fmt.Errorf("create Aether data directory: %w", err)
 	}
 
-	if err := ensureAetherIdentities(exe, absoluteDir, req.AetherEnvironment); err != nil {
+	if err := ensureAetherIdentities(exe, absoluteDir, req.AetherEnvironment, aetherUpstreamURL); err != nil {
 		return err
 	}
 
@@ -141,7 +141,7 @@ func startAetherWindows(root string, req request, cancel <-chan struct{}) error 
 	}
 }
 
-func ensureAetherIdentities(exe, configDir string, settings map[string]string) error {
+func ensureAetherIdentities(exe, configDir string, settings map[string]string, upstream string) error {
 	aetherProvisionMu.Lock()
 	defer aetherProvisionMu.Unlock()
 	identities := []struct{ name, file string }{
@@ -153,7 +153,11 @@ func ensureAetherIdentities(exe, configDir string, settings map[string]string) e
 		if info, err := os.Stat(path); err == nil && info.Size() > 0 { continue }
 		env := append(aetherEnvironment(os.Environ(), configDir, settings), "AETHER_REGISTER="+identity.name)
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-		cmd := exec.CommandContext(ctx, exe)
+		args := []string{}
+		if upstream != "" {
+			args = append(args, "--upstream", upstream)
+		}
+		cmd := exec.CommandContext(ctx, exe, args...)
 		cmd.Dir = configDir
 		cmd.Env = env
 		output, err := cmd.CombinedOutput()
