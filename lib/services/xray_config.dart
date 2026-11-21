@@ -1463,7 +1463,7 @@ class XrayConfigBuilder {
     if ((!_exitType || _mode == ConnectionMode.aether) &&
         !_frontedExit && !isServerlessDns) {
       add(
-        inboundTag: [if (_hasExit) _exitInbound, 'remote-dns'],
+        inboundTag: [if (_hasExit && !_aetherCore) _exitInbound, 'remote-dns'],
         outbound: outTag,
         balancer: isBalancer,
       );
@@ -1546,7 +1546,7 @@ class XrayConfigBuilder {
 
     final domainStrategy = profile.routing.domainStrategy.xray;
     final network = tcpOnly ? 'tcp' : 'tcp,udp';
-    final outbound = _hasExit ? 'exit' : outTag;
+    final outbound = _aetherCore ? outTag : (_hasExit ? 'exit' : outTag);
 
     add(
       ip: domainStrategy == 'AsIs' ? null : ['0.0.0.0/0', '::/0'],
