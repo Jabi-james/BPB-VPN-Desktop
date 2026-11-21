@@ -177,6 +177,19 @@ class VpnChannel {
     }
   }
 
+  static Future<void> renewAetherMasqueIdentity(String configDir) async {
+    if (!Platform.isWindows) {
+      throw UnsupportedError('Aether MASQUE identity renewal is available on Windows only.');
+    }
+    final result = await _sendWindowsCommand({
+      'command': 'renewAetherMasque',
+      'aetherConfigDir': configDir,
+    }, timeout: const Duration(minutes: 5));
+    if (result['ok'] != true) {
+      throw StateError(result['error'] as String? ?? 'Aether MASQUE identity renewal failed.');
+    }
+  }
+
   static Future<List<String>> scanAetherEndpoints({
     required String protocol,
     required String configDir,
