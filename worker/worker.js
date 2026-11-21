@@ -176,7 +176,83 @@ function uuidFromBytes(arr, offset) {
     );
 }
 
+const CF_STD = "https://cloudflare-dns.com/dns-query";
+const CF_SEC = "https://security.cloudflare-dns.com/dns-query";
+const CF_FAM = "https://family.cloudflare-dns.com/dns-query";
+const CF_DOH_BY_HOST = new Map([
+    ["1.1.1.1", CF_STD], ["1.0.0.1", CF_STD],
+    ["2606:4700:4700::1111", CF_STD], ["2606:4700:4700::1001", CF_STD],
+    ["one.one.one.one", CF_STD], ["cloudflare-dns.com", CF_STD],
+    ["1.1.1.2", CF_SEC], ["1.0.0.2", CF_SEC],
+    ["2606:4700:4700::1112", CF_SEC], ["2606:4700:4700::1002", CF_SEC],
+    ["security.cloudflare-dns.com", CF_SEC],
+    ["1.1.1.3", CF_FAM], ["1.0.0.3", CF_FAM],
+    ["2606:4700:4700::1113", CF_FAM], ["2606:4700:4700::1003", CF_FAM],
+    ["family.cloudflare-dns.com", CF_FAM],
+]);
+
+function cloudflareDoH(address, port) {
+    if (Number(port) !== 53) return null;
+    let host = String(address).toLowerCase();
+    if (host.startsWith("[") && host.endsWith("]")) host = host.slice(1, -1);
+    if (host.includes(":")) {
+        try { host = new URL(`http://[${host}]/`).hostname.slice(1, -1); } catch { return null; }
+    }
+    return CF_DOH_BY_HOST.get(host) ?? null;
+}
+
+// Relay DNS-over-TCP queries to Cloudflare's public DoH endpoints.
+function startDoHRelay(remoteSocket, webSocket, responseHeader, dohURL, firstChunk) {
+    let pending = new Uint8Array(0);
+    let headerSent = false;
+    async function resolve(query) {
+        try {
+            const response = await fetch(dohURL, {
+                method: "POST",
+                headers: { "content-type": "application/dns-message" },
+                body: query,
+                signal: AbortSignal.timeout(5000),
+            });
+            if (!response.ok) throw new Error(`DoH status ${response.status}`);
+            const answer = new Uint8Array(await response.arrayBuffer());
+            if (webSocket.readyState !== 1) return;
+            const header = headerSent ? new Uint8Array(0) : new Uint8Array(responseHeader);
+            const out = new Uint8Array(header.length + 2 + answer.length);
+            out.set(header);
+            out[header.length] = (answer.length >> 8) & 0xff;
+            out[header.length + 1] = answer.length & 0xff;
+            out.set(answer, header.length + 2);
+            webSocket.send(out);
+            headerSent = true;
+        } catch { safeCloseWebSocket(webSocket); }
+    }
+    function feed(chunk) {
+        const incoming = new Uint8Array(chunk);
+        const buffer = new Uint8Array(pending.length + incoming.length);
+        buffer.set(pending);
+        buffer.set(incoming, pending.length);
+        let offset = 0;
+        while (buffer.length - offset >= 2) {
+            const length = (buffer[offset] << 8) | buffer[offset + 1];
+            if (buffer.length - offset - 2 < length) break;
+            if (length > 0) resolve(buffer.slice(offset + 2, offset + 2 + length));
+            offset += 2 + length;
+        }
+        pending = buffer.slice(offset);
+    }
+    remoteSocket.value = {
+        writable: new WritableStream({ write(chunk) { feed(chunk); } }),
+        close() {},
+    };
+    if (firstChunk && firstChunk.byteLength) feed(firstChunk);
+}
+
 async function handleTCPOutBound(remoteSocket, addressRemote, portRemote, rawClientData, webSocket, responseHeader, settings) {
+    const dohURL = cloudflareDoH(addressRemote, portRemote);
+    if (dohURL) {
+        startDoHRelay(remoteSocket, webSocket, responseHeader, dohURL, rawClientData);
+        return;
+    }
     async function connectAndWrite(address, port) {
         if (address.includes(':') && !address.startsWith('[')) address = `[${address}]`;
         const tcpSocket = connect({ hostname: address, port });

@@ -45,6 +45,16 @@ class WebRtcLeakProtection {
         if (current == policy.value) continue;
         if (current != null) continue;
 
+        // Create the complete policy key even when Google/Chrome does not exist.
+        final keyResult = await Process.run(
+          'reg.exe',
+          ['add', policy.key, '/f'],
+          runInShell: false,
+          stdoutEncoding: systemEncoding,
+          stderrEncoding: systemEncoding,
+        );
+        if (keyResult.exitCode != 0) continue;
+
         final result = await Process.run(
           'reg.exe',
           [
@@ -62,7 +72,7 @@ class WebRtcLeakProtection {
           stdoutEncoding: systemEncoding,
           stderrEncoding: systemEncoding,
         );
-        if (result.exitCode == 0) {
+        if (result.exitCode == 0 && await _read(policy) == policy.value) {
           await preferences.setBool(policy.ownershipKey, true);
         }
       } else if (owned) {

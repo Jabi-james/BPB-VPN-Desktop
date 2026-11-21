@@ -73,12 +73,27 @@ class HomePage extends StatelessWidget {
           ),
         ],
       ),
-      body: SafeArea(
-        bottom: false,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: Column(
-            children: [
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Opacity(
+                opacity: 0.20,
+                child: Image.asset(
+                  'images/icon/bg.jpg',
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                ),
+              ),
+            ),
+          ),
+          SafeArea(
+            bottom: false,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Column(
+                children: [
               if (state.needsReconnect) const _ReconnectBanner(),
               SizedBox(height: gap),
               const ConnectionCard(),
@@ -91,8 +106,10 @@ class HomePage extends StatelessWidget {
               if (state.worker != null && state.mode.needsWorker)
                 const _UsageCard(),
             ],
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

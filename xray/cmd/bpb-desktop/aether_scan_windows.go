@@ -26,7 +26,7 @@ type aetherScanHit struct {
 
 // scanAetherWindows asks the official Aether core to verify endpoints with its own
 // MASQUE / WireGuard data-plane probes, then keeps the ten fastest successful results.
-func scanAetherWindows(root string, req request) ([]string, error) {
+func scanAetherWindows(root string, req request, parent context.Context) ([]string, error) {
 	protocol := strings.ToLower(strings.TrimSpace(req.AetherProtocol))
 	if protocol != "masque" && protocol != "wg" {
 		return nil, fmt.Errorf("unsupported Aether scan protocol %q", protocol)
@@ -61,7 +61,7 @@ func scanAetherWindows(root string, req request) ([]string, error) {
 		scanMode = "balanced"
 	}
 	args := []string{protocolFlag, "--scan", scanMode, "--bind", "127.0.0.1:0"}
-	ctx, cancel := context.WithTimeout(context.Background(), 150*time.Second)
+	ctx, cancel := context.WithTimeout(parent, 150*time.Second)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, exe, args...)

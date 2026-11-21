@@ -190,6 +190,15 @@ class VpnChannel {
     }
   }
 
+  /// Sends cancellation out-of-band while the scan command is still awaiting its response.
+  static Future<void> cancelAetherEndpointScan() async {
+    if (!Platform.isWindows) return;
+    final process = _windowsProcess;
+    if (process == null) return;
+    process.stdin.writeln(jsonEncode({'command': 'cancelAetherScan'}));
+    await process.stdin.flush();
+  }
+
   static Future<void> renewAetherWgIdentity(String configDir) async {
     if (!Platform.isWindows) {
       throw UnsupportedError('Aether WARP identity renewal is available on Windows only.');
@@ -883,7 +892,7 @@ if (\$match) { 'true' } else { 'false' }
       const version = String.fromEnvironment('BPB_APP_VERSION', defaultValue: '1.2.1');
       const build = String.fromEnvironment('BPB_BUILD_NUMBER', defaultValue: '');
       return (
-        version: build.isEmpty ? version : '$version b$build',
+        version: build.isEmpty ? version : '$version Build $build',
         abis: const <String>[],
       );
     }

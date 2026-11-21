@@ -85,8 +85,8 @@ jobs:
           $source = [regex]::Replace($source, '(?m)^int APIENTRY',
             ($adminHelper + [Environment]::NewLine + 'int APIENTRY'), 1)
           $source = $source.Replace('if (!window.Create(L"bpb", origin, size))',
-            'const wchar_t* window_title = IsBpbAdministrator() ? L"BPB VPN - v.1.2.1 - ADMIN" : L"BPB VPN - v.1.2.1";' + [Environment]::NewLine + '  if (!window.Create(window_title, origin, size))')
-          if ($source -notmatch 'Win32Window::Size size\(680, 656\);' -or $source -notmatch 'bool IsBpbAdministrator\(' -or $source -notmatch 'BPB VPN - v.1.2.1') {
+            'const wchar_t* window_title = IsBpbAdministrator() ? L"BPB VPN - v.1.2.2 - ADMIN" : L"BPB VPN - v.1.2.2";' + [Environment]::NewLine + '  if (!window.Create(window_title, origin, size))')
+          if ($source -notmatch 'Win32Window::Size size\(680, 656\);' -or $source -notmatch 'bool IsBpbAdministrator\(' -or $source -notmatch 'BPB VPN - v.1.2.2') {
             throw "Could not apply BPB VPN window identity/size patch to $path"
           }
           Set-Content -Path $path -Value $source -Encoding utf8
@@ -140,7 +140,7 @@ jobs:
           fi
 
       - name: Compile desktop shell
-        run: flutter build ${{ matrix.platform }} --release --no-pub --dart-define=BPB_APP_VERSION=1.2.1 --dart-define=BPB_BUILD_NUMBER=${{ github.run_number }}
+        run: flutter build ${{ matrix.platform }} --release --no-pub --dart-define=BPB_APP_VERSION=1.2.2 --dart-define=BPB_BUILD_NUMBER=${{ github.run_number }}
 
       - name: Install Go
         uses: actions/setup-go@v5
@@ -280,7 +280,7 @@ jobs:
           $iscc = (Get-Command ISCC.exe -ErrorAction Stop).Source
           $script = @'
           #define MyAppName "BPB VPN"
-          #define MyAppVersion "1.2.1"
+          #define MyAppVersion "1.2.2"
           #define SourceDir "build/windows/x64/runner/Release"
           [Setup]
           AppId={{D38C7B2A-3D9E-4C70-9F17-8B0D5D91B121}
@@ -312,7 +312,7 @@ jobs:
           Set-Content -Path "BPB-VPN.iss" -Value $script -Encoding utf8
           & $iscc "BPB-VPN.iss"
           if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed with exit code $LASTEXITCODE" }
-          if (!(Test-Path "installer-output/BPB-VPN-Setup-v1.2.1.exe")) { throw "Installer output missing" }
+          if (!(Test-Path "installer-output/BPB-VPN-Setup-v1.2.2.exe")) { throw "Installer output missing" }
 
       - name: Package Windows portable application
         if: matrix.platform == 'windows'

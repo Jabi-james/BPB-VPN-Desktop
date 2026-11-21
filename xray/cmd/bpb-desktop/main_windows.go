@@ -6,6 +6,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -61,6 +62,20 @@ func startController(controller *xray.Controller, req request) error {
 		return err
 	}
 	return nil
+}
+
+var (
+	aetherScanMu sync.Mutex
+	activeAetherScanCancel context.CancelFunc
+	activeAetherScanDone chan struct{}
+)
+
+func cancelAetherScanAndWait() {
+	aetherScanMu.Lock()
+	cancel, done := activeAetherScanCancel, activeAetherScanDone
+	aetherScanMu.Unlock()
+	if cancel != nil { cancel() }
+	if done != nil { <-done }
 }
 
 var protocolMu sync.Mutex
@@ -197,6 +212,7 @@ func main() {
 	defer func() {
 		cancelActiveStart()
 		waitForActiveStart()
+		cancelAetherScanAndWait()
 		stopExitProcesses()
 		_ = controller.Stop()
 		xray.SetBrowserDialer("")
@@ -236,6 +252,7 @@ func main() {
 		case "stop":
 			cancelActiveStart()
 			waitForActiveStart()
+			cancelAetherScanAndWait()
 			stopExitProcesses()
 			stopErr := controller.Stop()
 			xray.SetBrowserDialer("")
@@ -298,13 +315,39 @@ func main() {
 			if controller.IsRunning() {
 				res = response{Error: "Disconnect before scanning Aether endpoints."}
 			} else {
-				endpoints, err := scanAetherWindows(filepath.Dir(executable), req)
-				if err != nil {
-					res = response{Error: err.Error()}
-				} else {
-					res = response{OK: true, AetherEndpoints: endpoints}
+				aetherScanMu.Lock()
+				if activeAetherScanDone != nil {
+					aetherScanMu.Unlock()
+					res = response{Error: "An Aether scan is already running."}
+					break
 				}
+				ctx, cancel := context.WithCancel(context.Background())
+				done := make(chan struct{})
+				activeAetherScanCancel, activeAetherScanDone = cancel, done
+				aetherScanMu.Unlock()
+				go func() {
+					endpoints, err := scanAetherWindows(filepath.Dir(executable), req, ctx)
+					cancel()
+					if err != nil {
+						writeResponse(response{Error: err.Error()})
+					} else {
+						writeResponse(response{OK: true, AetherEndpoints: endpoints})
+					}
+					aetherScanMu.Lock()
+					if activeAetherScanDone == done {
+						activeAetherScanCancel, activeAetherScanDone = nil, nil
+					}
+					close(done)
+					aetherScanMu.Unlock()
+				}()
+				continue
 			}
+		case "cancelAetherScan":
+			aetherScanMu.Lock()
+			cancel := activeAetherScanCancel
+			aetherScanMu.Unlock()
+			if cancel != nil { cancel() }
+			continue
 		case "versions":
 			root := filepath.Dir(executable)
 			res.Xray = xray.Version()
@@ -313,6 +356,7 @@ func main() {
 		case "shutdown":
 			cancelActiveStart()
 			waitForActiveStart()
+			cancelAetherScanAndWait()
 			stopExitProcesses()
 			_ = controller.Stop()
 			_ = restoreSystemProxy()

@@ -911,6 +911,7 @@ class AetherScannerPage extends StatefulWidget {
 
 class _AetherScannerPageState extends State<AetherScannerPage> {
   bool _loading = false;
+  bool _stopping = false;
   bool _hasScanned = false;
   String? _error;
   List<String> _endpoints = const [];
@@ -929,12 +930,14 @@ class _AetherScannerPageState extends State<AetherScannerPage> {
       setState(() {
         _endpoints = endpoints;
         _loading = false;
+        _stopping = false;
       });
     } catch (error) {
       if (!mounted) return;
       setState(() {
         _error = '$error';
         _loading = false;
+        _stopping = false;
       });
     }
   }
@@ -970,19 +973,39 @@ class _AetherScannerPageState extends State<AetherScannerPage> {
             ],
           ),
           const SizedBox(height: 16),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: FilledButton.icon(
-              onPressed: _loading ? null : _scan,
-              icon: Icon(_hasScanned ? Symbols.refresh_rounded : Symbols.manage_search_rounded),
-              label: Text(_hasScanned ? 'Scan again' : 'Scan'),
-            ),
+          Wrap(
+            spacing: 8,
+            children: [
+              FilledButton.icon(
+                onPressed: _loading ? null : _scan,
+                icon: Icon(_hasScanned ? Symbols.refresh_rounded : Symbols.manage_search_rounded),
+                label: Text(_hasScanned ? 'Scan again' : 'Scan'),
+              ),
+              if (_loading)
+                OutlinedButton.icon(
+                  onPressed: _stopping
+                      ? null
+                      : () async {
+                          setState(() => _stopping = true);
+                          try {
+                            await AppScope.of(context).cancelAetherEndpointScan();
+                          } catch (error) {
+                            if (mounted) setState(() {
+                              _stopping = false;
+                              _error = '$error';
+                            });
+                          }
+                        },
+                  icon: const Icon(Icons.stop_rounded),
+                  label: Text(_stopping ? 'Stopping…' : 'Stop'),
+                ),
+            ],
           ),
           if (_loading) ...[
             const SizedBox(height: 18),
             const LinearProgressIndicator(),
             const SizedBox(height: 12),
-            const Center(child: Text('Aether is scanning and verifying endpoints…')),
+            Center(child: Text(_stopping ? 'Stopping Aether scan…' : 'Aether is scanning and verifying endpoints…')),
           ] else if (_error != null) ...[
             const SizedBox(height: 16),
             Text(_error!, style: TextStyle(color: theme.colorScheme.error)),

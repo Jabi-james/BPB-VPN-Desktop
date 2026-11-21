@@ -392,11 +392,10 @@ class AppState extends ChangeNotifier {
     }
     _stored = Profile.fromJson(_decodeMap(_prefs.getString(_kProfile)))
         .updated('vless', null);
-    unawaited(
-      WebRtcLeakProtection.apply(
-        _stored.general.webRtcLeakProtection,
-        _prefs,
-      ),
+    // Apply browser policy before the UI is shown and before a connection can start.
+    await WebRtcLeakProtection.apply(
+      _stored.general.webRtcLeakProtection,
+      _prefs,
     );
     device = DeviceSettings.fromJson(_decodeMap(_prefs.getString(_kDevice)));
     if (Platform.isWindows) {
@@ -908,6 +907,10 @@ class AppState extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  /// Requests cancellation of the active Aether endpoint scan.
+  Future<void> cancelAetherEndpointScan() =>
+      VpnChannel.cancelAetherEndpointScan();
 
   /// Runs Aether's own protocol verifier and saves up to ten healthy endpoints.
   Future<List<String>> scanAetherEndpoints(String protocol) async {
