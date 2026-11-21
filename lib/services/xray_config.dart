@@ -13,6 +13,15 @@ import 'warp.dart';
 const _unsafeCipherSuites =
     'TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256:TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256:TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256:TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA:TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA:TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256:TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256';
 
+/// Which implementation runs the selected WARP / MASQUE connection.
+enum CoreType {
+  bpb('BPB'),
+  aether('Aether');
+
+  final String label;
+  const CoreType(this.label);
+}
+
 /// How traffic reaches the internet.
 enum ConnectionMode {
   /// VLESS over WebSocket + TLS through the worker; see [ConnectionVariant].
@@ -377,6 +386,9 @@ class XrayConfigBuilder {
   /// and the socks outbound to it is the "proxy".
   bool _exitType = false;
 
+  /// Aether is a base tunnel beneath Xray, never an exit node.
+  bool _aetherCore = false;
+
   /// Psiphon or Tor (as an exit or as the type).
   bool get _isExitProcess => _exit == ExitNode.psiphon || _exit == ExitNode.tor;
 
@@ -462,7 +474,9 @@ class XrayConfigBuilder {
   Future<XrayBuild> build(
     ConnectionMode mode, {
     ConnectionVariant variant = ConnectionVariant.normal,
+    CoreType core = CoreType.bpb,
   }) {
+    _aetherCore = core == CoreType.aether && mode.isWarpLike;
     _exit = exitFor(mode, device, profile.chains);
     _mode = mode;
     _exitType = mode == ConnectionMode.psiphon ||
@@ -475,6 +489,7 @@ class XrayConfigBuilder {
     ConnectionMode mode,
     ConnectionVariant variant,
   ) async {
+    if (_aetherCore) return _buildAether();
     if (mode == ConnectionMode.serverless) {
       return switch (serverlessModeOf(device)) {
         ServerlessMode.domainFronting => _buildDomainFronting(),
@@ -916,6 +931,18 @@ class XrayConfigBuilder {
     }
 
     return XrayBuild(_clean(config));
+  }
+
+  /// Aether establishes the base tunnel first; Xray uses its SOCKS listener as the
+  /// underlying dialer. A selected Chain Proxy is dialed through that base tunnel.
+  Future<XrayBuild> _buildAether() async {
+    final config = await _buildConfig(
+      outbounds: _chainOutbounds(),
+      isBalancer: false,
+      isWarp: true,
+      outboundAddrs: const [],
+    );
+    return XrayBuild(config);
   }
 
   /// Psiphon / Tor type: the proxy is a socks outbound to the exit process, which connects to
@@ -1803,7 +1830,7 @@ class XrayConfigBuilder {
         'security': 'tls',
         'tlsSettings': {'serverName': p['sni'] ?? p.server, ..._pinning(p)},
         if (masks.isNotEmpty) 'finalmask': {'udp': masks},
-        'sockopt': {'dialerProxy': 'exit-dialer'},
+        'sockopt': {'dialerProxy': _aetherCore ? 'aether-base' : 'exit-dialer'},
       },
       'tag': 'exit',
     };
@@ -1842,7 +1869,7 @@ class XrayConfigBuilder {
         if (dns.isNotEmpty) 'remoteDNS': dns,
       },
       'streamSettings': {
-        'sockopt': {'dialerProxy': 'exit-dialer'},
+        'sockopt': {'dialerProxy': _aetherCore ? 'aether-base' : 'exit-dialer'},
       },
       'tag': 'exit',
     };
@@ -1883,6 +1910,16 @@ class XrayConfigBuilder {
   /// outbound, not a balancer, so it dials a loopback (exit-dialer) back into routing as
   /// chain-in, which goes through the connection like psiphon-in / tor-in. Empty without one.
   List<Map<String, dynamic>> _chainOutbounds() {
+    if (_aetherCore) {
+      final base = {
+        'tag': 'aether-base',
+        'protocol': 'socks',
+        'settings': {'address': '127.0.0.1', 'port': aetherListenPort},
+      };
+      final chain = _chainOutbound();
+      if (chain == null) return [{...base, 'tag': 'proxy'}];
+      return [base, {...chain, 'tag': 'proxy'}];
+    }
     final chain = _chainOutbound();
     if (chain == null) return const [];
     return [
@@ -1933,7 +1970,7 @@ class XrayConfigBuilder {
           'spiderX': p['spx'],
           'show': false,
         },
-      'sockopt': _sockopt(domainStrategy: 'UseIP', dialerProxy: 'exit-dialer'),
+      'sockopt': _sockopt(domainStrategy: 'UseIP', dialerProxy: _aetherCore ? 'aether-base' : 'exit-dialer'),
     };
     final enableMux =
         !(security == 'reality' || type == 'grpc' || type == 'xhttp');
