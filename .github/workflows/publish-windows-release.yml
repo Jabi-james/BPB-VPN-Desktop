@@ -1,0 +1,199 @@
+name: Publish Windows Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "Successful Desktop smoke build Run ID (for example: 44907916126)"
+        required: true
+        type: string
+      confirm_publish:
+        description: "I confirm publishing this build to NottDevv/BPB-VPN-Desktop"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main' && inputs.confirm_publish == true
+    runs-on: windows-latest
+    steps:
+      - name: Validate selected successful build and its artifacts
+        id: metadata
+        uses: actions/github-script@v7
+        env:
+          RUN_ID: ${{ inputs.run_id }}
+        with:
+          script: |
+            const runIdText = process.env.RUN_ID || '';
+            if (!/^\\d+$/.test(runIdText)) {
+              core.setFailed('Run ID must contain digits only.');
+              return;
+            }
+            const runId = Number(runIdText);
+            if (!Number.isSafeInteger(runId)) {
+              core.setFailed('Run ID is outside the supported integer range.');
+              return;
+            }
+
+            const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
+            const { data: run } = await github.rest.actions.getWorkflowRun({
+              owner, repo, run_id: runId
+            });
+
+            if (run.repository?.full_name?.toLowerCase() !== process.env.GITHUB_REPOSITORY.toLowerCase()) {
+              throw new Error('The selected run does not belong to this source repository.');
+            }
+            if (run.path !== '.github/workflows/desktop-smoke.yml') {
+              throw new Error('The selected run was not created by Desktop smoke build.');
+            }
+            if (run.head_branch !== 'desktop/bootstrap') {
+              throw new Error('Only builds from desktop/bootstrap can be published.');
+            }
+            if (!['push', 'workflow_dispatch'].includes(run.event)) {
+              throw new Error('Only push or manually dispatched builds can be published.');
+            }
+            if (run.status !== 'completed' || run.conclusion !== 'success') {
+              throw new Error('The selected build has not completed successfully.');
+            }
+
+            const { data: artifactData } = await github.rest.actions.listWorkflowRunArtifacts({
+              owner, repo, run_id: runId, per_page: 100
+            });
+            const required = ['bpb-windows-installer', 'bpb-windows-portable'];
+            for (const name of required) {
+              const artifact = artifactData.artifacts.find(a => a.name === name);
+              if (!artifact || artifact.expired) {
+                throw new Error('Required artifact is missing or expired: ' + name);
+              }
+            }
+
+            const { data: workflowFile } = await github.rest.repos.getContent({
+              owner, repo,
+              path: '.github/workflows/desktop-smoke.yml',
+              ref: run.head_sha
+            });
+            if (Array.isArray(workflowFile) || !workflowFile.content) {
+              throw new Error('Could not read the build workflow at the selected commit.');
+            }
+            const workflowText = Buffer.from(workflowFile.content, 'base64').toString('utf8');
+            const versionMatch = workflowText.match(/BPB_APP_VERSION=([0-9]+\\.[0-9]+\\.[0-9]+)/);
+            if (!versionMatch) {
+              throw new Error('Could not determine BPB_APP_VERSION from the selected build workflow.');
+            }
+
+            core.setOutput('version', versionMatch[1]);
+            core.setOutput('build', String(run.run_number));
+            core.setOutput('source_sha', run.head_sha);
+            core.setOutput('run_url', run.html_url);
+            core.setOutput('tag', 'v' + versionMatch[1] + '-build.' + run.run_number);
+
+      - name: Download selected Windows installer artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: bpb-windows-installer
+          path: ${{ runner.temp }}/bpb-installer
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download selected Windows portable artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: bpb-windows-portable
+          path: ${{ runner.temp }}/bpb-portable
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare release assets
+        id: assets
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.metadata.outputs.version }}
+          BUILD: ${{ steps.metadata.outputs.build }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $out = Join-Path $env:RUNNER_TEMP "release-assets"
+          New-Item -ItemType Directory -Force $out | Out-Null
+
+          $installerDir = Join-Path $env:RUNNER_TEMP "bpb-installer"
+          $installerFiles = @(Get-ChildItem -LiteralPath $installerDir -File -Filter "*.exe")
+          if ($installerFiles.Count -ne 1) {
+            throw "Expected exactly one installer EXE, found $($installerFiles.Count)."
+          }
+          $installerTarget = Join-Path $out "bpb-vpn-windows-x64-installer.exe"
+          Copy-Item -LiteralPath $installerFiles[0].FullName -Destination $installerTarget
+
+          $portableDir = Join-Path $env:RUNNER_TEMP "bpb-portable"
+          $portableExe = Join-Path $portableDir "BPB-VPN.exe"
+          if (!(Test-Path -LiteralPath $portableExe -PathType Leaf)) {
+            throw "Portable package is missing BPB-VPN.exe."
+          }
+          $portableItems = @(Get-ChildItem -LiteralPath $portableDir -Force)
+          if ($portableItems.Count -eq 0) {
+            throw "Portable package is empty."
+          }
+          $portableTarget = Join-Path $out "bpb-vpn-windows-x64.zip"
+          Compress-Archive -Path (Join-Path $portableDir "*") -DestinationPath $portableTarget -CompressionLevel Optimal
+
+          foreach ($file in @($installerTarget, $portableTarget)) {
+            if (!(Test-Path -LiteralPath $file -PathType Leaf)) {
+              throw "Release asset was not created: $file"
+            }
+            $hash = (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant()
+            Write-Host "$([IO.Path]::GetFileName($file)) SHA256: $hash"
+          }
+
+      - name: Create release in the NotDev repository
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+          DEST_REPO: NottDevv/BPB-VPN-Desktop
+          TAG: ${{ steps.metadata.outputs.tag }}
+          VERSION: ${{ steps.metadata.outputs.version }}
+          BUILD: ${{ steps.metadata.outputs.build }}
+          SOURCE_SHA: ${{ steps.metadata.outputs.source_sha }}
+          SOURCE_RUN_URL: ${{ steps.metadata.outputs.run_url }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${GH_TOKEN:-}" ]]; then
+            echo "::error::RELEASES_TOKEN secret is missing."
+            exit 1
+          fi
+
+          if gh release view "$TAG" --repo "$DEST_REPO" >/dev/null 2>&1; then
+            echo "::error::A release with tag $TAG already exists in $DEST_REPO. Existing releases are never overwritten."
+            exit 1
+          fi
+
+          assets="$RUNNER_TEMP/release-assets"
+          notes="$RUNNER_TEMP/release-notes.md"
+          cat > "$notes" <<EOF
+          ## BPB VPN for Windows
+
+          - **Version:** $VERSION
+          - **Build:** $BUILD
+          - **Architecture:** Windows x64
+          - **Source commit:** `$SOURCE_SHA`
+          - **Build workflow:** $SOURCE_RUN_URL
+
+          ### Downloads
+
+          - `bpb-vpn-windows-x64-installer.exe`: Standard Windows installer.
+          - `bpb-vpn-windows-x64.zip`: Portable application package. Extract the ZIP and run `BPB-VPN.exe`.
+
+          This release was published manually from a previously successful GitHub Actions build. No rebuild was performed during publishing.
+          EOF
+
+          gh release create "$TAG" \
+            "$assets/bpb-vpn-windows-x64-installer.exe" \
+            "$assets/bpb-vpn-windows-x64.zip" \
+            --repo "$DEST_REPO" \
+            --title "BPB VPN $VERSION Build $BUILD" \
+            --notes-file "$notes" \
+            --target main
