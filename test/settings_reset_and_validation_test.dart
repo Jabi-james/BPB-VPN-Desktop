@@ -152,16 +152,24 @@ void main() {
         'masque.endpoints' => 'MASQUE',
         _ => 'Global',
       };
-      final group = switch (scenario.path) {
-        'vless.cleanIps' => 'BPB Core',
-        'warp.endpoints' || 'masque.endpoints' => 'Aether Core',
-        _ => null,
-      };
-      if (group != null) {
-        await tester.tap(find.text(group));
-        await tester.pumpAndSettle();
-      }
-      await tester.tap(find.text(section));
+      // These three settings belong to BPB Core. Aether Core has its own
+      // independent WARP and MASQUE settings and must not be opened here.
+      const group = 'BPB Core';
+      final navigation = find.byType(ListView).first;
+      final groupTile = find.descendant(
+        of: navigation,
+        matching: find.text(group),
+      );
+      await tester.ensureVisible(groupTile);
+      await tester.tap(groupTile);
+      await tester.pumpAndSettle();
+
+      final sectionTile = find.descendant(
+        of: navigation,
+        matching: find.text(section),
+      );
+      await tester.ensureVisible(sectionTile);
+      await tester.tap(sectionTile);
       await tester.pumpAndSettle();
       expect(pref, findsOneWidget);
       await tester.ensureVisible(pref);
