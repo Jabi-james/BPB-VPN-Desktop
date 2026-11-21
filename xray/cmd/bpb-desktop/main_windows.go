@@ -267,7 +267,7 @@ func main() {
 			configDir := req.AetherConfigDir
 			go func() {
 				exe := filepath.Join(root, "aether", "aether.exe")
-				if err := ensureAetherIdentities(exe, configDir, nil); err != nil {
+				if err := ensureAetherIdentities(exe, configDir, nil, ""); err != nil {
 					fmt.Fprintln(os.Stderr, "[Aether first-run provisioning]", err)
 				}
 			}()
