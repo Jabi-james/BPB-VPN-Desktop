@@ -21,7 +21,12 @@ class _LogPageState extends State<LogPage> {
   static const _levels = {'none': 'None', 'error': 'Error', 'warning': 'Warning', 'info': 'Info', 'debug': 'Debug'};
 
   /// The logs, by the name the service uses.
-  static const _logs = {'xray': 'VPN', 'tor': 'Tor', 'psiphon': 'Psiphon'};
+  static const _logs = {
+    'xray': 'VPN',
+    'tor': 'Tor',
+    'psiphon': 'Psiphon',
+    'aether': 'Aether',
+  };
 
   /// Most recent lines kept on screen.
   static const _maxLines = 1000;

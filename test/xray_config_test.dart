@@ -78,12 +78,50 @@ PersistentKeepalive = 25
 ''';
 
 void main() {
-  test('only Worker, WARP and MASQUE use connection verification', () {
+  test('Worker, WARP, MASQUE and Aether use connection verification', () {
     expect(ConnectionMode.values.where((mode) => mode.verifiesConnection), [
       ConnectionMode.worker,
       ConnectionMode.warp,
       ConnectionMode.masque,
+      ConnectionMode.aether,
     ]);
+  });
+
+  test('Aether uses its SOCKS5 exit and routes its upstream through Xray direct', () async {
+    final config = (await builder({}).build(ConnectionMode.aether)).config;
+    final inbounds = (config['inbounds'] as List).cast<Map>();
+    final outbounds = (config['outbounds'] as List).cast<Map>();
+    final rules = ((config['routing'] as Map)['rules'] as List).cast<Map>();
+
+    expect(
+      (outbounds.singleWhere((item) => item['tag'] == 'proxy')['settings'] as Map)['port'],
+      XrayConfigBuilder.aetherListenPort,
+    );
+    final upstream = inbounds.singleWhere((item) => item['tag'] == 'aether-upstream');
+    expect(upstream['port'], XrayConfigBuilder.aetherUpstreamPort);
+    expect((upstream['settings'] as Map)['udp'], isTrue);
+    expect(
+      rules.any((rule) =>
+          (rule['inboundTag'] as List?)?.contains('aether-upstream') == true &&
+          rule['outboundTag'] == 'direct'),
+      isTrue,
+    );
+    expect(
+      rules.any((rule) =>
+          (rule['inboundTag'] as List?)?.contains('remote-dns') == true &&
+          rule['outboundTag'] == 'proxy'),
+      isTrue,
+    );
+    expect(
+      rules.any((rule) =>
+          (rule['inboundTag'] as List?)?.contains('dns') == true &&
+          rule['outboundTag'] == 'proxy'),
+      isTrue,
+    );
+    expect(
+      rules.any((rule) => rule['network'] == 'udp' && rule['outboundTag'] == 'block'),
+      isFalse,
+    );
   });
 
   test('WARP scanner uses app WireGuard settings and selected port', () {

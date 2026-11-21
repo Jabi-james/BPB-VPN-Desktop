@@ -39,6 +39,10 @@ class AppState extends ChangeNotifier {
 
   late SharedPreferences _prefs;
   late String _portableNamespace;
+  String get _aetherConfigDir {
+    final base = Platform.environment['LOCALAPPDATA'] ?? Directory.systemTemp.path;
+    return '$base${Platform.pathSeparator}BPB VPN${Platform.pathSeparator}aether-$_portableNamespace';
+  }
   String get _secretAccountsKey => '$_kSecretAccounts.$_portableNamespace';
   final _secrets = const FlutterSecureStorage();
 
@@ -365,6 +369,7 @@ class AppState extends ChangeNotifier {
       hash = ((hash ^ unit) * 0x01000193) & 0xffffffff;
     }
     _portableNamespace = hash.toRadixString(16).padLeft(8, '0');
+    VpnChannel.configureAetherLogPath(_aetherConfigDir);
     SharedPreferences.setPrefix('bpb_$_portableNamespace.');
     _prefs = await SharedPreferences.getInstance();
     if (cleanStart) {
@@ -404,8 +409,8 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     _redeployDue();
     unawaited(refreshUsage());
-    unawaited(refreshLanIp());
     if (startLanTimer) {
+      unawaited(refreshLanIp());
       _lanTimer = Timer.periodic(
         const Duration(seconds: 5),
         (_) => refreshLanIp(),
@@ -860,9 +865,7 @@ class AppState extends ChangeNotifier {
       appMode: device.appMode.name,
       exit: exit,
       exitDirect: exitType != null || aetherMode,
-      aetherConfigDir: aetherMode
-          ? '${Platform.environment['LOCALAPPDATA'] ?? Directory.systemTemp.path}${Platform.pathSeparator}BPB VPN${Platform.pathSeparator}aether-$_portableNamespace'
-          : null,
+      aetherConfigDir: aetherMode ? _aetherConfigDir : null,
       exitRegion: dnsMode ? '' : device.exitRegion,
       torBridge: mode == ConnectionMode.tor ? device.torBridge : null,
       torCustomBridges: profile.tor.bridges,

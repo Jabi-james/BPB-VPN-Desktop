@@ -37,8 +37,9 @@ class WebRtcLeakProtection {
     if (!Platform.isWindows) return;
 
     for (final policy in _policies) {
-      final current = await _read(policy);
       final owned = preferences.getBool(policy.ownershipKey) ?? false;
+      if (!enabled && !owned) continue;
+      final current = await _read(policy);
 
       if (enabled) {
         if (current == policy.value) continue;

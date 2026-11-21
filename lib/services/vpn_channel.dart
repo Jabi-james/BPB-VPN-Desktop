@@ -48,7 +48,14 @@ class VpnChannel {
   static DateTime? _windowsConnectedAt;
   static VpnStatus _windowsStatus = VpnStatus.disconnected;
   static final List<String> _windowsLogLines = [];
+  static String? _windowsAetherLogPath;
   static const int _windowsMaxLogLines = 2000;
+
+  static void configureAetherLogPath(String directory) {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
+      _windowsAetherLogPath = '$directory${Platform.pathSeparator}aether.log';
+    }
+  }
 
   static void _appendWindowsLog(String line) {
     if (line.isEmpty) return;
@@ -402,6 +409,15 @@ class VpnChannel {
   static Future<String> readLog({String log = 'xray'}) async {
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
       if (log == 'xray') return _windowsLogLines.join('\n');
+      if (log == 'aether') {
+        final path = _windowsAetherLogPath;
+        if (path == null) return '';
+        try {
+          return await File(path).readAsString(encoding: utf8);
+        } on FileSystemException {
+          return '';
+        }
+      }
       if (log != 'tor' && log != 'psiphon') return '';
       final file = File(
         '${File(Platform.resolvedExecutable).parent.path}${Platform.pathSeparator}${log == 'tor' ? 'tor.log' : 'psiphon.log'}',
@@ -430,9 +446,20 @@ class VpnChannel {
         'xray': utf8.encode(_windowsLogLines.join('\n')).length,
         'tor': await sizeOf('tor.log'),
         'psiphon': await sizeOf('psiphon.log'),
+        'aether': _windowsAetherLogPath == null
+            ? 0
+            : await _fileSize(_windowsAetherLogPath!),
       };
     }
     return (await _methods.invokeMapMethod<String, int>('logSizes')) ?? const {};
+  }
+
+  static Future<int> _fileSize(String path) async {
+    try {
+      return await File(path).length();
+    } on FileSystemException {
+      return 0;
+    }
   }
 
   static Future<void> clearLog() async {
@@ -442,6 +469,14 @@ class VpnChannel {
       for (final name in ['tor.log', 'psiphon.log']) {
         try {
           await File('$root${Platform.pathSeparator}$name').writeAsString('');
+        } on FileSystemException {
+          // A log that has not been created yet is already empty.
+        }
+      }
+      final aetherLog = _windowsAetherLogPath;
+      if (aetherLog != null) {
+        try {
+          await File(aetherLog).writeAsString('');
         } on FileSystemException {
           // A log that has not been created yet is already empty.
         }

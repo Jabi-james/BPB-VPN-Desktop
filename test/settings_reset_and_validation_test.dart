@@ -40,7 +40,7 @@ void main() {
     );
 
     final state = AppState();
-    await state.init();
+    await state.init(startLanTimer: false);
     state.cfAccounts = [
       const SavedCfAccount(
         id: 'a',

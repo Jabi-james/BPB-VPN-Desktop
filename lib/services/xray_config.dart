@@ -1135,7 +1135,10 @@ class XrayConfigBuilder {
     // The remote DNS's host: a public one's IPs in hosts; any other is resolved with the local
     // DNS (see bypassDomains), like the anti-sanction DoH.
     String? unlistedDnsHost;
-    if (!isServerlessPacket && !isServerlessDns && !isWarp && !_exitType) {
+    if (!isServerlessPacket &&
+        !isServerlessDns &&
+        !isWarp &&
+        (!_exitType || _mode == ConnectionMode.aether)) {
       unlistedDnsHost = _addDnsHost(hosts, _vless.remoteDns.server, ipv6);
     }
     if (isWarp) unlistedDnsHost = _addDnsHost(hosts, _tunnelRemoteDns, ipv6);
