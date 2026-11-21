@@ -432,6 +432,7 @@ class _PowerButtonState extends State<_PowerButton> {
         children: [
           if (state.status == VpnStatus.connected || state.status == VpnStatus.disconnected)
             TweenAnimationBuilder<double>(
+              key: ValueKey(state.status),
               tween: Tween(begin: 0.86, end: 1.18),
               duration: const Duration(milliseconds: 1500),
               curve: Curves.easeOut,
@@ -442,7 +443,7 @@ class _PowerButtonState extends State<_PowerButton> {
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: (state.status == VpnStatus.connected ? _green : Colors.red)
-                        .withValues(alpha: (1.18 - value).clamp(0.0, 0.22)),
+                        .withValues(alpha: (1.18 - value).clamp(0.0, 0.22).toDouble()),
                     width: 3,
                   ),
                 ),

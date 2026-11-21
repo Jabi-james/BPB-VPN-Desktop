@@ -9,6 +9,7 @@ import '../models/settings.dart';
 import '../models/theme_color.dart';
 import '../services/scanner_channel.dart';
 import '../services/updates.dart';
+import '../services/cloudflare_api.dart';
 import '../services/vpn_channel.dart';
 import '../services/xray_config.dart';
 import '../state/app_state.dart';
@@ -874,6 +875,21 @@ class SettingsPage extends StatelessWidget {
           SettingsCard(
             children: [
               const _VersionTile(),
+              const ListTile(
+                leading: Icon(Symbols.cloud_rounded),
+                title: Text('Worker version'),
+                subtitle: Text('v${CloudflareApi.workerVersion}'),
+              ),
+              if (defaultTargetPlatform == TargetPlatform.windows)
+                ListTile(
+                  leading: const Icon(Symbols.download_rounded),
+                  title: const Text('Windows Releases'),
+                  subtitle: const Text('github.com/NottDevv/BPB-VPN-Desktop'),
+                  trailing: const Icon(Symbols.open_in_new_rounded, size: 20),
+                  onTap: () => VpnChannel.openUrl(
+                    'https://github.com/NottDevv/BPB-VPN-Desktop/releases',
+                  ),
+                ),
               if (defaultTargetPlatform != TargetPlatform.windows)
                 const _UpdateTile(),
               ListTile(
