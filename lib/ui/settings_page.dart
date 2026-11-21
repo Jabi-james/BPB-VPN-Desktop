@@ -577,14 +577,21 @@ class SettingsPage extends StatelessWidget {
                 'h2': 'H2 · TCP',
                 'h3': 'H3 · QUIC',
               }, icon: Symbols.swap_horiz_rounded),
-              const ChoicePref('device.aether.masqueNoize', 'Obfuscation profile', {
-                'off': 'Off',
-                'light': 'Light',
-                'firewall': 'Firewall',
-                'balanced': 'Balanced',
-                'gfw': 'GFW',
-                'aggressive': 'Aggressive',
-              }, icon: Symbols.shield_rounded),
+              if (d.aetherMasqueTransport == 'h3')
+                const ChoicePref('device.aether.masqueNoize', 'QUIC obfuscation profile', {
+                  'off': 'Off',
+                  'light': 'Light',
+                  'firewall': 'Firewall',
+                  'balanced': 'Balanced',
+                  'gfw': 'GFW',
+                  'aggressive': 'Aggressive',
+                }, icon: Symbols.shield_rounded)
+              else
+                const ListTile(
+                  leading: Icon(Symbols.shield_rounded),
+                  title: Text('H2 obfuscation'),
+                  subtitle: Text('Use TLS fragmentation below; QUIC obfuscation profiles apply to H3, not H2.'),
+                ),
               const TextPref(
                 'device.aether.masqueSni',
                 'MASQUE SNI',
