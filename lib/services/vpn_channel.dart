@@ -190,7 +190,7 @@ class VpnChannel {
       'aetherProtocol': protocol,
       'aetherConfigDir': configDir,
       'aetherEnvironment': environment,
-    }, timeout: const Duration(minutes: 3));
+    }, timeout: const Duration(minutes: 6));
     if (result['ok'] != true) {
       throw StateError(result['error'] as String? ?? 'Aether endpoint scan failed.');
     }
