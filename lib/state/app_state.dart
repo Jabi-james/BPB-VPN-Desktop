@@ -212,23 +212,28 @@ class AppState extends ChangeNotifier {
       ConnectionMode.psiphon,
       ConnectionMode.tor,
       ConnectionMode.serverless,
-      ConnectionMode.aether,
     ])
       if (switch (m) {
         ConnectionMode.worker => deployments.isNotEmpty,
-        ConnectionMode.warp => profile.warp.account != null,
-        ConnectionMode.masque => profile.masque.account != null,
-        ConnectionMode.aether => defaultTargetPlatform == TargetPlatform.windows,
+        ConnectionMode.warp => profile.warp.account != null || (defaultTargetPlatform == TargetPlatform.windows && core == CoreType.aether),
+        ConnectionMode.masque => profile.masque.account != null || (defaultTargetPlatform == TargetPlatform.windows && core == CoreType.aether),
         _ => true,
       })
         m,
   ];
 
   /// The chosen type, or the first available one when it can't be used (yet).
+  CoreType get core => CoreType.values.asNameMap()[device.connectionCore] ?? CoreType.bpb;
+
+  bool get showCoreSelector =>
+      defaultTargetPlatform == TargetPlatform.windows &&
+      (mode == ConnectionMode.masque || mode == ConnectionMode.warp);
+
+  void setCore(CoreType value) => write('device.connection.core', value.name);
+
   ConnectionMode get mode {
-    final chosen =
-        ConnectionMode.values.asNameMap()[device.connectionType] ??
-        ConnectionMode.worker;
+    final savedType = device.connectionType == 'aether' ? 'masque' : device.connectionType;
+    final chosen = ConnectionMode.values.asNameMap()[savedType] ?? ConnectionMode.worker;
     final available = availableModes;
     return available.contains(chosen) ? chosen : available.first;
   }
@@ -354,7 +359,7 @@ class AppState extends ChangeNotifier {
   );
 
   /// Builds the config used for both display and connection startup.
-  Future<XrayBuild> buildConfig() => builder.build(mode, variant: variant);
+  Future<XrayBuild> buildConfig() => builder.build(mode, variant: variant, core: core);
 
   // endregion
 
@@ -745,10 +750,10 @@ class AppState extends ChangeNotifier {
       }
       // First WARP / MASQUE connection: register the account, which also gives its endpoints.
       final warp = profile.warp, masque = profile.masque;
-      if (mode.isWarp && (warp.account == null || warp.endpoints.isEmpty)) {
+      if (core == CoreType.bpb && mode.isWarp && (warp.account == null || warp.endpoints.isEmpty)) {
         await renewWarpAccount();
       }
-      if (mode == ConnectionMode.masque &&
+      if (core == CoreType.bpb && mode == ConnectionMode.masque &&
           (masque.account == null || masque.endpoints.isEmpty)) {
         await renewMasqueAccount();
       }
@@ -835,12 +840,8 @@ class AppState extends ChangeNotifier {
         mode == ConnectionMode.serverless &&
         serverlessMode == ServerlessMode.dns;
     // The exit process: "psiphon" or "tor".
-    final aetherMode = mode == ConnectionMode.aether;
-    final exit = dnsMode
-        ? null
-        : aetherMode
-        ? 'aether'
-        : exitType?.name ??
+    final aetherMode = core == CoreType.aether && mode.isWarpLike;
+    final exit = dnsMode ? null : exitType?.name ??
               const [
                 'psiphon',
                 'tor',
@@ -864,7 +865,8 @@ class AppState extends ChangeNotifier {
       proxyOnly: proxyMode,
       appMode: device.appMode.name,
       exit: exit,
-      exitDirect: exitType != null || aetherMode,
+      exitDirect: exitType != null,
+      aetherProtocol: aetherMode ? (mode == ConnectionMode.masque ? 'masque' : 'wg') : null,
       aetherConfigDir: aetherMode ? _aetherConfigDir : null,
       exitRegion: dnsMode ? '' : device.exitRegion,
       torBridge: mode == ConnectionMode.tor ? device.torBridge : null,
@@ -876,7 +878,7 @@ class AppState extends ChangeNotifier {
           mode == ConnectionMode.worker &&
           variant == ConnectionVariant.browserDialer,
       verifyConnection:
-          mode.verifiesConnection ||
+          mode.verifiesConnection || aetherMode ||
           (mode == ConnectionMode.serverless &&
               serverlessMode != ServerlessMode.dns),
     );
