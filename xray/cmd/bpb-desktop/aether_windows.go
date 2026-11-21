@@ -27,8 +27,9 @@ type aetherRuntime struct {
 }
 
 var (
-	aetherMu   sync.Mutex
-	aetherProc *aetherRuntime
+	aetherMu          sync.Mutex
+	aetherProvisionMu sync.Mutex
+	aetherProc        *aetherRuntime
 )
 
 func startAetherWindows(root string, req request, cancel <-chan struct{}) error {
@@ -139,6 +140,8 @@ func startAetherWindows(root string, req request, cancel <-chan struct{}) error 
 }
 
 func ensureAetherIdentities(exe, configDir string, settings map[string]string) error {
+	aetherProvisionMu.Lock()
+	defer aetherProvisionMu.Unlock()
 	identities := []struct{ name, file string }{
 		{name: "masque", file: "aether-masque.toml"},
 		{name: "wg", file: "aether-wg.toml"},
@@ -147,10 +150,12 @@ func ensureAetherIdentities(exe, configDir string, settings map[string]string) e
 		path := filepath.Join(configDir, identity.file)
 		if info, err := os.Stat(path); err == nil && info.Size() > 0 { continue }
 		env := append(aetherEnvironment(os.Environ(), configDir, settings), "AETHER_REGISTER="+identity.name)
-		cmd := exec.Command(exe)
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		cmd := exec.CommandContext(ctx, exe)
 		cmd.Dir = configDir
 		cmd.Env = env
 		output, err := cmd.CombinedOutput()
+		cancel()
 		if err != nil {
 			return fmt.Errorf("register Aether %s identity: %w; %s", identity.name, err, strings.TrimSpace(string(output)))
 		}
