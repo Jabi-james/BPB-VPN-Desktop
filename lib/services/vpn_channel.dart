@@ -166,6 +166,28 @@ class VpnChannel {
     }
   }
 
+  static Future<List<String>> scanAetherEndpoints({
+    required String protocol,
+    required String configDir,
+    required Map<String, String> environment,
+  }) async {
+    if (!Platform.isWindows) {
+      throw UnsupportedError('Aether endpoint scanning is available on Windows only.');
+    }
+    final result = await _sendWindowsCommand({
+      'command': 'scanAether',
+      'aetherProtocol': protocol,
+      'aetherConfigDir': configDir,
+      'aetherEnvironment': environment,
+    }, timeout: const Duration(minutes: 3));
+    if (result['ok'] != true) {
+      throw StateError(result['error'] as String? ?? 'Aether endpoint scan failed.');
+    }
+    return (result['aetherEndpoints'] as List? ?? const [])
+        .whereType<String>()
+        .toList();
+  }
+
   static Future<bool> _isWindowsElevated() async {
     final result = await Process.run('powershell.exe', [
       '-NoProfile',
