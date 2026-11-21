@@ -96,11 +96,14 @@ class WebRtcLeakProtection {
       }
     }
 
-    // Verify the effective registry values after all writes/removals.
+    // Verify only policies managed by this app. When protection is disabled,
+    // leave unrelated browser policies untouched and do not query them.
     for (final policy in _policies) {
+      final owned = preferences.getBool(policy.ownershipKey) ?? false;
+      if (!enabled && !owned) continue;
       final current = await _read(policy);
       if (enabled && current != policy.value) return false;
-      if (!enabled && current != null) return false;
+      if (!enabled && current == policy.value) return false;
     }
     return true;
   }

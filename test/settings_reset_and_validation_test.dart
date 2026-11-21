@@ -163,11 +163,7 @@ void main() {
       }
       await tester.tap(find.text(section));
       await tester.pumpAndSettle();
-      await tester.scrollUntilVisible(
-        pref,
-        300,
-        scrollable: find.byType(Scrollable).last,
-      );
+      expect(pref, findsOneWidget);
       await tester.ensureVisible(pref);
       await tester.pumpAndSettle();
       await tester.tap(pref);
