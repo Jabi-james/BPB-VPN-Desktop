@@ -1156,6 +1156,8 @@ class DeviceSettings {
   final String aetherWgNoize;
   final int aetherWgKeepalive;
   final bool aetherWgNoProfileRetry;
+  final List<String> aetherMasqueEndpoints;
+  final List<String> aetherWgEndpoints;
 
   /// Worker's and WARP's ConnectionVariant names.
   final String workerVariant;
@@ -1214,6 +1216,8 @@ class DeviceSettings {
     this.aetherWgNoize = 'balanced',
     this.aetherWgKeepalive = 5,
     this.aetherWgNoProfileRetry = false,
+    this.aetherMasqueEndpoints = const [],
+    this.aetherWgEndpoints = const [],
     this.workerVariant = 'normal',
     this.warpVariant = 'normal',
     this.masqueVariant = 'normal',
@@ -1277,6 +1281,8 @@ class DeviceSettings {
       aetherWgNoize: _choice(aether['wgNoize'], const {'off','light','firewall','balanced','gfw','aggressive'}, d.aetherWgNoize),
       aetherWgKeepalive: _int(aether['wgKeepalive'], d.aetherWgKeepalive).clamp(1, 120).toInt(),
       aetherWgNoProfileRetry: _bool(aether['wgNoProfileRetry'], d.aetherWgNoProfileRetry),
+      aetherMasqueEndpoints: _strList(aether['masqueEndpoints'], d.aetherMasqueEndpoints),
+      aetherWgEndpoints: _strList(aether['wgEndpoints'], d.aetherWgEndpoints),
       workerVariant: _choice(
         _str(
           connection['workerVariant'],
@@ -1348,6 +1354,8 @@ class DeviceSettings {
       'wgNoize': aetherWgNoize,
       'wgKeepalive': aetherWgKeepalive,
       'wgNoProfileRetry': aetherWgNoProfileRetry,
+      'masqueEndpoints': aetherMasqueEndpoints,
+      'wgEndpoints': aetherWgEndpoints,
     },
     'exit': {
       'node': exitNode.name,
