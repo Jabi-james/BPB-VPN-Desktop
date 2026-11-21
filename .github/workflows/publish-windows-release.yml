@@ -203,14 +203,11 @@ jobs:
           - **Version:** $VERSION
           - **Build:** $BUILD
           - **Architecture:** Windows x64
-          - **Source commit:** $SOURCE_SHA
-          - **Build workflow:** $SOURCE_RUN_URL
 
           ### What's Changed
 
           $changelog
 
-          [View source changes]($compare_url)
 
           ### Downloads
 
