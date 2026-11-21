@@ -179,13 +179,13 @@ jobs:
           - **Version:** $VERSION
           - **Build:** $BUILD
           - **Architecture:** Windows x64
-          - **Source commit:** `$SOURCE_SHA`
+          - **Source commit:** $SOURCE_SHA
           - **Build workflow:** $SOURCE_RUN_URL
 
           ### Downloads
 
-          - `bpb-vpn-windows-x64-installer.exe`: Standard Windows installer.
-          - `bpb-vpn-windows-x64.zip`: Portable application package. Extract the ZIP and run `BPB-VPN.exe`.
+          - bpb-vpn-windows-x64-installer.exe: Standard Windows installer.
+          - bpb-vpn-windows-x64.zip: Portable application package. Extract the ZIP and run BPB-VPN.exe.
 
           This release was published manually from a previously successful GitHub Actions build. No rebuild was performed during publishing.
           EOF
