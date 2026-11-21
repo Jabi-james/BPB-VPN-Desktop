@@ -39,6 +39,11 @@ func startAetherWindows(root string, req request, cancel <-chan struct{}) error 
 	if _, err := os.Stat(exe); err != nil {
 		return fmt.Errorf("Aether executable missing: %w", err)
 	}
+	// Never mistake another app's listener (or another Aether instance) for ours.
+	if conn, err := net.DialTimeout("tcp", aetherSocksAddress, 250*time.Millisecond); err == nil {
+		_ = conn.Close()
+		return fmt.Errorf("Aether SOCKS port %s is already in use", aetherSocksAddress)
+	}
 	configDir := strings.TrimSpace(req.AetherConfigDir)
 	if configDir == "" {
 		return errors.New("Aether data directory was not provided")
@@ -109,6 +114,13 @@ func startAetherWindows(root string, req request, cancel <-chan struct{}) error 
 			conn, dialErr := net.DialTimeout("tcp", aetherSocksAddress, 350*time.Millisecond)
 			if dialErr == nil {
 				_ = conn.Close()
+				select {
+				case <-runtime.done:
+					clearAetherRuntime(runtime)
+					_ = runtime.log.Close()
+					return fmt.Errorf("Aether exited while its SOCKS listener was starting; log: %s", aetherLogTail(logPath))
+				default:
+				}
 				writeState("Aether · Connected")
 				return nil
 			}
