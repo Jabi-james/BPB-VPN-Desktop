@@ -208,11 +208,11 @@ class AppState extends ChangeNotifier {
     for (final m in const [
       ConnectionMode.worker,
       ConnectionMode.masque,
-      ConnectionMode.aether,
       ConnectionMode.warp,
       ConnectionMode.psiphon,
       ConnectionMode.tor,
       ConnectionMode.serverless,
+      ConnectionMode.aether,
     ])
       if (switch (m) {
         ConnectionMode.worker => deployments.isNotEmpty,
