@@ -75,10 +75,11 @@ func startAetherWindows(root string, req request, cancel <-chan struct{}) error 
 	}
 	protocolFlag := "--masque"
 	if protocol == "wg" { protocolFlag = "--wg" }
+	scanMode := strings.TrimSpace(req.AetherEnvironment["AETHER_SCAN"])
+	if scanMode == "" { scanMode = "balanced" }
 	args := []string{
 		protocolFlag,
-		"--scan", "balanced",
-		"-4",
+		"--scan", scanMode,
 		"--bind", aetherSocksAddress,
 		"--upstream", aetherUpstreamURL,
 		"--stats",
