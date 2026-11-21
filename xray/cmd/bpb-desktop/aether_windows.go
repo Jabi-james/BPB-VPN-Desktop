@@ -16,7 +16,8 @@ import (
 )
 
 const (
-	aetherSocksAddress = "127.0.0.1:1819"
+	aetherSocksAddress  = "127.0.0.1:1819"
+	aetherUpstreamURL   = "socks5://127.0.0.1:10833"
 )
 
 type aetherRuntime struct {
@@ -79,6 +80,7 @@ func startAetherWindows(root string, req request, cancel <-chan struct{}) error 
 		"--scan", "balanced",
 		"-4",
 		"--bind", aetherSocksAddress,
+		"--upstream", aetherUpstreamURL,
 		"--stats",
 	}
 	cmd := exec.Command(exe, args...)
