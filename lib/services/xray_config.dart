@@ -1003,7 +1003,7 @@ class XrayConfigBuilder {
       ),
       'inbounds': [
         ..._localInbounds(sniffing),
-        if (_mode == ConnectionMode.aether)
+        if (_mode == ConnectionMode.aether || _aetherCore)
           {
             'tag': 'aether-upstream',
             'listen': '127.0.0.1',
@@ -1029,7 +1029,7 @@ class XrayConfigBuilder {
             'protocol': 'socks',
             'settings': {'address': '127.0.0.1', 'port': exitPort},
           },
-        if (_mode == ConnectionMode.aether)
+        if (_mode == ConnectionMode.aether || _aetherCore)
           {
             'protocol': 'freedom',
             'streamSettings': {
@@ -1240,7 +1240,7 @@ class XrayConfigBuilder {
       }
     }
 
-    if (_mode == ConnectionMode.aether) {
+    if (_mode == ConnectionMode.aether || _aetherCore) {
       // Only Aether's bootstrap/API names use a direct DNS server. Normal app DNS
       // remains on remote-dns and therefore travels through Aether itself.
       final bootstrapDns = localDNS == 'localhost' ? '8.8.8.8' : localDNS;
@@ -1416,12 +1416,12 @@ class XrayConfigBuilder {
   }) {
     final exitWorkerlessRules = <Map<String, dynamic>>[];
     final rules = <Map<String, dynamic>>[
-      if (_mode == ConnectionMode.aether)
+      if (_mode == ConnectionMode.aether || _aetherCore)
         {
           'inboundTag': ['aether-upstream'],
           'outboundTag': 'aether-direct',
         },
-      if (_mode == ConnectionMode.aether)
+      if (_mode == ConnectionMode.aether || _aetherCore)
         {
           'inboundTag': ['aether-dns'],
           'outboundTag': 'aether-direct',
