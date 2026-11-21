@@ -223,7 +223,9 @@ class AppState extends ChangeNotifier {
   ];
 
   /// The chosen type, or the first available one when it can't be used (yet).
-  CoreType get core => CoreType.values.asNameMap()[device.connectionCore] ?? CoreType.bpb;
+  CoreType get core => defaultTargetPlatform == TargetPlatform.windows
+      ? CoreType.values.asNameMap()[device.connectionCore] ?? CoreType.bpb
+      : CoreType.bpb;
 
   bool get showCoreSelector =>
       defaultTargetPlatform == TargetPlatform.windows &&
