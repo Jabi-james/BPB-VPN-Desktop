@@ -510,6 +510,27 @@ void main() {
     dump('fragment_best', c);
   });
 
+  test('Aether core is the base tunnel and Chain Proxy dials through it', () async {
+    const link = 'socks://user:pass@9.9.9.9:1080#chain';
+    final c = (await builder(chains(link), chainExit)
+        .build(ConnectionMode.masque, core: CoreType.aether)).config;
+    final outbounds = (c['outbounds'] as List).cast<Map>();
+    expect(outbounds[0]['tag'], 'aether-base');
+    expect(outbounds[0]['protocol'], 'socks');
+    expect(outbounds[0]['settings']['port'], XrayConfigBuilder.aetherListenPort);
+    expect(outbounds[1]['tag'], 'proxy');
+    expect(outbounds[1]['streamSettings']['sockopt']['dialerProxy'], 'aether-base');
+    expect(outbounds.any((o) => o['tag'] == 'exit-dialer'), isFalse);
+  });
+
+  test('Aether core without a chain uses its own SOCKS as the proxy', () async {
+    final c = (await builder({}, const {})
+        .build(ConnectionMode.warp, core: CoreType.aether)).config;
+    final proxy = (c['outbounds'] as List).cast<Map>().firstWhere((o) => o['tag'] == 'proxy');
+    expect(proxy['protocol'], 'socks');
+    expect(proxy['settings']['port'], XrayConfigBuilder.aetherListenPort);
+  });
+
   test('chain proxy outbound dials through proxy', () async {
     final vmess = base64.encode(
       utf8.encode(
