@@ -139,6 +139,21 @@ func scanAetherWindows(root string, req request) ([]string, error) {
 		_ = cmd.Process.Kill()
 		waitErr = <-wait
 	}
+	// Drain lines already written before the process exited or was stopped at ten results.
+	for line := range lines {
+		match := aetherCandidateLine.FindStringSubmatch(line)
+		if len(match) != 3 {
+			continue
+		}
+		endpoint := normalizeAetherEndpoint(match[1])
+		rtt, ok := parseAetherRttMs(match[2])
+		if !ok || endpoint == "" {
+			continue
+		}
+		if previous, exists := found[endpoint]; !exists || rtt < previous {
+			found[endpoint] = rtt
+		}
+	}
 	_ = reader.Close()
 
 	hits := make([]aetherScanHit, 0, len(found))
