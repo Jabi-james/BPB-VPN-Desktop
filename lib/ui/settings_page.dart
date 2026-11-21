@@ -566,6 +566,23 @@ class SettingsPage extends StatelessWidget {
           const SectionHeader('MASQUE'),
           SettingsCard(
             children: [
+              const ListPref(
+                'device.aether.masqueEndpoints',
+                'Endpoints',
+                icon: Symbols.list_arrow_rounded,
+                hint: '162.159.198.2:443\\n162.159.199.2:443',
+                help: 'Up to ten MASQUE endpoints verified by Aether. The fastest is used first.',
+                itemValidator: validateEndpoint,
+              ),
+              ListTile(
+                leading: const Icon(Symbols.manage_search_rounded),
+                title: const Text('Scan for Endpoints'),
+                subtitle: const Text('Find up to 10 healthy MASQUE endpoints'),
+                trailing: const Icon(Symbols.chevron_right_rounded),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const AetherScannerPage(protocol: 'masque')),
+                ),
+              ),
               const ChoicePref('device.aether.scanMode', 'Scan mode', {
                 'turbo': 'Turbo',
                 'balanced': 'Balanced',
@@ -626,6 +643,23 @@ class SettingsPage extends StatelessWidget {
           const SectionHeader('WARP'),
           SettingsCard(
             children: [
+              const ListPref(
+                'device.aether.wgEndpoints',
+                'Endpoints',
+                icon: Symbols.list_arrow_rounded,
+                hint: '162.159.192.1:2408\\n162.159.193.1:2408',
+                help: 'Up to ten WireGuard endpoints verified by Aether. The fastest is used first.',
+                itemValidator: validateEndpoint,
+              ),
+              ListTile(
+                leading: const Icon(Symbols.manage_search_rounded),
+                title: const Text('Scan for Endpoints'),
+                subtitle: const Text('Find up to 10 healthy WireGuard endpoints'),
+                trailing: const Icon(Symbols.chevron_right_rounded),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const AetherScannerPage(protocol: 'wg')),
+                ),
+              ),
               const ChoicePref('device.aether.scanMode', 'Scan mode', {
                 'turbo': 'Turbo',
                 'balanced': 'Balanced',
@@ -844,6 +878,83 @@ class SettingsPage extends StatelessWidget {
             ],
           ),
         
+        ],
+      ),
+    );
+  }
+}
+
+class AetherScannerPage extends StatefulWidget {
+  final String protocol;
+  const AetherScannerPage({required this.protocol, super.key});
+
+  @override
+  State<AetherScannerPage> createState() => _AetherScannerPageState();
+}
+
+class _AetherScannerPageState extends State<AetherScannerPage> {
+  bool _loading = true;
+  String? _error;
+  List<String> _endpoints = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scan());
+  }
+
+  Future<void> _scan() async {
+    if (!mounted) return;
+    setState(() { _loading = true; _error = null; });
+    try {
+      final endpoints = await AppScope.of(context).scanAetherEndpoints(widget.protocol);
+      if (!mounted) return;
+      setState(() { _endpoints = endpoints; _loading = false; });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() { _error = '$error'; _loading = false; });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final protocolName = widget.protocol == 'masque' ? 'MASQUE' : 'WireGuard';
+    final theme = Theme.of(context);
+    return Scaffold(
+      appBar: AppBar(title: Text('Aether $protocolName Scanner')),
+      body: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          Text(
+            'Aether verifies endpoints with the selected protocol. Up to ten healthy results are saved in Settings.',
+            style: theme.textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 18),
+          if (_loading) ...[
+            const LinearProgressIndicator(),
+            const SizedBox(height: 12),
+            const Center(child: Text('Scanning and verifying endpoints…')),
+          ] else if (_error != null) ...[
+            Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
+            const SizedBox(height: 12),
+            Align(alignment: Alignment.centerLeft, child: FilledButton.icon(onPressed: _scan, icon: const Icon(Icons.refresh), label: const Text('Try again'))),
+          ] else ...[
+            Text('${_endpoints.length} healthy endpoint(s) saved', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 8),
+            for (final (index, endpoint) in _endpoints.indexed)
+              ListTile(
+                leading: CircleAvatar(radius: 14, child: Text('${index + 1}', style: const TextStyle(fontSize: 12))),
+                title: Text(endpoint),
+                subtitle: Text(index == 0 ? 'Fastest · selected for connection' : 'Verified endpoint'),
+                trailing: IconButton(
+                  tooltip: 'Copy endpoint',
+                  icon: const Icon(Icons.copy_rounded),
+                  onPressed: () => Clipboard.setData(ClipboardData(text: endpoint)),
+                ),
+              ),
+            const SizedBox(height: 12),
+            Align(alignment: Alignment.centerLeft, child: OutlinedButton.icon(onPressed: _scan, icon: const Icon(Icons.refresh), label: const Text('Scan again'))),
+          ],
         ],
       ),
     );
