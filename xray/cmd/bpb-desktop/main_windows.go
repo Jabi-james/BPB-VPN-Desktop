@@ -262,6 +262,16 @@ func main() {
 			} else {
 				res.DNS = xray.CheckDNSJSON(req.DNS)
 			}
+		case "provisionAether":
+			root := filepath.Dir(executable)
+			configDir := req.AetherConfigDir
+			go func() {
+				exe := filepath.Join(root, "aether", "aether.exe")
+				if err := ensureAetherIdentities(exe, configDir, nil); err != nil {
+					fmt.Fprintln(os.Stderr, "[Aether first-run provisioning]", err)
+				}
+			}()
+			res = response{OK: true}
 		case "scanAether":
 			if controller.IsRunning() {
 				res = response{Error: "Disconnect before scanning Aether endpoints."}
