@@ -39,7 +39,8 @@ void main() {
 
     expect(profile.toExportJson().containsKey('ssh'), isFalse);
 
-    final imported = Profile.fromJson({}).keepingPrivate(profile);
+    // The existing local profile supplies private data to the imported profile.
+    final imported = profile.keepingPrivate(Profile.fromJson({}));
     expect(imported.ssh.host, 'ssh.example.com');
     expect(imported.ssh.password, 'secret');
   });
