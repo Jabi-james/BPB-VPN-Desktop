@@ -26,6 +26,7 @@ import 'prefs.dart';
 import 'routing_page.dart';
 import 'tor_bridges_page.dart';
 import 'ssh_settings_page.dart';
+import 'hover_animated_icon.dart';
 
 class _WebRtcProtectionPref extends StatelessWidget {
   const _WebRtcProtectionPref();
@@ -1250,7 +1251,7 @@ class _SettingsSectionsState extends State<_SettingsSections> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
             child: Row(
               children: [
-                Icon(_sectionIcon(group.title), size: 18, color: _sectionColor(group.title)),
+                _sectionIconWidget(group.title, 18),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(group.title, style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700)),
@@ -1352,7 +1353,7 @@ Color _sectionColor(String title) => switch (title) {
   'Serverless' => const Color(0xFF568BFF),
   'Routing' => const Color(0xFF0D9488),
   'Import / Export' => const Color(0xFF3B82F6),
-  'Appearance' => const Color(0xFFE879A5),
+  'Appearance' => const Color(0xFF4C8BF5),
   'About' => const Color(0xFF64748B),
   _ => const Color(0xFF64748B),
 };
@@ -1360,23 +1361,17 @@ Color _sectionColor(String title) => switch (title) {
 Widget _sectionIconWidget(String title, double size) {
   final color = _sectionColor(title);
   final fallback = Icon(_sectionIcon(title), size: size, color: color);
-  final url = switch (title) {
-    'Tor' => 'https://avatars.githubusercontent.com/u/3301912?s=200&v=4',
-    'MASQUE' => 'https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/cloudflare-zero-trust.png',
-    'VLESS' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT00ox_USgqF-MWIqS2ILyJbsM_WXTmfKsK1yREDOvrwg&s=10',
-    'WARP' => 'https://assets.streamlinehq.com/image/private/w_300,h_300,ar_1/f_auto/v1/icons/1/cloudflare-icon-oifc3327inhi17qyuy8a6.png/cloudflare-icon-34ebgzllzme0snw7bepstpc.png?_a=DATAiZAAZAA0',
-    'Aether Core' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSgStLmkqjkHJJj5m3javNd8gzHFj0PBS7X2ZF5za4L6b7S4yeHsKWE2rM&s=10',
-    'Serverless' => 'https://cdn-icons-png.flaticon.com/512/18146/18146436.png',
-    'Import / Export' => 'https://image.pngaaa.com/768/3919768-middle.png',
+  final asset = switch (title) {
+    'VLESS' => 'images/icon/vless.jpg',
+    'Aether Core' => 'images/icon/Aether.jpg',
+    'Serverless' => 'images/icon/Serverless.png',
     _ => null,
   };
-  if (url == null) return fallback;
-  final image = Image.network(url, width: size, height: size, fit: BoxFit.contain,
-    errorBuilder: (_, _, _) => fallback);
-  if (title == 'Aether Core') {
-    return ClipRect(child: Align(alignment: Alignment.topCenter, heightFactor: 0.78, child: image));
-  }
-  return image;
+  final Widget icon = asset == null
+      ? fallback
+      : Image.asset(asset, width: size, height: size, fit: BoxFit.contain,
+          filterQuality: FilterQuality.high, errorBuilder: (_, _, _) => fallback);
+  return HoverAnimatedIcon(child: SizedBox(width: size, height: size, child: Center(child: icon)));
 }
 
 /// Consistent rounded icons for the Settings navigation.

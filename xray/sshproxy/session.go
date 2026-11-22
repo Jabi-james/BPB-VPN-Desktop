@@ -394,5 +394,10 @@ func (s *session) dial(addr string) (net.Conn, error) {
 			return nil, errors.New("SSH session is reconnecting")
 		}
 	}
-	return c.Dial("tcp", addr)
+	conn, err := c.Dial("tcp", addr)
+	if err != nil {
+		log.Printf("[SSH] TCP forwarding to %s failed: %v", addr, err)
+		return nil, err
+	}
+	return conn, nil
 }

@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:material_symbols_icons/symbols.dart';
 
+import 'hover_animated_icon.dart';
+
 import '../models/settings.dart';
 import '../state/app_state.dart';
 import 'chip_menu.dart';
@@ -55,21 +57,21 @@ class HomePage extends StatelessWidget {
           const SizedBox(width: 4),
           IconButton(
             tooltip: 'Logs',
-            icon: const Icon(Symbols.bug_report_rounded),
+            icon: const HoverAnimatedIcon(child: Icon(Symbols.bug_report_rounded, color: Color(0xFFEF5350), size: 22)),
             onPressed: () =>
                 Navigator.of(context)
                     .push(MaterialPageRoute(builder: (_) => const LogPage())),
           ),
           IconButton(
             tooltip: 'View config',
-            icon: const Icon(Symbols.data_object_rounded),
+            icon: const HoverAnimatedIcon(child: Icon(Symbols.data_object_rounded, color: Color(0xFF26A69A), size: 22)),
             onPressed: () => Navigator.of(
               context,
             ).push(MaterialPageRoute(builder: (_) => const ConfigViewPage())),
           ),
           IconButton(
             tooltip: 'Settings',
-            icon: const Icon(Symbols.settings_rounded),
+            icon: const HoverAnimatedIcon(child: Icon(Symbols.settings_rounded, color: Color(0xFF4C8BF5), size: 22)),
             onPressed: () => Navigator.of(context)
                 .push(MaterialPageRoute(builder: (_) => const SettingsPage())),
           ),

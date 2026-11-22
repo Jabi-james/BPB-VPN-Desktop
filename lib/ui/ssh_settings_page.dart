@@ -150,14 +150,17 @@ class _SshSettingsPageState extends State<SshSettingsPage> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   FilledButton.icon(
+                    style: FilledButton.styleFrom(backgroundColor: const Color(0xFF238636),
+                      foregroundColor: Colors.white, visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      minimumSize: const Size(0, 34)),
                     onPressed: _save,
-                    icon: const Icon(Symbols.save_rounded),
+                    icon: const Icon(Symbols.save_rounded, size: 17),
                     label: const Text('Save'),
                   ),
                 ],
               ),
             ),
-          const SectionHeader('Connection'),
           Card(
             margin: const EdgeInsets.symmetric(horizontal: 12),
             shape: roundedShape(
@@ -168,12 +171,13 @@ class _SshSettingsPageState extends State<SshSettingsPage> {
               ),
             ),
             elevation: 0,
+            color: scheme.surfaceContainer.withValues(alpha: 0.80),
             clipBehavior: Clip.antiAlias,
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                spacing: 14,
+                spacing: 18,
                 children: [
                   TextFormField(
                     controller: _host,
@@ -208,26 +212,16 @@ class _SshSettingsPageState extends State<SshSettingsPage> {
                     obscureText: !_showPassword,
                     autocorrect: false,
                   ),
-                  TextFormField(
-                    controller: _key,
-                    decoration: const InputDecoration(
-                      labelText: 'Private key (optional)',
+                  SizedBox(height: 116, child: TextFormField(
+                    controller: _key, expands: true, minLines: null, maxLines: null,
+                    decoration: const InputDecoration(labelText: 'Private key (optional)',
                       helperText: 'Only needed when the server uses key-based authentication.',
-                      alignLabelWithHint: true,
-                    ),
-                    minLines: 4,
-                    maxLines: 8,
-                    autocorrect: false,
-                  ),
-                  TextFormField(
-                    controller: _passphrase,
-                    decoration: const InputDecoration(
-                      labelText: 'Key passphrase (optional)',
-                      helperText: 'Only needed to unlock an encrypted private key.',
-                    ),
-                    obscureText: true,
-                    autocorrect: false,
-                  ),
+                      alignLabelWithHint: true), autocorrect: false)),
+                  SizedBox(height: 116, child: TextFormField(
+                    controller: _passphrase, expands: true, minLines: null, maxLines: null,
+                    decoration: const InputDecoration(labelText: 'Key passphrase (optional)',
+                      helperText: 'Only needed to unlock an encrypted private key.'),
+                    obscureText: true, autocorrect: false)),
                   TextFormField(
                     controller: _keepAlive,
                     decoration: const InputDecoration(
