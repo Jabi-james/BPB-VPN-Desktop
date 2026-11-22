@@ -905,11 +905,6 @@ class _SettingsPageState extends State<SettingsPage> {
           SettingsCard(
             children: [
               const _VersionTile(),
-              const ListTile(
-                leading: Icon(Symbols.cloud_rounded),
-                title: Text('Worker version'),
-                subtitle: Text('v${CloudflareApi.workerVersion}'),
-              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -2414,6 +2409,11 @@ class _VersionsPage extends StatelessWidget {
                     leading: const Icon(Symbols.widgets_rounded),
                     title: const Text('Xray core · Mod'),
                     subtitle: Text(shown((s) => s, v?.xray)),
+                  ),
+                  ListTile(
+                    leading: const Icon(Symbols.cloud_rounded),
+                    title: const Text('Worker version'),
+                    subtitle: Text('v${CloudflareApi.workerVersion}'),
                   ),
                   ListTile(
                     leading: const Icon(Symbols.widgets_rounded),
