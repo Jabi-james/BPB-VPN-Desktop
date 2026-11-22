@@ -41,9 +41,6 @@ class _LogPageState extends State<LogPage> {
   String _log = 'xray';
   List<String> _available = const ['xray'];
 
-  /// Keep scrolling to new lines while the view is at the bottom.
-  bool _follow = true;
-
   /// Search visibility and query.
   bool _searching = false;
   String _searchQuery = '';
@@ -51,10 +48,6 @@ class _LogPageState extends State<LogPage> {
   @override
   void initState() {
     super.initState();
-    _scroll.addListener(() {
-      if (!_scroll.hasClients) return;
-      _follow = _scroll.position.pixels <= 24;
-    });
     _load();
     _poll = Timer.periodic(const Duration(seconds: 1), (_) => _load());
   }
@@ -113,7 +106,6 @@ class _LogPageState extends State<LogPage> {
     setState(() {
       _log = log;
       _lines = const [];
-      _follow = true;
       _searching = false;
       _searchQuery = '';
       _searchController.clear();
