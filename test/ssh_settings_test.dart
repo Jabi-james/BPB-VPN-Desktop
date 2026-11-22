@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-
-import '../lib/models/settings.dart';
+import 'package:bpb/models/settings.dart';
 
 void main() {
   test('SSH settings round-trip through the profile model', () {
