@@ -16,8 +16,8 @@ with Image.open(PNG) as source:
     if bounds is None:
         raise SystemExit(f"Rendered app icon is fully transparent: {PNG}")
     left, top, right, bottom = bounds
-    pad_x = max(1, round((right - left) * 0.035))
-    pad_y = max(1, round((bottom - top) * 0.035))
+    pad_x = max(1, round((right - left) * 0.01))
+    pad_y = max(1, round((bottom - top) * 0.01))
     image = image.crop((
         max(0, left - pad_x),
         max(0, top - pad_y),
