@@ -33,6 +33,7 @@ class _LogPageState extends State<LogPage> {
   static const _maxLines = 1000;
 
   final _scroll = ScrollController();
+  final _searchController = TextEditingController();
   Timer? _poll;
   List<String> _lines = const [];
 
@@ -43,12 +44,16 @@ class _LogPageState extends State<LogPage> {
   /// Keep scrolling to new lines while the view is at the bottom.
   bool _follow = true;
 
+  /// Search visibility and query.
+  bool _searching = false;
+  String _searchQuery = '';
+
   @override
   void initState() {
     super.initState();
     _scroll.addListener(() {
       if (!_scroll.hasClients) return;
-      _follow = _scroll.position.pixels >= _scroll.position.maxScrollExtent - 24;
+      _follow = _scroll.position.pixels <= 24;
     });
     _load();
     _poll = Timer.periodic(const Duration(seconds: 1), (_) => _load());
@@ -58,6 +63,7 @@ class _LogPageState extends State<LogPage> {
   void dispose() {
     _poll?.cancel();
     _scroll.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -74,19 +80,17 @@ class _LogPageState extends State<LogPage> {
     if (!mounted || log != _log) return;
     final available = _logs.keys.where((l) => l == 'xray' || (sizes[l] ?? 0) > 0).toList();
     if (available.join() != _available.join()) setState(() => _available = available);
-    final lines = text.split('\n').where((l) => l.trim().isNotEmpty).toList();
+    final tail = text.length > 200000 ? text.substring(text.length - 200000) : text;
+    var lines = tail.split('\n').where((l) => l.trim().isNotEmpty).toList();
+    if (lines.length > _maxLines) lines = lines.sublist(lines.length - _maxLines);
     if (lines.length == _lines.length && (lines.isEmpty || lines.last == _lines.last)) return;
-    setState(() => _lines = lines.length > _maxLines ? lines.sublist(lines.length - _maxLines) : lines);
-    if (_follow) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_scroll.hasClients) _scroll.jumpTo(_scroll.position.maxScrollExtent);
-      });
-    }
+    setState(() => _lines = lines);
   }
 
   Future<void> _copy() async {
     final messenger = ScaffoldMessenger.of(context);
-    await Clipboard.setData(ClipboardData(text: _lines.join('\n')));
+    final filtered = _lines.where((l) => _searchQuery.isEmpty || l.toLowerCase().contains(_searchQuery)).toList();
+    await Clipboard.setData(ClipboardData(text: filtered.join('\n')));
     messenger.showSnackBar(const SnackBar(content: Text('Log copied')));
   }
 
@@ -97,6 +101,9 @@ class _LogPageState extends State<LogPage> {
         _lines = const [];
         _log = 'xray';
         _available = const ['xray'];
+        _searching = false;
+        _searchQuery = '';
+        _searchController.clear();
       });
     }
   }
@@ -107,6 +114,9 @@ class _LogPageState extends State<LogPage> {
       _log = log;
       _lines = const [];
       _follow = true;
+      _searching = false;
+      _searchQuery = '';
+      _searchController.clear();
     });
     _load();
   }
@@ -135,10 +145,25 @@ class _LogPageState extends State<LogPage> {
     final scheme = theme.colorScheme;
     final level = state.device.logLevel;
 
+    final filteredLines = _lines.where((l) => _searchQuery.isEmpty || l.toLowerCase().contains(_searchQuery)).toList();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Logs'),
         actions: [
+          IconButton(
+            tooltip: _searching ? 'Close search' : 'Search',
+            onPressed: _lines.isEmpty && !_searching ? null : () {
+              setState(() {
+                _searching = !_searching;
+                if (!_searching) {
+                  _searchQuery = '';
+                  _searchController.clear();
+                }
+              });
+            },
+            icon: Icon(_searching ? Symbols.search_off_rounded : Symbols.search_rounded),
+          ),
           IconButton(
             tooltip: 'Copy',
             onPressed: _lines.isEmpty ? null : _copy,
@@ -156,7 +181,7 @@ class _LogPageState extends State<LogPage> {
           ListTile(
             leading: const Icon(Symbols.tune_rounded),
             title: const Text('Log level'),
-            subtitle: Text(state.isConnected ? 'Changes apply when you reconnect.' : 'Applies to the next connection.'),
+            subtitle: Text(state.isConnected ? 'Reconnect after changes.' : 'Applies to the next connection.'),
             trailing: ChipMenu(
               values: _levels.keys.toList(),
               selected: level,
@@ -166,12 +191,37 @@ class _LogPageState extends State<LogPage> {
           ),
           if (_available.length > 1)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+              padding: const EdgeInsets.symmetric(vertical: 8),
               child: SegmentedButton<String>(
                 segments: [for (final l in _available) ButtonSegment(value: l, label: Text(_logs[l]!))],
                 selected: {_log},
                 showSelectedIcon: false,
                 onSelectionChanged: (s) => _show(s.first),
+              ),
+            ),
+          if (_searching)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+              child: TextField(
+                controller: _searchController,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: 'Search logs',
+                  prefixIcon: const Icon(Symbols.search_rounded, size: 22,),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Symbols.clear_rounded),
+                          onPressed: () {
+                            setState(() {
+                              _searchQuery = '';
+                              _searchController.clear();
+                            });
+                          },
+                        )
+                      : null,
+                  isDense: true,
+                ),
+                onChanged: (v) => setState(() => _searchQuery = v.trim().toLowerCase()),
               ),
             ),
           const Divider(height: 1),
@@ -191,25 +241,49 @@ class _LogPageState extends State<LogPage> {
                       ),
                     ),
                   )
-                : SelectionArea(
-                    child: ListView.builder(
-                      controller: _scroll,
-                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
-                      itemCount: _lines.length,
-                      itemBuilder: (context, i) => Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: Text(
-                          _lines[i],
-                          style: TextStyle(
-                            fontFamily: 'monospace',
-                            fontSize: 12,
-                            height: 1.35,
-                            color: _colorFor(_lines[i], scheme),
+                : filteredLines.isEmpty
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(32),
+                          child: Text(
+                            'No matching log lines found.',
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
                           ),
                         ),
+                      )
+                    : ListView.separated(
+                        controller: _scroll,
+                        reverse: true,
+                        padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+                        itemCount: filteredLines.length,
+                        separatorBuilder: (context, index) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Text(
+                            '-' * 400,
+                            style: TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 12,
+                              height: 1.0,
+                              color: scheme.outlineVariant.withValues(alpha: 0.9),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.clip,
+                          ),
+                        ),
+                        itemBuilder: (context, i) {
+                          final line = filteredLines[filteredLines.length - 1 - i];
+                          return Text(
+                            line,
+                            style: TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 12,
+                              height: 1.35,
+                              color: _colorFor(line, scheme),
+                            ),
+                          );
+                        },
                       ),
-                    ),
-                  ),
           ),
         ],
       ),

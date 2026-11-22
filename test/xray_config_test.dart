@@ -790,7 +790,7 @@ void main() {
         rules.any(
           (r) => (r['inboundTag'] as List?)?.contains('remote-dns') ?? false,
         ),
-        isFalse,
+        isTrue,
       );
       expect(
         rules.any(
@@ -810,16 +810,29 @@ void main() {
         servers.singleWhere((d) => d['tag'] == 'remote-dns')['address'],
         'https://dns.google/dns-query',
       );
-      expect(servers.any((d) => d['address'] == '127.0.0.1'), isFalse);
+      expect(
+        servers.any(
+          (d) => d['tag'] == 'exit-dns' &&
+              d['address'] == '127.0.0.1' &&
+              d['port'] == XrayConfigBuilder.exitDnsPort,
+        ),
+        isTrue,
+      );
       expect(
         rules.any(
           (r) => (r['inboundTag'] as List?)?.contains('remote-dns') ?? false,
         ),
-        isFalse,
+        isTrue,
       );
       expect(
         (c['dns']['hosts'] as Map? ?? const {}).containsKey('dns.google'),
-        isFalse,
+        isTrue,
+      );
+      expect(
+        rules.firstWhere(
+          (r) => (r['inboundTag'] as List?)?.contains('remote-dns') ?? false,
+        )['outboundTag'],
+        'proxy',
       );
       dump('psiphon_type', c);
     });
@@ -865,7 +878,14 @@ void main() {
         servers.firstWhere((d) => d['tag'] == 'remote-dns')['address'],
         'https://dns.google/dns-query',
       );
-      expect(servers.any((d) => d['address'] == '127.0.0.1'), isFalse);
+      expect(
+        servers.any(
+          (d) => d['tag'] == 'exit-dns' &&
+              d['address'] == '127.0.0.1' &&
+              d['port'] == XrayConfigBuilder.exitDnsPort,
+        ),
+        isTrue,
+      );
       expect(inboundRule(c, 'remote-dns')['balancerTag'], 'all-proxies');
       final rules = rulesOf(c);
       expect(
@@ -931,6 +951,29 @@ void main() {
       expect(rulesOf(c).last, containsPair('outboundTag', 'proxy'));
       expect(rulesOf(c).last['network'], 'tcp');
       expect(c.containsKey('burstObservatory'), isFalse);
+      final servers = (c['dns']['servers'] as List).whereType<Map>();
+      expect(
+        servers.singleWhere((d) => d['tag'] == 'remote-dns')['address'],
+        'https://dns.google/dns-query',
+      );
+      expect(
+        servers.any(
+          (d) => d['tag'] == 'exit-dns' &&
+              d['address'] == '127.0.0.1' &&
+              d['port'] == XrayConfigBuilder.exitDnsPort,
+        ),
+        isTrue,
+      );
+      expect(
+        rulesOf(c).firstWhere(
+          (r) => (r['inboundTag'] as List?)?.contains('remote-dns') ?? false,
+        )['outboundTag'],
+        'proxy',
+      );
+      expect(
+        (c['dns']['hosts'] as Map? ?? const {}).containsKey('dns.google'),
+        isTrue,
+      );
       dump('tor_type', c);
     });
 

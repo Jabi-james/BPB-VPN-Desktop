@@ -1206,10 +1206,7 @@ class XrayConfigBuilder {
     // The remote DNS's host: a public one's IPs in hosts; any other is resolved with the local
     // DNS (see bypassDomains), like the anti-sanction DoH.
     String? unlistedDnsHost;
-    if (!isServerlessPacket &&
-        !isServerlessDns &&
-        !isWarp &&
-        (!_exitType || _mode == ConnectionMode.aether)) {
+    if (!isServerlessPacket && !isServerlessDns && !isWarp) {
       unlistedDnsHost = _addDnsHost(hosts, _vless.remoteDns.server, ipv6);
     }
     if (isWarp) unlistedDnsHost = _addDnsHost(hosts, _tunnelRemoteDns, ipv6);
@@ -1291,6 +1288,11 @@ class XrayConfigBuilder {
           tag: 'remote-dns',
         ),
       );
+      if (_isExitProcess) {
+        servers.add(
+          _dnsServer('127.0.0.1', port: exitDnsPort, tag: 'exit-dns'),
+        );
+      }
     }
 
     final geo = _geoAssets();
@@ -1487,8 +1489,7 @@ class XrayConfigBuilder {
     // Through the connection itself: the remote DNS over VLESS / WARP (also with a Psiphon / Tor
     // exit, like BPB with a chain proxy, since the connection is up first), and Psiphon / Tor
     // reaching their servers as an exit (Serverless: with fragment).
-    if ((!_exitType || _mode == ConnectionMode.aether) &&
-        !_frontedExit && !isServerlessDns) {
+    if (!_frontedExit && !isServerlessDns) {
       add(
         inboundTag: [if (_hasExit && !_aetherCore) _exitInbound, 'remote-dns'],
         outbound: outTag,
