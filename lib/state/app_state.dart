@@ -215,6 +215,7 @@ class AppState extends ChangeNotifier {
       ConnectionMode.psiphon,
       ConnectionMode.tor,
       ConnectionMode.serverless,
+      ConnectionMode.ssh,
     ])
       if (switch (m) {
         ConnectionMode.worker => deployments.isNotEmpty,
