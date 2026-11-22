@@ -32,7 +32,9 @@ class ConnectionCard extends StatelessWidget {
     },
     ExitNode.chain =>
       chain == null ? const [] : ChainInfo.of(chain.link)?.carries ?? const [],
-    ExitNode.psiphon => const ['TCP', 'UDP'],
+    ExitNode.psiphon => mode == ConnectionMode.ssh
+        ? const ['TCP']
+        : const ['TCP', 'UDP'],
     ExitNode.tor => const ['TCP'],
   };
 
