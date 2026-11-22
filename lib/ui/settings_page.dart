@@ -66,6 +66,7 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   bool _sshDirty = false;
+  bool _sshSelected = false;
   VoidCallback? _saveSsh;
 
   void _onSshSaveStateChanged(VoidCallback save, bool dirty) {
@@ -102,12 +103,13 @@ class _SettingsPageState extends State<SettingsPage> {
       appBar: AppBar(
         title: const Text('Settings'),
         actions: [
-          FilledButton.icon(
-            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF238636), foregroundColor: Colors.white, visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), minimumSize: const Size(0, 34)),
-            onPressed: _sshDirty ? _saveSsh : null,
-            icon: const Icon(Symbols.save_rounded, size: 17),
-            label: const Text('Save'),
-          ),
+          if (_sshSelected)
+            FilledButton.icon(
+              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF238636), foregroundColor: Colors.white, visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), minimumSize: const Size(0, 34)),
+              onPressed: _sshDirty ? _saveSsh : null,
+              icon: const Icon(Symbols.save_rounded, size: 17),
+              label: const Text('Save'),
+            ),
           IconButton(
             tooltip: 'Reset settings',
             icon: const Icon(Symbols.settings_backup_restore_rounded),
@@ -138,6 +140,7 @@ class _SettingsPageState extends State<SettingsPage> {
         ],
       ),
       body: _SettingsSections(
+        onSectionChanged: (isSsh) => setState(() => _sshSelected = isSsh),
         children: [
           const SectionHeader('Global'),
           SettingsCard(
@@ -1132,7 +1135,8 @@ class _CompactSettingsTheme extends StatelessWidget {
 /// section's settings are shown independently on the right.
 class _SettingsSections extends StatefulWidget {
   final List<Widget> children;
-  const _SettingsSections({required this.children});
+  final ValueChanged<bool>? onSectionChanged;
+  const _SettingsSections({required this.children, this.onSectionChanged});
 
   @override
   State<_SettingsSections> createState() => _SettingsSectionsState();
@@ -1231,7 +1235,10 @@ class _SettingsSectionsState extends State<_SettingsSections> {
           borderRadius: BorderRadius.circular(9),
           child: InkWell(
             borderRadius: BorderRadius.circular(9),
-            onTap: () => setState(() => _selectedId = section.id),
+            onTap: () => setState(() {
+              _selectedId = section.id;
+              widget.onSectionChanged?.call(section.title == 'SSH');
+            }),
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: nested ? 10 : 12, vertical: 10),
               child: Row(
