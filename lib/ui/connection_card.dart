@@ -26,7 +26,7 @@ class ConnectionCard extends StatelessWidget {
     required ChainProxy? chain,
   }) => switch (node) {
     ExitNode.worker => switch (mode) {
-      ConnectionMode.worker => const ['TCP'],
+      ConnectionMode.worker || ConnectionMode.ssh => const ['TCP'],
       ConnectionMode.warp || ConnectionMode.masque => const ['TCP', 'UDP'],
       _ => const [],
     },
@@ -229,6 +229,7 @@ class _TypeSelector extends StatelessWidget {
     ConnectionMode.masque => 'HTTPS',
     ConnectionMode.aether => 'MASQUE',
     ConnectionMode.serverless => 'Direct',
+    ConnectionMode.ssh => 'SSH',
     // Psiphon's tunnels are all SSH based, under various obfuscation layers.
     ConnectionMode.psiphon => 'SSH',
     ConnectionMode.tor => 'Onion',
