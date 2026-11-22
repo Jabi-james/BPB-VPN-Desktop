@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:material_symbols_icons/symbols.dart';
@@ -78,11 +80,17 @@ class HomePage extends StatelessWidget {
         children: [
           Positioned.fill(
             child: IgnorePointer(
-              child: Image.asset(
-                  'images/icon/bg.jpg',
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => const SizedBox.shrink(),
+              child: ClipRect(
+                child: ImageFiltered(
+                  imageFilter: ui.ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                  child: Image.asset(
+                    'images/icon/bg.jpg',
+                    fit: BoxFit.cover,
+                    filterQuality: FilterQuality.high,
+                    errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                  ),
                 ),
+              ),
             ),
           ),
           SafeArea(

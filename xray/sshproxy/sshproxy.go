@@ -76,7 +76,7 @@ func Start(c Config) (*Server, error) {
 		startCtx, startCancel := context.WithTimeout(ctx, time.Minute)
 		defer startCancel()
 		if err := s.connectFirstContext(startCtx); err != nil {
-			log.Printf("SSH initial connection to %s: %v", s.cfg.Server, err)
+			log.Printf("[SSH] SSH initial connection to %s: %v", s.cfg.Server, err)
 			var auth errAuth
 			if errors.As(err, &auth) {
 				s.fatal(err)
@@ -88,7 +88,7 @@ func Start(c Config) (*Server, error) {
 	go func() {
 		defer close(proxy.done)
 		if err := serveSocks(socks, s); err != nil && ctx.Err() == nil {
-			log.Printf("SSH SOCKS listener stopped: %v", err)
+			log.Printf("[SSH] SSH SOCKS listener stopped: %v", err)
 		}
 	}()
 	return proxy, nil

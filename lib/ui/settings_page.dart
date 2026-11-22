@@ -129,7 +129,7 @@ class SettingsPage extends StatelessWidget {
                 }),
                 trailing: const Icon(Symbols.chevron_right_rounded),
                 onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const ChainProxiesPage()),
+                  MaterialPageRoute(builder: (_) =>_CompactSettingsTheme(child:  const ChainProxiesPage())),
                 ),
               ),
             ],
@@ -248,7 +248,7 @@ class SettingsPage extends StatelessWidget {
                   trailing: const Icon(Symbols.chevron_right_rounded),
                   onTap: () => Navigator.of(
                     context,
-                  ).push(MaterialPageRoute(builder: (_) => const PerAppPage())),
+                  ).push(MaterialPageRoute(builder: (_) =>_CompactSettingsTheme(child:  const PerAppPage()))),
                 ),
             ],
           ),
@@ -331,7 +331,7 @@ class SettingsPage extends StatelessWidget {
                 subtitle: Text(_fragmentSummary(p.fragments)),
                 trailing: const Icon(Symbols.chevron_right_rounded),
                 onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const FragmentsPage()),
+                  MaterialPageRoute(builder: (_) =>_CompactSettingsTheme(child:  const FragmentsPage())),
                 ),
               ),
               TextPref(
@@ -402,9 +402,9 @@ class SettingsPage extends StatelessWidget {
                 trailing: const Icon(Symbols.chevron_right_rounded),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (_) => const CloudflareScannerPage(
+                    builder: (_) =>_CompactSettingsTheme(child:  const CloudflareScannerPage(
                       protocol: ScanProtocol.vless,
-                    ),
+                    )),
                   ),
                 ),
               ),
@@ -449,7 +449,7 @@ class SettingsPage extends StatelessWidget {
                 trailing: const Icon(Symbols.chevron_right_rounded),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (_) => const FragmentsPage(section: 'masque.'),
+                    builder: (_) =>_CompactSettingsTheme(child:  const FragmentsPage(section: 'masque.')),
                   ),
                 ),
               ),
@@ -462,7 +462,7 @@ class SettingsPage extends StatelessWidget {
                 trailing: const Icon(Symbols.chevron_right_rounded),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (_) => const NoisesPage(section: 'masque.'),
+                    builder: (_) =>_CompactSettingsTheme(child:  const NoisesPage(section: 'masque.')),
                   ),
                 ),
               ),
@@ -496,11 +496,11 @@ class SettingsPage extends StatelessWidget {
                 trailing: const Icon(Symbols.chevron_right_rounded),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (_) => CloudflareScannerPage(
+                    builder: (_) =>_CompactSettingsTheme(child:  CloudflareScannerPage(
                       protocol: p.masque.transport == 'h3'
                           ? ScanProtocol.masqueH3
                           : ScanProtocol.masqueH2,
-                    ),
+                    )),
                   ),
                 ),
               ),
@@ -535,7 +535,7 @@ class SettingsPage extends StatelessWidget {
                 trailing: const Icon(Symbols.chevron_right_rounded),
                 onTap: () => Navigator.of(
                   context,
-                ).push(MaterialPageRoute(builder: (_) => const NoisesPage())),
+                ).push(MaterialPageRoute(builder: (_) =>_CompactSettingsTheme(child:  const NoisesPage()))),
               ),
               const IntPref(
                 'warp.keepAlive',
@@ -576,9 +576,9 @@ class SettingsPage extends StatelessWidget {
                 trailing: const Icon(Symbols.chevron_right_rounded),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (_) => const CloudflareScannerPage(
+                    builder: (_) =>_CompactSettingsTheme(child:  const CloudflareScannerPage(
                       protocol: ScanProtocol.warp,
-                    ),
+                    )),
                   ),
                 ),
               ),
@@ -664,7 +664,7 @@ class SettingsPage extends StatelessWidget {
                 subtitle: const Text('Choose scan mode and scan MASQUE endpoints'),
                 trailing: const Icon(Symbols.chevron_right_rounded),
                 onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const AetherScannerPage(protocol: 'masque')),
+                  MaterialPageRoute(builder: (_) =>_CompactSettingsTheme(child:  const AetherScannerPage(protocol: 'masque'))),
                 ),
               ),
             ],
@@ -731,7 +731,7 @@ class SettingsPage extends StatelessWidget {
                 subtitle: const Text('Choose scan mode and scan WireGuard endpoints'),
                 trailing: const Icon(Symbols.chevron_right_rounded),
                 onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const AetherScannerPage(protocol: 'wg')),
+                  MaterialPageRoute(builder: (_) =>_CompactSettingsTheme(child:  const AetherScannerPage(protocol: 'wg'))),
                 ),
               ),
             ],
@@ -741,23 +741,7 @@ class SettingsPage extends StatelessWidget {
           const CoreGroupEnd(),
 
           const SectionHeader('SSH'),
-          SettingsCard(
-            children: [
-              ListTile(
-                leading: const Icon(Symbols.key_rounded),
-                title: const Text('SSH server'),
-                subtitle: Text(
-                  p.ssh.isConfigured
-                      ? '${p.ssh.user}@${p.ssh.host}:${p.ssh.port}'
-                      : 'Connection and settings',
-                ),
-                trailing: const Icon(Symbols.chevron_right_rounded),
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const SshSettingsPage()),
-                ),
-              ),
-            ],
-          ),
+          const SshSettingsPage(embedded: true),
 
           const SectionHeader('Tor'),
           SettingsCard(
@@ -768,7 +752,7 @@ class SettingsPage extends StatelessWidget {
                 subtitle: const Text('Fresh bridges from Tor'),
                 trailing: const Icon(Symbols.chevron_right_rounded),
                 onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const TorBridgesPage()),
+                  MaterialPageRoute(builder: (_) =>_CompactSettingsTheme(child:  const TorBridgesPage())),
                 ),
               ),
               const ListPref(
@@ -794,7 +778,7 @@ class SettingsPage extends StatelessWidget {
                 subtitle: Text('DNS mode'),
                 trailing: const Icon(Symbols.chevron_right_rounded),
                 onTap: () => Navigator.of(context)
-                    .push(MaterialPageRoute(builder: (_) => const DnsPage())),
+                    .push(MaterialPageRoute(builder: (_) =>_CompactSettingsTheme(child:  const DnsPage()))),
               ),
               const SwitchPref(
                 'serverless.dnsSettings.fakeSniServers',
@@ -814,7 +798,7 @@ class SettingsPage extends StatelessWidget {
                 trailing: const Icon(Symbols.chevron_right_rounded),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (_) => const FragmentsPage(section: 'serverless.'),
+                    builder: (_) =>_CompactSettingsTheme(child:  const FragmentsPage(section: 'serverless.')),
                   ),
                 ),
               ),
@@ -825,7 +809,7 @@ class SettingsPage extends StatelessWidget {
                 trailing: const Icon(Symbols.chevron_right_rounded),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (_) => const NoisesPage(section: 'serverless.'),
+                    builder: (_) =>_CompactSettingsTheme(child:  const NoisesPage(section: 'serverless.')),
                   ),
                 ),
               ),
@@ -913,25 +897,18 @@ class SettingsPage extends StatelessWidget {
               if (defaultTargetPlatform != TargetPlatform.windows)
                 const _UpdateTile(),
               ListTile(
-                leading: const Icon(Symbols.code_rounded),
-                title: const Text('Source code'),
-                subtitle: const Text(
-                  sourceCodeUrl,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                leading: const Icon(Icons.desktop_windows_rounded, color: Color(0xFF1685D8)),
+                title: const Text('Windows'),
+                subtitle: const Text('github.com/NottDevv/BPB-VPN-Desktop-Dev'),
                 trailing: const Icon(Symbols.open_in_new_rounded, size: 20),
-                onTap: () async {
-                  final messenger = ScaffoldMessenger.of(context);
-                  if (!await VpnChannel.openUrl(sourceCodeUrl)) {
-                    await Clipboard.setData(
-                      const ClipboardData(text: sourceCodeUrl),
-                    );
-                    messenger.showSnackBar(
-                      const SnackBar(content: Text('Link copied')),
-                    );
-                  }
-                },
+                onTap: () => VpnChannel.openUrl('https://github.com/NottDevv/BPB-VPN-Desktop-Dev'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.android, color: Color(0xFF3DDC84)),
+                title: const Text('Android'),
+                subtitle: const Text('github.com/bia-pain-bache/BPB-VPN'),
+                trailing: const Icon(Symbols.open_in_new_rounded, size: 20),
+                onTap: () => VpnChannel.openUrl('https://github.com/bia-pain-bache/BPB-VPN'),
               ),
               ListTile(
                 leading: const Icon(Symbols.copyright_rounded),
@@ -939,7 +916,7 @@ class SettingsPage extends StatelessWidget {
                 subtitle: const Text('GNU GPL v3.0'),
                 trailing: const Icon(Symbols.chevron_right_rounded),
                 onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const LicensePageView()),
+                  MaterialPageRoute(builder: (_) =>_CompactSettingsTheme(child:  const LicensePageView())),
                 ),
               ),
               ListTile(
@@ -949,7 +926,7 @@ class SettingsPage extends StatelessWidget {
                 trailing: const Icon(Symbols.chevron_right_rounded),
                 onTap: () => Navigator.of(
                   context,
-                ).push(MaterialPageRoute(builder: (_) => const DonationPage())),
+                ).push(MaterialPageRoute(builder: (_) =>_CompactSettingsTheme(child:  const DonationPage()))),
               ),
             ],
           ),
@@ -1092,6 +1069,38 @@ class _AetherScannerPageState extends State<AetherScannerPage> {
   }
 }
 
+
+class _CompactSettingsTheme extends StatelessWidget {
+  final Widget child;
+  const _CompactSettingsTheme({required this.child});
+  @override
+  Widget build(BuildContext context) {
+    final base = Theme.of(context);
+    return Theme(
+      data: base.copyWith(
+        textTheme: base.textTheme.copyWith(
+          titleLarge: base.textTheme.titleLarge?.copyWith(fontSize: 18),
+          titleMedium: base.textTheme.titleMedium?.copyWith(fontSize: 14),
+          titleSmall: base.textTheme.titleSmall?.copyWith(fontSize: 13),
+          bodyLarge: base.textTheme.bodyLarge?.copyWith(fontSize: 13),
+          bodyMedium: base.textTheme.bodyMedium?.copyWith(fontSize: 12.5),
+          bodySmall: base.textTheme.bodySmall?.copyWith(fontSize: 11.5),
+          labelLarge: base.textTheme.labelLarge?.copyWith(fontSize: 12.5),
+          labelMedium: base.textTheme.labelMedium?.copyWith(fontSize: 11.5),
+        ),
+        iconTheme: base.iconTheme.copyWith(size: 18, color: base.colorScheme.primary),
+        listTileTheme: base.listTileTheme.copyWith(
+          visualDensity: VisualDensity.compact,
+          minTileHeight: 44,
+          minVerticalPadding: 4,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+        ),
+      ),
+      child: child,
+    );
+  }
+}
+
 /// Desktop settings navigation: keep the section list fixed while the selected
 /// section's settings are shown independently on the right.
 class _SettingsSections extends StatefulWidget {
@@ -1200,7 +1209,7 @@ class _SettingsSectionsState extends State<_SettingsSections> {
               padding: EdgeInsets.symmetric(horizontal: nested ? 10 : 12, vertical: 10),
               child: Row(
                 children: [
-                  Icon(_sectionIcon(section.title), size: 17),
+                  _sectionIconWidget(section.title, 17),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -1240,7 +1249,7 @@ class _SettingsSectionsState extends State<_SettingsSections> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
             child: Row(
               children: [
-                Icon(_sectionIcon(group.title), size: 18),
+                Icon(_sectionIcon(group.title), size: 18, color: _sectionColor(group.title)),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(group.title, style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700)),
@@ -1300,7 +1309,7 @@ class _SettingsSectionsState extends State<_SettingsSections> {
                 bodyMedium: theme.textTheme.bodyMedium?.copyWith(fontSize: 12.5),
                 bodySmall: theme.textTheme.bodySmall?.copyWith(fontSize: 11.5),
               ),
-              iconTheme: theme.iconTheme.copyWith(size: 18),
+              iconTheme: theme.iconTheme.copyWith(size: 18, color: theme.colorScheme.primary),
               listTileTheme: theme.listTileTheme.copyWith(
                 visualDensity: VisualDensity.compact,
                 minTileHeight: 44,
@@ -1320,6 +1329,46 @@ class _SettingsSectionsState extends State<_SettingsSections> {
 }
 
 
+
+Color _sectionColor(String title) => switch (title) {
+  'Global' => const Color(0xFF3B82F6),
+  'VLESS' => const Color(0xFF22A6B3),
+  'BPB Core' => const Color(0xFF64748B),
+  'Aether Core' => const Color(0xFF8B5CF6),
+  'MASQUE' => const Color(0xFFF28C28),
+  'WARP' => const Color(0xFFF48120),
+  'SSH' => const Color(0xFF18A999),
+  'Tor' => const Color(0xFF7D4698),
+  'Serverless' => const Color(0xFF568BFF),
+  'Routing' => const Color(0xFF0D9488),
+  'Import / Export' => const Color(0xFF3B82F6),
+  'Appearance' => const Color(0xFFE879A5),
+  'About' => const Color(0xFF64748B),
+  _ => const Color(0xFF64748B),
+};
+
+Widget _sectionIconWidget(String title, double size) {
+  final color = _sectionColor(title);
+  final fallback = Icon(_sectionIcon(title), size: size, color: color);
+  final url = switch (title) {
+    'Tor' => 'https://avatars.githubusercontent.com/u/3301912?s=200&v=4',
+    'MASQUE' => 'https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/cloudflare-zero-trust.png',
+    'VLESS' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT00ox_USgqF-MWIqS2ILyJbsM_WXTmfKsK1yREDOvrwg&s=10',
+    'WARP' => 'https://assets.streamlinehq.com/image/private/w_300,h_300,ar_1/f_auto/v1/icons/1/cloudflare-icon-oifc3327inhi17qyuy8a6.png/cloudflare-icon-34ebgzllzme0snw7bepstpc.png?_a=DATAiZAAZAA0',
+    'Aether Core' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSgStLmkqjkHJJj5m3javNd8gzHFj0PBS7X2ZF5za4L6b7S4yeHsKWE2rM&s=10',
+    'Serverless' => 'https://cdn-icons-png.flaticon.com/512/18146/18146436.png',
+    'Import / Export' => 'https://image.pngaaa.com/768/3919768-middle.png',
+    _ => null,
+  };
+  if (url == null) return fallback;
+  final image = Image.network(url, width: size, height: size, fit: BoxFit.contain,
+    errorBuilder: (_, _, _) => fallback);
+  if (title == 'Aether Core') {
+    return ClipRect(child: Align(alignment: Alignment.topCenter, heightFactor: 0.78, child: image));
+  }
+  return image;
+}
+
 /// Consistent rounded icons for the Settings navigation.
 IconData _sectionIcon(String title) => switch (title) {
   'Global' => Icons.tune_rounded,
@@ -1328,6 +1377,7 @@ IconData _sectionIcon(String title) => switch (title) {
   'Aether Core' => Icons.hub_rounded,
   'MASQUE' => Icons.cloud_rounded,
   'WARP' => Icons.shield_rounded,
+  'SSH' => Icons.hub_rounded,
   'Tor' => Icons.visibility_off_rounded,
   'Serverless' => Icons.cloud_queue_rounded,
   'Routing' => Icons.alt_route_rounded,
@@ -1518,14 +1568,14 @@ class _RulesTile extends StatelessWidget {
       trailing: const Icon(Symbols.chevron_right_rounded),
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => RoutingPage(
+          builder: (_) =>_CompactSettingsTheme(child:  RoutingPage(
             title: title,
             group: group,
             labels: labels,
             domainHint: domainHint,
             ipHint: ipHint,
             help: help,
-          ),
+          )),
         ),
       ),
     );
@@ -2260,12 +2310,11 @@ class _CloudflareAccountsTile extends StatelessWidget {
       trailing: const Icon(Symbols.chevron_right_rounded),
       onTap: () =>
           Navigator.of(context)
-              .push(MaterialPageRoute(builder: (_) => const CfAccountsPage())),
+              .push(MaterialPageRoute(builder: (_) =>_CompactSettingsTheme(child:  const CfAccountsPage()))),
     );
   }
 }
 
-const sourceCodeUrl = 'https://github.com/bia-pain-bache/BPB-VPN';
 
 /// The installed app's version (pubspec.yaml's); opens the cores' versions.
 class _VersionTile extends StatelessWidget {
@@ -2282,7 +2331,7 @@ class _VersionTile extends StatelessWidget {
         trailing: const Icon(Symbols.chevron_right_rounded),
         onTap: () =>
             Navigator.of(context)
-                .push(MaterialPageRoute(builder: (_) => const _VersionsPage())),
+                .push(MaterialPageRoute(builder: (_) =>_CompactSettingsTheme(child:  const _VersionsPage()))),
       ),
     );
   }

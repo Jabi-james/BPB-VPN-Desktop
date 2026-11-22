@@ -133,7 +133,7 @@ func (s *session) checkHostKey(_ string, _ net.Addr, key ssh.PublicKey) error {
 	}
 	s.mu.Unlock()
 	if pinned == "" {
-		log.Printf("SSH host key: %s", got)
+		log.Printf("[SSH] SSH host key: %s", got)
 		return nil
 	}
 	if got != pinned {
@@ -195,19 +195,20 @@ func (s *session) connectFirstContext(ctx context.Context) error {
 		}
 		c, err := s.connectContext(ctx)
 		if err == nil {
-			log.Printf("connected to %s", s.cfg.Server)
+			log.Printf("[SSH] connected to %s", s.cfg.Server)
 			s.use(c)
 			return nil
 		}
 		var auth errAuth
 		if errors.As(err, &auth) {
+			log.Printf("[SSH] authentication failed: %v", err)
 			return err
 		}
 		if ctx.Err() != nil {
 			return s.connectFailure(ctx, last)
 		}
 		last = err
-		log.Printf("connecting to %s: %v (retrying in %s)", s.cfg.Server, err, backoff)
+		log.Printf("[SSH] connecting to %s: %v (retrying in %s)", s.cfg.Server, err, backoff)
 		timer := time.NewTimer(backoff)
 		select {
 		case <-ctx.Done():
@@ -244,7 +245,7 @@ func (s *session) use(c *ssh.Client) {
 	s.lost = false
 	s.mu.Unlock()
 	if wasLost {
-		log.Printf("reconnected to %s", s.cfg.Server)
+		log.Printf("[SSH] reconnected to %s", s.cfg.Server)
 	}
 	go s.watch(c)
 }
@@ -308,14 +309,14 @@ func (s *session) drop(c *ssh.Client) {
 	s.ready = make(chan struct{})
 	s.lost = true
 	s.mu.Unlock()
-	log.Printf("SSH session lost; reconnecting")
+	log.Printf("[SSH] SSH session lost; reconnecting")
 	for backoff := time.Second; ; backoff = min(backoff*2, maxBackoff) {
 		if s.ctx.Err() != nil {
 			return
 		}
 		next, err := s.connectContext(s.ctx)
 		if err == nil {
-			log.Printf("reconnected to %s", s.cfg.Server)
+			log.Printf("[SSH] reconnected to %s", s.cfg.Server)
 			s.use(next)
 			return
 		}
@@ -324,11 +325,11 @@ func (s *session) drop(c *ssh.Client) {
 		}
 		var auth errAuth
 		if errors.As(err, &auth) {
-			log.Printf("SSH reconnect stopped: %v", err)
+			log.Printf("[SSH] SSH reconnect stopped: %v", err)
 			s.fatal(err)
 			return
 		}
-		log.Printf("reconnecting to %s: %v (retrying in %s)", s.cfg.Server, err, backoff)
+		log.Printf("[SSH] reconnecting to %s: %v (retrying in %s)", s.cfg.Server, err, backoff)
 		timer := time.NewTimer(backoff)
 		select {
 		case <-s.ctx.Done():

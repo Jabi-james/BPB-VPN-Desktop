@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 
 import '../models/settings.dart';
 import '../state/app_state.dart';
@@ -7,7 +8,8 @@ import 'theme.dart';
 
 /// SSH endpoint and credentials used by the local SSH SOCKS proxy.
 class SshSettingsPage extends StatefulWidget {
-  const SshSettingsPage({super.key});
+  final bool embedded;
+  const SshSettingsPage({this.embedded = false, super.key});
 
   @override
   State<SshSettingsPage> createState() => _SshSettingsPageState();
@@ -15,7 +17,7 @@ class SshSettingsPage extends StatefulWidget {
 
 class _SshSettingsPageState extends State<SshSettingsPage> {
   final _formKey = GlobalKey<FormState>();
-  late final SshSettings _initial;
+  late SshSettings _initial;
   late final TextEditingController _host;
   late final TextEditingController _port;
   late final TextEditingController _user;
@@ -25,6 +27,7 @@ class _SshSettingsPageState extends State<SshSettingsPage> {
   late final TextEditingController _keepAlive;
   late final TextEditingController _tcpKeepAlive;
   bool _dirty = false;
+  bool _showPassword = false;
 
   @override
   void initState() {
@@ -69,8 +72,16 @@ class _SshSettingsPageState extends State<SshSettingsPage> {
       'ssh.tcpKeepAliveInterval',
       int.parse(_tcpKeepAlive.text),
     );
-    if (mounted) setState(() => _dirty = false);
-    Navigator.of(context).pop();
+    if (mounted) {
+      _initial = state.profile.ssh;
+      setState(() => _dirty = false);
+      if (widget.embedded) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('SSH settings saved')),
+        );
+      }
+    }
+    if (!widget.embedded) Navigator.of(context).pop();
   }
 
   void _updateDirty() {
@@ -124,8 +135,125 @@ class _SshSettingsPageState extends State<SshSettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
+    final scheme = Theme.of(context).colorScheme;
+    final form = Form(
+      key: _formKey,
+      child: ListView(
+        shrinkWrap: widget.embedded,
+        physics: widget.embedded ? const NeverScrollableScrollPhysics() : null,
+        padding: const EdgeInsets.only(bottom: 24),
+        children: [
+          if (widget.embedded)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  FilledButton.icon(
+                    onPressed: _save,
+                    icon: const Icon(Symbols.save_rounded),
+                    label: const Text('Save'),
+                  ),
+                ],
+              ),
+            ),
+          const SectionHeader('Connection'),
+          Card(
+            margin: const EdgeInsets.symmetric(horizontal: 12),
+            shape: roundedShape(
+              kHeroRadius,
+              side: BorderSide(
+                color: scheme.outlineVariant.withValues(alpha: 0.75),
+                width: 0.75,
+              ),
+            ),
+            elevation: 0,
+            clipBehavior: Clip.antiAlias,
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                spacing: 14,
+                children: [
+                  TextFormField(
+                    controller: _host,
+                    decoration: const InputDecoration(labelText: 'IP or hostname'),
+                    validator: _required,
+                  ),
+                  TextFormField(
+                    controller: _port,
+                    decoration: const InputDecoration(labelText: 'Port'),
+                    keyboardType: TextInputType.number,
+                    validator: (value) => _number(value, 1, 65535),
+                  ),
+                  TextFormField(
+                    controller: _user,
+                    decoration: const InputDecoration(labelText: 'Username'),
+                    validator: _required,
+                  ),
+                  TextFormField(
+                    controller: _password,
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      helperText: 'Use this for password login. Private key fields are optional.',
+                      suffixIcon: IconButton(
+                        tooltip: _showPassword ? 'Hide password' : 'Show password',
+                        onPressed: () => setState(() => _showPassword = !_showPassword),
+                        icon: Icon(
+                          _showPassword ? Symbols.visibility_off_rounded : Symbols.visibility_rounded,
+                          color: const Color(0xFF00A6D6),
+                        ),
+                      ),
+                    ),
+                    obscureText: !_showPassword,
+                    autocorrect: false,
+                  ),
+                  TextFormField(
+                    controller: _key,
+                    decoration: const InputDecoration(
+                      labelText: 'Private key (optional)',
+                      helperText: 'Only needed when the server uses key-based authentication.',
+                      alignLabelWithHint: true,
+                    ),
+                    minLines: 4,
+                    maxLines: 8,
+                    autocorrect: false,
+                  ),
+                  TextFormField(
+                    controller: _passphrase,
+                    decoration: const InputDecoration(
+                      labelText: 'Key passphrase (optional)',
+                      helperText: 'Only needed to unlock an encrypted private key.',
+                    ),
+                    obscureText: true,
+                    autocorrect: false,
+                  ),
+                  TextFormField(
+                    controller: _keepAlive,
+                    decoration: const InputDecoration(
+                      labelText: 'SSH keep alive interval (seconds)',
+                      helperText: 'SSH session health check interval',
+                    ),
+                    keyboardType: TextInputType.number,
+                    validator: (value) => _number(value, 5, 600),
+                  ),
+                  TextFormField(
+                    controller: _tcpKeepAlive,
+                    decoration: const InputDecoration(
+                      labelText: 'TCP keep alive interval (seconds)',
+                      helperText: 'Network TCP keep alive probes',
+                    ),
+                    keyboardType: TextInputType.number,
+                    validator: (value) => _number(value, 1, 600),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (widget.embedded) return form;
     return PopScope(
       canPop: !_dirty,
       onPopInvokedWithResult: (didPop, _) async {
@@ -136,101 +264,7 @@ class _SshSettingsPageState extends State<SshSettingsPage> {
           title: const Text('SSH settings'),
           actions: [TextButton(onPressed: _save, child: const Text('Save'))],
         ),
-        body: Form(
-          key: _formKey,
-          child: ListView(
-            padding: const EdgeInsets.only(bottom: 24),
-            children: [
-              const SectionHeader('Connection'),
-              Card(
-                margin: const EdgeInsets.symmetric(horizontal: 12),
-                shape: roundedShape(
-                  kHeroRadius,
-                  side: BorderSide(
-                    color: scheme.outlineVariant.withValues(alpha: 0.75),
-                    width: 0.75,
-                  ),
-                ),
-                elevation: 0,
-                clipBehavior: Clip.antiAlias,
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    spacing: 16,
-                    children: [
-                      TextFormField(
-                        controller: _host,
-                        decoration: const InputDecoration(
-                          labelText: 'IP or hostname',
-                        ),
-                        validator: _required,
-                      ),
-                      TextFormField(
-                        controller: _port,
-                        decoration: const InputDecoration(labelText: 'Port'),
-                        keyboardType: TextInputType.number,
-                        validator: (value) => _number(value, 1, 65535),
-                      ),
-                      TextFormField(
-                        controller: _user,
-                        decoration: const InputDecoration(
-                          labelText: 'Username',
-                        ),
-                        validator: _required,
-                      ),
-                      TextFormField(
-                        controller: _password,
-                        decoration: const InputDecoration(
-                          labelText: 'Password',
-                          helperText:
-                              'Use a password, a private key, or both.',
-                        ),
-                        obscureText: true,
-                      ),
-                      TextFormField(
-                        controller: _key,
-                        decoration: const InputDecoration(
-                          labelText: 'Private key',
-                          alignLabelWithHint: true,
-                        ),
-                        minLines: 4,
-                        maxLines: 8,
-                        autocorrect: false,
-                      ),
-                      TextFormField(
-                        controller: _passphrase,
-                        decoration: const InputDecoration(
-                          labelText: 'Key passphrase',
-                        ),
-                        obscureText: true,
-                      ),
-                      TextFormField(
-                        controller: _keepAlive,
-                        decoration: const InputDecoration(
-                          labelText: 'SSH keep alive interval (seconds)',
-                          helperText: 'SSH session health check interval',
-                        ),
-                        keyboardType: TextInputType.number,
-                        validator: (value) => _number(value, 5, 600),
-                      ),
-                      TextFormField(
-                        controller: _tcpKeepAlive,
-                        decoration: const InputDecoration(
-                          labelText: 'TCP keep alive interval (seconds)',
-                          helperText:
-                              'Network TCP keep alive probes',
-                        ),
-                        keyboardType: TextInputType.number,
-                        validator: (value) => _number(value, 1, 600),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+        body: form,
       ),
     );
   }

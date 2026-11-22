@@ -108,7 +108,7 @@ ThemeData _buildTheme(ColorScheme scheme) {
     ),
     // Material Symbols Rounded variable axes; tweak here to restyle every icon.
     iconTheme: IconThemeData(
-      color: scheme.onSurfaceVariant,
+      color: scheme.primary,
       fill: 0,
       weight: 400,
       grade: 0,

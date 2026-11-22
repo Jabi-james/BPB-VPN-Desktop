@@ -701,8 +701,16 @@ class AppState extends ChangeNotifier {
         unawaited(refreshUsage());
         return;
       }
+      if (mode == ConnectionMode.ssh) {
+        VpnChannel.appendLog('[SSH] Tunnel started; checking the exit IP through the local proxy.');
+      }
       final ips = await fetchMyIps(proxyPort: LocalProxy.port)
           .timeout(const Duration(seconds: 24));
+      if (mode == ConnectionMode.ssh) {
+        VpnChannel.appendLog(
+          '[SSH] Exit IP lookup result: Cloudflare=${ips.cloudflare != null}, alternate=${ips.other != null}.',
+        );
+      }
       if (token != _windowsVerificationToken) return;
       if (ips.cloudflare == null && ips.other == null) {
         throw StateError('Could not retrieve an exit IP through the connection.');
@@ -724,6 +732,9 @@ class AppState extends ChangeNotifier {
       _redeployDue();
     } catch (e) {
       if (token != _windowsVerificationToken) return;
+      if (mode == ConnectionMode.ssh) {
+        VpnChannel.appendLog('[SSH] Connection verification failed: $e');
+      }
       failure = 'Connection verification failed: $e';
       status = VpnStatus.disconnected;
       error = failure;

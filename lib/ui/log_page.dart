@@ -23,6 +23,7 @@ class _LogPageState extends State<LogPage> {
   /// The logs, by the name the service uses.
   static const _logs = {
     'xray': 'VPN',
+    'ssh': 'SSH',
     'tor': 'Tor',
     'psiphon': 'Psiphon',
     'aether': 'Aether',

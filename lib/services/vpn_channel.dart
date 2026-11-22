@@ -57,6 +57,13 @@ class VpnChannel {
     }
   }
 
+  /// App-side diagnostics are added to the Windows core log stream.
+  static void appendLog(String line) {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
+      _appendWindowsLog(line);
+    }
+  }
+
   static void _appendWindowsLog(String line) {
     if (line.isEmpty) return;
     _windowsLogLines.add(line);
@@ -489,6 +496,9 @@ class VpnChannel {
   static Future<String> readLog({String log = 'xray'}) async {
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
       if (log == 'xray') return _windowsLogLines.join('\n');
+      if (log == 'ssh') {
+        return _windowsLogLines.where((line) => line.contains('[SSH]')).join('\n');
+      }
       if (log == 'aether') {
         final path = _windowsAetherLogPath;
         if (path == null) return '';
@@ -524,6 +534,9 @@ class VpnChannel {
       }
       return {
         'xray': utf8.encode(_windowsLogLines.join('\n')).length,
+        'ssh': utf8.encode(
+          _windowsLogLines.where((line) => line.contains('[SSH]')).join('\n'),
+        ).length,
         'tor': await sizeOf('tor.log'),
         'psiphon': await sizeOf('psiphon.log'),
         'aether': _windowsAetherLogPath == null
