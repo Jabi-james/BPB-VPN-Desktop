@@ -78,13 +78,31 @@ PersistentKeepalive = 25
 ''';
 
 void main() {
-  test('Worker, WARP, MASQUE and Aether use connection verification', () {
+  test('Worker, WARP, MASQUE, Aether and SSH use connection verification', () {
     expect(ConnectionMode.values.where((mode) => mode.verifiesConnection), [
       ConnectionMode.worker,
       ConnectionMode.warp,
       ConnectionMode.masque,
       ConnectionMode.aether,
+      ConnectionMode.ssh,
     ]);
+  });
+
+  test('SSH uses its local SOCKS proxy as the base connection', () async {
+    final config = (await builder({
+      'ssh': {
+        'host': 'ssh.example.com',
+        'port': 22,
+        'user': 'vpn-user',
+        'password': 'secret',
+      },
+    }).build(ConnectionMode.ssh)).config;
+    final outbounds = (config['outbounds'] as List).cast<Map>();
+    final proxy = outbounds.singleWhere((item) => item['tag'] == 'proxy');
+
+    expect(proxy['protocol'], 'socks');
+    expect((proxy['settings'] as Map)['address'], '127.0.0.1');
+    expect((proxy['settings'] as Map)['port'], XrayConfigBuilder.sshPort);
   });
 
   test('Aether uses its SOCKS5 exit and routes its upstream through Xray direct', () async {
