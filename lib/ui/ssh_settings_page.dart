@@ -3,7 +3,6 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import '../models/settings.dart';
 import '../state/app_state.dart';
-import 'prefs.dart';
 import 'theme.dart';
 
 /// SSH endpoint and credentials used by the local SSH SOCKS proxy.
