@@ -215,6 +215,7 @@ class AppState extends ChangeNotifier {
       ConnectionMode.psiphon,
       ConnectionMode.tor,
       ConnectionMode.serverless,
+      ConnectionMode.ssh,
     ])
       if (switch (m) {
         ConnectionMode.worker => deployments.isNotEmpty,
@@ -226,7 +227,9 @@ class AppState extends ChangeNotifier {
   ];
 
   /// The chosen type, or the first available one when it can't be used (yet).
-  CoreType get core => defaultTargetPlatform == TargetPlatform.windows
+  CoreType get core =>
+      defaultTargetPlatform == TargetPlatform.windows &&
+          (mode == ConnectionMode.masque || mode == ConnectionMode.warp)
       ? CoreType.values.asNameMap()[device.connectionCore] ?? CoreType.bpb
       : CoreType.bpb;
 
@@ -1034,6 +1037,7 @@ class AppState extends ChangeNotifier {
       psiphonConfig: exit == 'psiphon'
           ? XrayConfigBuilder.psiphonConfigFor(mode, device)
           : null,
+      sshConfig: mode == ConnectionMode.ssh ? profile.ssh.toJson() : null,
       browserDialer:
           mode == ConnectionMode.worker &&
           variant == ConnectionVariant.browserDialer,

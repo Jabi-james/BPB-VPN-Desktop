@@ -259,6 +259,7 @@ class VpnChannel {
     String? aetherConfigDir,
     String? aetherProtocol,
     Map<String, String>? aetherEnvironment,
+    Map<String, dynamic>? sshConfig,
   }) async {
     _emitWindowsState(VpnStatus.connecting);
     try {
@@ -276,6 +277,7 @@ class VpnChannel {
         'aetherConfigDir': aetherConfigDir,
         'aetherProtocol': aetherProtocol,
         'aetherEnvironment': aetherEnvironment,
+        'sshConfig': sshConfig == null ? null : jsonEncode(sshConfig),
         // Do not report CONNECTED until Xray can complete a request through its outbound.
         'verifyConnection': verifyConnection,
       }, timeout: exit == null && aetherProtocol == null
@@ -379,6 +381,7 @@ class VpnChannel {
     String? aetherProtocol,
     Map<String, String>? aetherEnvironment,
     Map<String, dynamic>? psiphonConfig,
+    Map<String, dynamic>? sshConfig,
     bool browserDialer = false,
     bool verifyConnection = false,
   }) async {
@@ -424,6 +427,7 @@ class VpnChannel {
         aetherConfigDir: aetherConfigDir,
         aetherProtocol: aetherProtocol,
         aetherEnvironment: aetherEnvironment,
+        sshConfig: sshConfig,
       );
       return;
     }

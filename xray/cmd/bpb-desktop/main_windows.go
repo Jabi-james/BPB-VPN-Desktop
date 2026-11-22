@@ -34,6 +34,7 @@ type request struct {
 	AetherConfigDir string `json:"aetherConfigDir,omitempty"`
 	AetherProtocol string `json:"aetherProtocol,omitempty"`
 	AetherEnvironment map[string]string `json:"aetherEnvironment,omitempty"`
+	SSHConfig string `json:"sshConfig,omitempty"`
 }
 
 type response struct {
@@ -57,6 +58,10 @@ func startController(controller *xray.Controller, req request) error {
 		address = "127.0.0.1:10832"
 	}
 	xray.SetBrowserDialer(address)
+	if err := controller.ConfigureSSH(req.SSHConfig); err != "" {
+		xray.SetBrowserDialer("")
+		return fmt.Errorf("%s", err)
+	}
 	if err := controller.Start(req.Config, 0); err != nil {
 		xray.SetBrowserDialer("")
 		return err

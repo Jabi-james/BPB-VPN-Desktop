@@ -44,7 +44,10 @@ enum ConnectionMode {
   aether('Aether'),
 
   /// Direct packet mode: TLS fragmentation for TCP and UDP noise.
-  serverless('Serverless');
+  serverless('Serverless'),
+
+  /// SSH tunnel exposed to Xray as a local SOCKS5 proxy.
+  ssh('SSH');
 
   final String label;
   const ConnectionMode(this.label);
@@ -56,7 +59,8 @@ enum ConnectionMode {
   bool get isWarpLike => this == warp || this == masque;
 
   /// Modes whose running connection is checked before it is reported as connected.
-  bool get verifiesConnection => this == worker || isWarpLike || this == aether;
+  bool get verifiesConnection =>
+      this == worker || isWarpLike || this == aether || this == ssh;
 
   /// Modes that connect through the deployed worker.
   bool get needsWorker => this == worker;
@@ -182,6 +186,8 @@ class XrayConfigBuilder {
   /// tor-in inbound, and serves SOCKS5 for the exit outbound (Psiphon: TCP and UDP; Tor: TCP).
   static const exitUpstreamPort = 10828;
   static const exitPort = 10829;
+  /// Local SOCKS endpoint exposed by the SSH session.
+  static const sshPort = 1080;
 
   /// The exit process's DNS server, the remote DNS of the Psiphon / Tor types: Tor's DNSPort,
   /// or Psiphon's own resolver (psiphon/dns.go).
@@ -511,6 +517,7 @@ class XrayConfigBuilder {
     if (mode.isWarp) {
       return _buildWarp(variant == ConnectionVariant.obfuscated);
     }
+    if (mode == ConnectionMode.ssh) return _buildSsh();
 
     final p = worker;
     if (p == null || uuid == null) {
@@ -957,6 +964,26 @@ class XrayConfigBuilder {
             'address': '127.0.0.1',
             'port': _mode == ConnectionMode.aether ? aetherListenPort : exitPort,
           },
+        },
+      ],
+      isBalancer: false,
+      outboundAddrs: const [],
+    );
+    return XrayBuild(config);
+  }
+
+  /// SSH is the base transport; an optional exit is layered on top of its SOCKS connection.
+  Future<XrayBuild> _buildSsh() async {
+    if (!profile.ssh.isConfigured) {
+      throw StateError('Configure an SSH server first in Settings → SSH.');
+    }
+    final config = await _buildConfig(
+      outbounds: [
+        ..._chainOutbounds(),
+        {
+          'tag': 'proxy',
+          'protocol': 'socks',
+          'settings': {'address': '127.0.0.1', 'port': sshPort},
         },
       ],
       isBalancer: false,
