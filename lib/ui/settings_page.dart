@@ -57,8 +57,24 @@ class _WebRtcProtectionPref extends StatelessWidget {
   }
 }
 
-class SettingsPage extends StatelessWidget {
+class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
+
+  @override
+  State<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends State<SettingsPage> {
+  bool _sshDirty = false;
+  VoidCallback? _saveSsh;
+
+  void _onSshSaveStateChanged(VoidCallback save, bool dirty) {
+    if (!mounted) return;
+    setState(() {
+      _saveSsh = save;
+      _sshDirty = dirty;
+    });
+  }
 
   static const fingerprints = {
     'chrome': 'Chrome',
@@ -86,6 +102,12 @@ class SettingsPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Settings'),
         actions: [
+          FilledButton.icon(
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF238636), foregroundColor: Colors.white, visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), minimumSize: const Size(0, 34)),
+            onPressed: _sshDirty ? _saveSsh : null,
+            icon: const Icon(Symbols.save_rounded, size: 17),
+            label: const Text('Save'),
+          ),
           IconButton(
             tooltip: 'Reset settings',
             icon: const Icon(Symbols.settings_backup_restore_rounded),
@@ -742,7 +764,7 @@ class SettingsPage extends StatelessWidget {
           const CoreGroupEnd(),
 
           const SectionHeader('SSH'),
-          const SshSettingsPage(embedded: true),
+          SshSettingsPage(embedded: true, onSaveStateChanged: _onSshSaveStateChanged),
 
           const SectionHeader('Tor'),
           SettingsCard(
@@ -885,18 +907,11 @@ class SettingsPage extends StatelessWidget {
                 title: Text('Worker version'),
                 subtitle: Text('v${CloudflareApi.workerVersion}'),
               ),
-              if (defaultTargetPlatform == TargetPlatform.windows)
-                ListTile(
-                  leading: const Icon(Symbols.download_rounded),
-                  title: const Text('Windows Releases'),
-                  subtitle: const Text('github.com/NottDevv/BPB-VPN-Desktop'),
-                  trailing: const Icon(Symbols.open_in_new_rounded, size: 20),
-                  onTap: () => VpnChannel.openUrl(
-                    'https://github.com/NottDevv/BPB-VPN-Desktop/releases',
-                  ),
-                ),
-              if (defaultTargetPlatform != TargetPlatform.windows)
-                const _UpdateTile(),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SettingsCard(
+            children: [
               ListTile(
                 leading: const Icon(Symbols.code_rounded),
                 title: const Text('BPB Source Code'),
@@ -904,14 +919,25 @@ class SettingsPage extends StatelessWidget {
                 trailing: const Icon(Symbols.open_in_new_rounded, size: 20),
                 onTap: () => VpnChannel.openUrl('https://github.com/bia-pain-bache/BPB-VPN'),
               ),
-              const SizedBox(height: 6),
               ListTile(
                 leading: const Icon(Icons.desktop_windows_rounded, color: Color(0xFF1685D8)),
-                title: const Text('Windows'),
+                title: const Text('Desktop App Repo'),
+                subtitle: const Text('github.com/NottDevv/BPB-VPN-Desktop'),
+                trailing: const Icon(Symbols.open_in_new_rounded, size: 20),
+                onTap: () => VpnChannel.openUrl('https://github.com/NottDevv/BPB-VPN-Desktop'),
+              ),
+              ListTile(
+                leading: const Icon(Symbols.code_rounded),
+                title: const Text('Desktop App Source Code'),
                 subtitle: const Text('github.com/NottDevv/BPB-VPN-Desktop-Dev'),
                 trailing: const Icon(Symbols.open_in_new_rounded, size: 20),
                 onTap: () => VpnChannel.openUrl('https://github.com/NottDevv/BPB-VPN-Desktop-Dev'),
               ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SettingsCard(
+            children: [
               ListTile(
                 leading: const Icon(Symbols.copyright_rounded),
                 title: const Text('Open Source License'),
@@ -926,13 +952,12 @@ class SettingsPage extends StatelessWidget {
                 title: const Text('Donation'),
                 subtitle: const Text('Keep this project alive'),
                 trailing: const Icon(Symbols.chevron_right_rounded),
-                onTap: () => Navigator.of(
-                  context,
-                ).push(MaterialPageRoute(builder: (_) =>_CompactSettingsTheme(child:  const DonationPage()))),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) =>_CompactSettingsTheme(child:  const DonationPage())),
+                ),
               ),
             ],
           ),
-        
         ],
       ),
     );
@@ -1353,7 +1378,7 @@ Color _sectionColor(String title) => switch (title) {
   'Serverless' => const Color(0xFF568BFF),
   'Routing' => const Color(0xFF0D9488),
   'Import / Export' => const Color(0xFF3B82F6),
-  'Appearance' => const Color(0xFF4C8BF5),
+  'Appearance' => const Color(0xFF78B7FF),
   'About' => const Color(0xFF64748B),
   _ => const Color(0xFF64748B),
 };
@@ -1362,8 +1387,6 @@ Widget _sectionIconWidget(String title, double size) {
   final color = _sectionColor(title);
   final fallback = Icon(_sectionIcon(title), size: size, color: color);
   final asset = switch (title) {
-    'VLESS' => 'images/icon/vless.jpg',
-    'Aether Core' => 'images/icon/Aether.jpg',
     'Serverless' => 'images/icon/Serverless.png',
     _ => null,
   };
@@ -1377,12 +1400,12 @@ Widget _sectionIconWidget(String title, double size) {
 /// Consistent rounded icons for the Settings navigation.
 IconData _sectionIcon(String title) => switch (title) {
   'Global' => Icons.tune_rounded,
-  'VLESS' => Icons.code_rounded,
+  'VLESS' => Icons.route_rounded,
   'BPB Core' => Icons.memory_rounded,
-  'Aether Core' => Icons.hub_rounded,
+  'Aether Core' => Icons.bubble_chart_rounded,
   'MASQUE' => Icons.shield_rounded,
   'WARP' => Icons.cloud_rounded,
-  'SSH' => Icons.hub_rounded,
+  'SSH' => Icons.key_rounded,
   'Tor' => Icons.visibility_off_rounded,
   'Serverless' => Icons.cloud_queue_rounded,
   'Routing' => Icons.alt_route_rounded,

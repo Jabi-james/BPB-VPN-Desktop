@@ -8,7 +8,8 @@ import 'theme.dart';
 /// SSH endpoint and credentials used by the local SSH SOCKS proxy.
 class SshSettingsPage extends StatefulWidget {
   final bool embedded;
-  const SshSettingsPage({this.embedded = false, super.key});
+  final void Function(VoidCallback save, bool dirty)? onSaveStateChanged;
+  const SshSettingsPage({this.embedded = false, this.onSaveStateChanged, super.key});
 
   @override
   State<SshSettingsPage> createState() => _SshSettingsPageState();
@@ -42,6 +43,9 @@ class _SshSettingsPageState extends State<SshSettingsPage> {
     _tcpKeepAlive = TextEditingController(
       text: '${_initial.tcpKeepAliveInterval}',
     )..addListener(_updateDirty);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.onSaveStateChanged?.call(_save, _dirty);
+    });
   }
 
   @override
@@ -54,6 +58,7 @@ class _SshSettingsPageState extends State<SshSettingsPage> {
     _passphrase.dispose();
     _keepAlive.dispose();
     _tcpKeepAlive.dispose();
+    widget.onSaveStateChanged?.call(() {}, false);
     super.dispose();
   }
 
@@ -74,6 +79,7 @@ class _SshSettingsPageState extends State<SshSettingsPage> {
     if (mounted) {
       _initial = state.profile.ssh;
       setState(() => _dirty = false);
+      widget.onSaveStateChanged?.call(_save, false);
       if (widget.embedded) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('SSH settings saved')),
@@ -92,7 +98,10 @@ class _SshSettingsPageState extends State<SshSettingsPage> {
         _passphrase.text != _initial.passphrase ||
         _keepAlive.text != '${_initial.keepAliveInterval}' ||
         _tcpKeepAlive.text != '${_initial.tcpKeepAliveInterval}';
-    if (_dirty != dirty && mounted) setState(() => _dirty = dirty);
+    if (_dirty != dirty && mounted) {
+      setState(() => _dirty = dirty);
+      widget.onSaveStateChanged?.call(_save, dirty);
+    }
   }
 
   Future<void> _confirmLeave() async {
@@ -124,6 +133,7 @@ class _SshSettingsPageState extends State<SshSettingsPage> {
         break;
       case _LeaveChoice.discard:
         setState(() => _dirty = false);
+        widget.onSaveStateChanged?.call(_save, false);
         Navigator.of(context).pop();
         break;
       case _LeaveChoice.cancel:
@@ -142,24 +152,6 @@ class _SshSettingsPageState extends State<SshSettingsPage> {
         physics: widget.embedded ? const NeverScrollableScrollPhysics() : null,
         padding: const EdgeInsets.only(bottom: 24),
         children: [
-          if (widget.embedded)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  FilledButton.icon(
-                    style: FilledButton.styleFrom(backgroundColor: const Color(0xFF238636),
-                      foregroundColor: Colors.white, visualDensity: VisualDensity.compact,
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      minimumSize: const Size(0, 34)),
-                    onPressed: _save,
-                    icon: const Icon(Symbols.save_rounded, size: 17),
-                    label: const Text('Save'),
-                  ),
-                ],
-              ),
-            ),
           Card(
             margin: const EdgeInsets.symmetric(horizontal: 12),
             shape: roundedShape(
@@ -211,16 +203,27 @@ class _SshSettingsPageState extends State<SshSettingsPage> {
                     obscureText: !_showPassword,
                     autocorrect: false,
                   ),
-                  SizedBox(height: 116, child: TextFormField(
-                    controller: _key, expands: true, minLines: null, maxLines: null,
-                    decoration: const InputDecoration(labelText: 'Private key (optional)',
+                  TextFormField(
+                    controller: _key,
+                    minLines: 1,
+                    maxLines: 1,
+                    decoration: const InputDecoration(
+                      labelText: 'Private key (optional)',
                       helperText: 'Only needed when the server uses key-based authentication.',
-                      alignLabelWithHint: true), autocorrect: false)),
-                  SizedBox(height: 116, child: TextFormField(
-                    controller: _passphrase, expands: true, minLines: null, maxLines: null,
-                    decoration: const InputDecoration(labelText: 'Key passphrase (optional)',
-                      helperText: 'Only needed to unlock an encrypted private key.'),
-                    obscureText: true, autocorrect: false)),
+                    ),
+                    autocorrect: false,
+                  ),
+                  TextFormField(
+                    controller: _passphrase,
+                    minLines: 1,
+                    maxLines: 1,
+                    decoration: const InputDecoration(
+                      labelText: 'Key passphrase (optional)',
+                      helperText: 'Only needed to unlock an encrypted private key.',
+                    ),
+                    obscureText: true,
+                    autocorrect: false,
+                  ),
                   TextFormField(
                     controller: _keepAlive,
                     decoration: const InputDecoration(

@@ -12,12 +12,15 @@ with Image.open(PNG) as source:
     image = source.convert("RGBA")
     # Keep the in-app title mark unchanged; crop transparent margins only for
     # Windows shell icons so the taskbar and tray artwork appears larger.
-    bounds = image.getchannel("A").getbbox()
+    # Ignore faint antialias/shadow pixels so transparent padding cannot shrink the artwork.
+    alpha = image.getchannel("A").point(lambda value: 255 if value > 20 else 0)
+    bounds = alpha.getbbox()
     if bounds is None:
         raise SystemExit(f"Rendered app icon is fully transparent: {PNG}")
     left, top, right, bottom = bounds
-    pad_x = max(1, round((right - left) * 0.01))
-    pad_y = max(1, round((bottom - top) * 0.01))
+    # Crop exactly to visible artwork; do not add transparent padding.
+    pad_x = 0
+    pad_y = 0
     image = image.crop((
         max(0, left - pad_x),
         max(0, top - pad_y),
