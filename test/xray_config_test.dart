@@ -194,7 +194,12 @@ void main() {
     final rules = ((config['routing'] as Map)['rules'] as List).cast<Map>();
 
     expect(outbounds.any((item) => item['tag'] == 'aether-base'), isTrue);
-    expect(outbounds.any((item) => item['tag'] == 'proxy' && item['protocol'] == 'socks'), isFalse);
+    final chain = outbounds.singleWhere((item) => item['tag'] == 'proxy');
+    expect(chain['protocol'], 'socks');
+    expect(
+      ((chain['streamSettings'] as Map)['sockopt'] as Map)['dialerProxy'],
+      'aether-base',
+    );
     expect(rules.last['outboundTag'], 'proxy');
   });
 

@@ -11,7 +11,7 @@ if not PNG.is_file():
 with Image.open(PNG) as source:
     image = source.convert("RGBA")
     # Keep the in-app title mark unchanged; crop transparent margins only for
-    # Windows shell icons so the taskbar and tray artwork appears larger.
+    # Windows taskbar artwork appears larger.
     # Ignore faint antialias/shadow pixels so transparent padding cannot shrink the artwork.
     alpha = image.getchannel("A").point(lambda value: 255 if value > 20 else 0)
     bounds = alpha.getbbox()
