@@ -36,6 +36,7 @@ flutter:
     # Shown in Settings → About → License.
     - LICENSE
     - images/icon/bg.jpg
+    - images/icon/bgs.jpg
     - images/icon/Connected.png
     - images/icon/Disconnected.png
     # The status bar icon (android/…/drawable-*/ic_stat_vpn.png), for the home page title;

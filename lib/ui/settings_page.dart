@@ -897,18 +897,19 @@ class SettingsPage extends StatelessWidget {
               if (defaultTargetPlatform != TargetPlatform.windows)
                 const _UpdateTile(),
               ListTile(
+                leading: const Icon(Symbols.code_rounded),
+                title: const Text('BPB Source Code'),
+                subtitle: const Text('github.com/bia-pain-bache/BPB-VPN'),
+                trailing: const Icon(Symbols.open_in_new_rounded, size: 20),
+                onTap: () => VpnChannel.openUrl('https://github.com/bia-pain-bache/BPB-VPN'),
+              ),
+              const SizedBox(height: 6),
+              ListTile(
                 leading: const Icon(Icons.desktop_windows_rounded, color: Color(0xFF1685D8)),
                 title: const Text('Windows'),
                 subtitle: const Text('github.com/NottDevv/BPB-VPN-Desktop-Dev'),
                 trailing: const Icon(Symbols.open_in_new_rounded, size: 20),
                 onTap: () => VpnChannel.openUrl('https://github.com/NottDevv/BPB-VPN-Desktop-Dev'),
-              ),
-              ListTile(
-                leading: const Icon(Icons.android, color: Color(0xFF3DDC84)),
-                title: const Text('Android'),
-                subtitle: const Text('github.com/bia-pain-bache/BPB-VPN'),
-                trailing: const Icon(Symbols.open_in_new_rounded, size: 20),
-                onTap: () => VpnChannel.openUrl('https://github.com/bia-pain-bache/BPB-VPN'),
               ),
               ListTile(
                 leading: const Icon(Symbols.copyright_rounded),
@@ -1302,7 +1303,15 @@ class _SettingsSectionsState extends State<_SettingsSections> {
           ),
         ),
         Expanded(
-          child: Theme(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              image: DecorationImage(
+                image: const AssetImage('images/icon/bgs.jpg'),
+                fit: BoxFit.cover,
+                opacity: 0.24,
+              ),
+            ),
+            child: Theme(
             data: theme.copyWith(
               textTheme: theme.textTheme.copyWith(
                 titleMedium: theme.textTheme.titleMedium?.copyWith(fontSize: 14),
@@ -1320,6 +1329,7 @@ class _SettingsSectionsState extends State<_SettingsSections> {
             child: ListView(
               padding: const EdgeInsets.only(bottom: 32, top: 4),
               children: selected.children,
+            ),
             ),
           ),
         ),
