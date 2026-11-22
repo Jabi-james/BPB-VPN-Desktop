@@ -28,6 +28,17 @@ with Image.open(PNG) as source:
         min(image.height, bottom + pad_y),
     ))
 
+    # Zoom the visible artwork further for the Windows taskbar. The source mark is
+    # 24x24, so this modest scale-up removes the remaining optical padding.
+    zoom = 1.15
+    zoomed = image.resize(
+        (round(image.width * zoom), round(image.height * zoom)),
+        Image.Resampling.LANCZOS,
+    )
+    left = (zoomed.width - image.width) // 2
+    top = (zoomed.height - image.height) // 2
+    image = zoomed.crop((left, top, left + image.width, top + image.height))
+
 image.save(
     ICO,
     format="ICO",

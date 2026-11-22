@@ -162,6 +162,42 @@ void main() {
     );
   });
 
+  for (final node in ['psiphon', 'tor']) {
+    test('Aether Core uses the $node exit for user traffic', () async {
+      final config = (await builder({}, {
+        'exit': {'node': node, 'region': 'DE'},
+      }).build(ConnectionMode.warp, core: CoreType.aether)).config;
+      final inbounds = (config['inbounds'] as List).cast<Map>();
+      final outbounds = (config['outbounds'] as List).cast<Map>();
+      final rules = ((config['routing'] as Map)['rules'] as List).cast<Map>();
+
+      final exitInbound = inbounds.singleWhere((item) => item['tag'] == '$node-in');
+      expect(exitInbound['port'], XrayConfigBuilder.exitUpstreamPort);
+      final upstreamRule = rules.firstWhere((rule) =>
+          (rule['inboundTag'] as List?)?.contains('$node-in') == true);
+      expect(upstreamRule['outboundTag'], 'proxy');
+
+      final exitOutbound = outbounds.singleWhere((item) => item['tag'] == 'exit');
+      expect(exitOutbound['protocol'], 'socks');
+      expect((exitOutbound['settings'] as Map)['port'], XrayConfigBuilder.exitPort);
+      expect(rules.last['outboundTag'], 'exit');
+    });
+  }
+
+  test('Aether Core keeps Chain Proxy as the user traffic exit', () async {
+    final config = (await builder({
+      ...chains('socks://user:pass@9.9.9.9:1080#x'),
+    }, {
+      'exit': {'node': 'chain'},
+    }).build(ConnectionMode.warp, core: CoreType.aether)).config;
+    final outbounds = (config['outbounds'] as List).cast<Map>();
+    final rules = ((config['routing'] as Map)['rules'] as List).cast<Map>();
+
+    expect(outbounds.any((item) => item['tag'] == 'aether-base'), isTrue);
+    expect(outbounds.any((item) => item['tag'] == 'proxy' && item['protocol'] == 'socks'), isFalse);
+    expect(rules.last['outboundTag'], 'proxy');
+  });
+
   test('WARP scanner uses app WireGuard settings and selected port', () {
     final keys = X25519KeyPair.generate();
     final account = WarpAccount(

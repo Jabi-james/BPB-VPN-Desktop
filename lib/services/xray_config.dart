@@ -1491,7 +1491,10 @@ class XrayConfigBuilder {
     // reaching their servers as an exit (Serverless: with fragment).
     if (!_frontedExit && !isServerlessDns) {
       add(
-        inboundTag: [if (_hasExit && !_aetherCore) _exitInbound, 'remote-dns'],
+        inboundTag: [
+          if (_hasExit && (!_aetherCore || _chainedExit)) _exitInbound,
+          'remote-dns',
+        ],
         outbound: outTag,
         balancer: isBalancer,
       );
@@ -1574,7 +1577,9 @@ class XrayConfigBuilder {
 
     final domainStrategy = profile.routing.domainStrategy.xray;
     final network = tcpOnly ? 'tcp' : 'tcp,udp';
-    final outbound = _aetherCore ? outTag : (_hasExit ? 'exit' : outTag);
+    // Aether stays the base transport for Psiphon/Tor themselves, but app traffic
+    // must still leave through their SOCKS exit. A Chain Proxy already occupies `proxy`.
+    final outbound = (_chainedExit || (_hasExit && !_aetherCore)) ? 'exit' : outTag;
 
     add(
       ip: domainStrategy == 'AsIs' ? null : ['0.0.0.0/0', '::/0'],
