@@ -1035,6 +1035,7 @@ class AppState extends ChangeNotifier {
       psiphonConfig: exit == 'psiphon'
           ? XrayConfigBuilder.psiphonConfigFor(mode, device)
           : null,
+      sshConfig: mode == ConnectionMode.ssh ? profile.ssh.toJson() : null,
       browserDialer:
           mode == ConnectionMode.worker &&
           variant == ConnectionVariant.browserDialer,
