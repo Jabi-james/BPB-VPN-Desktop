@@ -1230,7 +1230,7 @@ class _ConnectionNode {
   final List<_SettingsSectionEntry> sections;
   final _SettingsSectionEntry? directSection;
   const _ConnectionNode.group(this.title, this.sections) : directSection = null;
-  const _ConnectionNode.direct(this.directSection)
+  _ConnectionNode.direct(this.directSection)
       : title = directSection!.title,
         sections = const [];
 }
@@ -1311,8 +1311,6 @@ class _SettingsSectionsState extends State<_SettingsSections> {
     finishCoreGroup();
     return _SettingsNavigation(rootSections, connectionItems);
   }
-
-  bool get _isConnection => _selectedId == 'connection::home';
 
   void _openConnection() {
     setState(() {
@@ -1395,7 +1393,7 @@ class _SettingsSectionsState extends State<_SettingsSections> {
     'VLESS' => 'Configure servers, TLS, routing and VLESS transport',
     'MASQUE' => 'Configure MASQUE endpoints and transport options',
     'WARP' => 'Configure WireGuard endpoints and WARP behavior',
-    _ => 'Open ${title} configuration',
+    _ => 'Open $title configuration',
   };
 
   Widget _choiceCard(BuildContext context, String title, String subtitle,
@@ -1404,7 +1402,7 @@ class _SettingsSectionsState extends State<_SettingsSections> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Material(
-        color: theme.colorScheme.surface.withOpacity(0.88),
+        color: theme.colorScheme.surface.withValues(alpha: 0.88),
         borderRadius: BorderRadius.circular(13),
         child: InkWell(
           borderRadius: BorderRadius.circular(13),
@@ -1414,12 +1412,12 @@ class _SettingsSectionsState extends State<_SettingsSections> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(13),
-              border: Border.all(color: theme.colorScheme.outlineVariant.withOpacity(0.8)),
+              border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.8)),
             ),
             child: Row(children: [
               Container(
                 width: 40, height: 40,
-                decoration: BoxDecoration(color: color.withOpacity(0.14), borderRadius: BorderRadius.circular(11)),
+                decoration: BoxDecoration(color: color.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(11)),
                 child: Center(child: _sectionIconWidget(title, 22)),
               ),
               const SizedBox(width: 13),
