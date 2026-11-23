@@ -11,6 +11,7 @@ import '../services/vpn_channel.dart';
 import '../state/app_state.dart';
 import 'format.dart';
 import 'theme.dart';
+import 'flag_text.dart';
 
 /// Connected colour; stays green whatever theme colour is picked.
 const _green = Color(0xFF39FF75);
@@ -161,16 +162,21 @@ class _Metrics extends StatelessWidget {
     final ips = state.myIps;
 
     Widget ip(IpInfo? info) {
-      final text = !state.isConnected
-          ? '—'
-          : ips == null
-          ? (state.loadingIps ? '…' : '—')
-          : info == null
-          ? 'Unavailable'
-          : info.country == null
-          ? info.ip
-          : '${countryFlag(info.country!)} ${info.ip}';
-      return Text(text, maxLines: 1, overflow: TextOverflow.ellipsis);
+      if (!state.isConnected) return const Text('—');
+      if (ips == null) return Text(state.loadingIps ? '…' : '—');
+      if (info == null) return const Text('Unavailable');
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: Text(info.ip, maxLines: 1, overflow: TextOverflow.ellipsis),
+          ),
+          if (info.country != null) ...[
+            const SizedBox(width: 6),
+            CountryFlagImage(countryCode: info.country!),
+          ],
+        ],
+      );
     }
 
     final refreshIps = state.isConnected ? state.refreshMyIps : null;
