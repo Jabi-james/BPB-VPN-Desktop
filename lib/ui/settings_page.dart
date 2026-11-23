@@ -28,6 +28,57 @@ import 'tor_bridges_page.dart';
 import 'ssh_settings_page.dart';
 import 'hover_animated_icon.dart';
 
+class _BrowserPrivacyTile extends StatelessWidget {
+  const _BrowserPrivacyTile();
+
+  Future<void> _showPrompt(BuildContext context) async {
+    final trust = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: const Icon(Symbols.language_rounded, size: 34),
+        title: const Text('Browser Privacy'),
+        content: const Text(
+          'To reduce mismatches between your VPN exit IP and the information '
+          'websites receive from your browser, install GeoSpoof. It can align '
+          'your browser time zone and reported language with your VPN location.\n\n'
+          'GeoSpoof is an independent third-party extension, not part of BPB. '
+          'You can review its details and choose the store for your browser '
+          'on its official website. Installation and setup are always your choice.',
+        ),
+        actions: [
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: const Color(0xFFE05252)),
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Hell, No'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF16A36A),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('I Trust You'),
+          ),
+        ],
+      ),
+    );
+    if (trust == true && context.mounted) {
+      await VpnChannel.openUrl('https://geospoof.com/');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: const Icon(Symbols.language_rounded),
+      title: const Text('Browser Privacy'),
+      subtitle: const Text('Align browser language and time zone with your VPN IP'),
+      trailing: const Icon(Symbols.open_in_new_rounded, size: 20),
+      onTap: () => _showPrompt(context),
+    );
+  }
+}
+
 class _WebRtcProtectionPref extends StatelessWidget {
   const _WebRtcProtectionPref();
 
@@ -192,9 +243,11 @@ class _SettingsPageState extends State<SettingsPage> {
             ],
           ),
           const SizedBox(height: 16),
+          const SectionHeader('Browser Security'),
           SettingsCard(
             children: [
               const _WebRtcProtectionPref(),
+              const _BrowserPrivacyTile(),
             ],
           ),
           const SizedBox(height: 16),
@@ -905,6 +958,7 @@ class _SettingsPageState extends State<SettingsPage> {
           SettingsCard(
             children: [
               const _VersionTile(),
+              const _UpdateTile(),
             ],
           ),
           const SizedBox(height: 12),
@@ -2435,7 +2489,9 @@ class _VersionsPage extends StatelessWidget {
   }
 }
 
-/// Checks GitHub for a newer release on request; the APK is downloaded in the browser.
+enum _UpdateAction { download, later, repository }
+
+/// Checks GitHub for a newer release on request; the installer is downloaded in the browser.
 class _UpdateTile extends StatefulWidget {
   const _UpdateTile();
 
@@ -2468,31 +2524,47 @@ class _UpdateTileState extends State<_UpdateTile> {
   }
 
   Future<void> _offer(AppUpdate update) async {
-    final download = await showDialog<bool>(
+    final action = await showDialog<_UpdateAction>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('BPB ${update.version} is available'),
-        content: SingleChildScrollView(
-          child: Text(
-            update.notes.isEmpty ? 'No release notes.' : update.notes,
+      builder: (context) {
+        final repoBlue = Theme.of(context).colorScheme.primary;
+        return AlertDialog(
+          title: Text('BPB ${update.version} is available'),
+          content: SingleChildScrollView(
+            child: Text(update.notes.isEmpty ? 'No release notes.' : update.notes),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Later'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Download'),
-          ),
-        ],
-      ),
+          actions: [
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF16A36A),
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.of(context).pop(_UpdateAction.download),
+              child: const Text('Download'),
+            ),
+            TextButton(
+              style: TextButton.styleFrom(foregroundColor: const Color(0xFFE05252)),
+              onPressed: () => Navigator.of(context).pop(_UpdateAction.later),
+              child: const Text('Not Now'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: repoBlue,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.of(context).pop(_UpdateAction.repository),
+              child: const Text('Check Repo'),
+            ),
+          ],
+        );
+      },
     );
-    if (download != true || !mounted) return;
-    final url = update.apkUrl ?? update.pageUrl;
+    if (action == null || action == _UpdateAction.later || !mounted) return;
+    final url = action == _UpdateAction.repository
+        ? update.pageUrl
+        : update.apkUrl ?? update.pageUrl;
     final messenger = ScaffoldMessenger.of(context);
-    if (!await VpnChannel.openUrl(url)) {
+    if (!await VpnChannel.openUrl(url) && action == _UpdateAction.download) {
       await Clipboard.setData(ClipboardData(text: url));
       messenger.showSnackBar(
         const SnackBar(content: Text('Link copied. Open it in your browser.')),

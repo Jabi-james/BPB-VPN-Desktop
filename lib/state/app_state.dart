@@ -1104,8 +1104,11 @@ class AppState extends ChangeNotifier {
     final info = await VpnChannel.appInfo();
     final client = proxiedClient(isConnected ? LocalProxy.port : null);
     try {
-      return await UpdateChecker(client)
-          .check(installed: info.version, abis: info.abis);
+      final checker = UpdateChecker(client);
+      if (Platform.isWindows) {
+        return await checker.checkDesktop(installed: info.version);
+      }
+      return await checker.check(installed: info.version, abis: info.abis);
     } on UpdateException catch (e) {
       throw StateError(e.message);
     } finally {
