@@ -79,6 +79,23 @@ class _BrowserPrivacyTile extends StatelessWidget {
   }
 }
 
+class _BrowserSecurityTestTile extends StatelessWidget {
+  const _BrowserSecurityTestTile();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: const Icon(Symbols.fact_check_rounded),
+      title: const Text('Security Test'),
+      subtitle: const Text(
+        'Check your public IP and browser leak indicators after applying your settings.',
+      ),
+      trailing: const Icon(Symbols.open_in_new_rounded, size: 20),
+      onTap: () => VpnChannel.openUrl('https://browserleaks.com/ip'),
+    );
+  }
+}
+
 class _WebRtcProtectionPref extends StatelessWidget {
   const _WebRtcProtectionPref();
 
@@ -899,10 +916,21 @@ class _SettingsPageState extends State<SettingsPage> {
 
           const ConnectionGroupEnd(),
           const SectionHeader('Browser Security'),
-          SettingsCard(
+          const SettingsCard(
             children: [
-              const _WebRtcProtectionPref(),
-              const _BrowserPrivacyTile(),
+              _WebRtcProtectionPref(),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const SettingsCard(
+            children: [
+              _BrowserPrivacyTile(),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const SettingsCard(
+            children: [
+              _BrowserSecurityTestTile(),
             ],
           ),
 
@@ -1169,11 +1197,15 @@ class _CompactSettingsTheme extends StatelessWidget {
           labelLarge: base.textTheme.labelLarge?.copyWith(fontSize: 12.5),
           labelMedium: base.textTheme.labelMedium?.copyWith(fontSize: 11.5),
         ),
-        iconTheme: base.iconTheme.copyWith(size: 18, color: base.colorScheme.primary),
+        iconTheme: base.iconTheme.copyWith(
+          size: 18,
+          color: base.colorScheme.primary,
+        ),
         listTileTheme: base.listTileTheme.copyWith(
           visualDensity: VisualDensity.compact,
           minTileHeight: 44,
           minVerticalPadding: 4,
+          iconColor: base.colorScheme.primary,
           contentPadding: const EdgeInsets.symmetric(horizontal: 12),
         ),
       ),
@@ -1498,6 +1530,11 @@ class _SettingsSectionsState extends State<_SettingsSections> {
     }
 
     final showConnection = connectionSelected;
+    final contentSectionTitle =
+        rootSelected?.title ?? selectedConnectionSection?.title;
+    final contentIconColor = contentSectionTitle == null
+        ? theme.colorScheme.primary
+        : _sectionColor(contentSectionTitle);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1543,9 +1580,15 @@ class _SettingsSectionsState extends State<_SettingsSections> {
                   bodyMedium: theme.textTheme.bodyMedium?.copyWith(fontSize: 12.5),
                   bodySmall: theme.textTheme.bodySmall?.copyWith(fontSize: 11.5),
                 ),
-                iconTheme: theme.iconTheme.copyWith(size: 18, color: theme.colorScheme.primary),
+                iconTheme: theme.iconTheme.copyWith(
+                  size: 18,
+                  color: contentIconColor,
+                ),
                 listTileTheme: theme.listTileTheme.copyWith(
-                  visualDensity: VisualDensity.compact, minTileHeight: 44, minVerticalPadding: 4,
+                  visualDensity: VisualDensity.compact,
+                  minTileHeight: 44,
+                  minVerticalPadding: 4,
+                  iconColor: contentIconColor,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 12),
                 ),
               ),
