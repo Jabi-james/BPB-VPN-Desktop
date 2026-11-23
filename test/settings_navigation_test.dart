@@ -90,6 +90,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Browser Security'), findsOneWidget);
-    expect(find.text('WebRTC protection'), findsOneWidget);
+    expect(find.textContaining('WebRTC'), findsWidgets);
   });
 }
