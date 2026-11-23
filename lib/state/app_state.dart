@@ -9,6 +9,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_platform_interface.dart';
 
 import '../models/cf_account.dart';
 import '../models/settings.dart';
@@ -379,9 +380,8 @@ class AppState extends ChangeNotifier {
   // region init
 
   Future<void> init({bool cleanStart = false, bool startLanTimer = true}) async {
-    // Use the installation/portable folder rather than the EXE filename. This keeps
-    // settings stable when an update renames bpb.exe to BPB-VPN.exe, while separate
-    // portable folders still keep independent profiles.
+    // Keep one stable namespace per installation folder. Read legacy namespaces
+    // directly from the platform store before configuring SharedPreferences once.
     final executable = File(Platform.resolvedExecutable);
     final executablePath = executable.absolute.path.toLowerCase();
     final installDirectory = executable.parent.absolute.path.toLowerCase();
@@ -391,41 +391,39 @@ class AppState extends ChangeNotifier {
       _pathHash('$installDirectory${Platform.pathSeparator}bpb.exe'),
     }..remove(_portableNamespace);
 
-    // Migrate settings, encrypted accounts and Aether identities from previous
-    // executable-path namespaces before loading any app state.
-    final legacyPrefs = <(String, SharedPreferences)>[];
+    final store = SharedPreferencesStorePlatform.instance;
+    final legacyValues = <String, Object>{};
     for (final namespace in legacyNamespaces) {
-      SharedPreferences.setPrefix('bpb_$namespace.');
-      final oldPrefs = await SharedPreferences.getInstance();
-      if (oldPrefs.getKeys().isNotEmpty) {
-        legacyPrefs.add((namespace, oldPrefs));
+      final prefix = 'bpb_$namespace.';
+      final values = await store.getAllWithPrefix(prefix);
+      for (final entry in values.entries) {
+        legacyValues.putIfAbsent(entry.key.substring(prefix.length), () => entry.value);
       }
     }
+
     SharedPreferences.setPrefix('bpb_$_portableNamespace.');
     _prefs = await SharedPreferences.getInstance();
-    for (final entry in legacyPrefs) {
-      for (final key in entry.$2.getKeys()) {
-        if (_prefs.containsKey(key)) continue;
-        final value = entry.$2.get(key);
-        switch (value) {
-          case String v:
-            await _prefs.setString(key, v);
-            break;
-          case bool v:
-            await _prefs.setBool(key, v);
-            break;
-          case int v:
-            await _prefs.setInt(key, v);
-            break;
-          case double v:
-            await _prefs.setDouble(key, v);
-            break;
-          case List<String> v:
-            await _prefs.setStringList(key, v);
-            break;
-          default:
-            break;
-        }
+    for (final entry in legacyValues.entries) {
+      if (_prefs.containsKey(entry.key)) continue;
+      final value = entry.value;
+      switch (value) {
+        case String v:
+          await _prefs.setString(entry.key, v);
+          break;
+        case bool v:
+          await _prefs.setBool(entry.key, v);
+          break;
+        case int v:
+          await _prefs.setInt(entry.key, v);
+          break;
+        case double v:
+          await _prefs.setDouble(entry.key, v);
+          break;
+        case List<String> v:
+          await _prefs.setStringList(entry.key, v);
+          break;
+        default:
+          break;
       }
     }
 
