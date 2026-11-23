@@ -106,7 +106,7 @@ class ChipMenu<T> extends StatelessWidget {
                           ],
                         ),
                       ),
-                      _ => Text(label(v), overflow: TextOverflow.ellipsis),
+                      _ => FlagText(label(v), maxLines: 1, overflow: TextOverflow.ellipsis),
                     },
                   ),
                   if (badges?.call(v) case final tags?)
