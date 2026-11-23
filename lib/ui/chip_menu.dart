@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import 'theme.dart';
+import 'flag_text.dart';
 
 /// Chip showing the selected value; tapping opens a menu with the selected item highlighted.
 class ChipMenu<T> extends StatelessWidget {
@@ -99,7 +100,7 @@ class ChipMenu<T> extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(label(v), overflow: TextOverflow.ellipsis),
+                            FlagText(label(v), maxLines: 1, overflow: TextOverflow.ellipsis),
                             const SizedBox(height: 4),
                             Wrap(spacing: 4, runSpacing: 4, children: [for (final tag in tags) badge(context, tag)]),
                           ],
@@ -126,7 +127,7 @@ class ChipMenu<T> extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(label(selected), style: theme.textTheme.labelLarge),
+                FlagText(label(selected), style: theme.textTheme.labelLarge, maxLines: 1, overflow: TextOverflow.ellipsis),
                 for (final (i, tag) in selectedBadges.indexed) ...[
                   SizedBox(width: i == 0 ? 6 : 4),
                   badge(context, tag),
