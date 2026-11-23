@@ -2,7 +2,11 @@ $ErrorActionPreference = 'Stop'
 
 $rc = "windows/runner/Runner.rc"
 if (!(Test-Path $rc)) { throw "Windows resource file not found: $rc" }
+$icon = "windows/runner/resources/app_icon.ico"
+if (!(Test-Path $icon)) { throw "BPB Windows app icon not found: $icon" }
+
 $rcSource = Get-Content $rc -Raw
+if ($rcSource -notmatch 'app_icon\.ico') { throw "Windows runner resource file does not reference app_icon.ico." }
 
 $rcSource = [regex]::Replace($rcSource, '(?m)^\s*VALUE "CompanyName".*\r?\n', '')
 $rcSource = [regex]::Replace($rcSource, '(?m)^\s*VALUE "FileDescription".*\r?\n', '')
