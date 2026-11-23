@@ -1,3 +1,4 @@
+# Re-run after correcting Windows VERSIONINFO metadata validation
 name: Desktop smoke build
 
 on:
