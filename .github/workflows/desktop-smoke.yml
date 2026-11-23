@@ -472,7 +472,7 @@ jobs:
           VersionInfoProductName=BPB VPN Desktop
           VersionInfoProductVersion=1.3.0
           VersionInfoProductTextVersion=1.3.0
-          VersionInfoVersion=0.0.0.0
+          VersionInfoVersion=1.3.0.0
           VersionInfoTextVersion=
           ArchitecturesAllowed=x64
           ArchitecturesInstallIn64BitMode=x64
@@ -500,7 +500,7 @@ jobs:
               $setupInfo.ProductVersion -ne "1.3.0") {
             throw "Setup metadata mismatch: Company='$($setupInfo.CompanyName)', Product='$($setupInfo.ProductName)', ProductVersion='$($setupInfo.ProductVersion)'"
           }
-          Write-Host "Verified Setup metadata: CompanyName=NotDev, ProductName=BPB VPN Desktop, ProductVersion=1.3.0; FileVersion text field intentionally blank."
+          Write-Host "Verified Setup metadata: CompanyName=NotDev, ProductName=BPB VPN Desktop, ProductVersion=1.3.0; numeric FileVersion=1.3.0.0; FileVersion text field intentionally blank."
 
       - name: Package Windows portable application
         if: matrix.platform == 'windows'
