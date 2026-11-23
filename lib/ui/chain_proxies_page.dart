@@ -134,7 +134,7 @@ class _ChainTile extends StatelessWidget {
   void _showQr(BuildContext context) => showDialog<void>(
     context: context,
     builder: (context) => AlertDialog(
-      title: Text(chain.name),
+      title: FlagText(chain.name),
       content: SizedBox(
         width: 260,
         height: 260,
@@ -172,7 +172,7 @@ class _ChainTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(chain.name, style: theme.textTheme.titleMedium, overflow: TextOverflow.ellipsis),
+                FlagText(chain.name, style: theme.textTheme.titleMedium, maxLines: 1, overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 2),
                 Text(
                   info?.address ?? 'Invalid link',
