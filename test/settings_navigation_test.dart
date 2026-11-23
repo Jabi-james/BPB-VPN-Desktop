@@ -42,7 +42,15 @@ void main() {
       ),
     );
 
-    // Global retains the four device/network options moved out of Connection.
+    // Existing Global options remain above the separate card of relocated settings.
+    for (final title in [
+      'Chain proxies',
+      'Local DNS',
+      'Anti Sanction DNS',
+      'Fake DNS',
+    ]) {
+      expect(find.text(title), findsOneWidget);
+    }
     for (final title in [
       'IPv6 connection',
       'Prefer IPv6',
@@ -51,6 +59,19 @@ void main() {
     ]) {
       expect(find.text(title), findsOneWidget);
     }
+    final existingGlobalCard = find.ancestor(
+      of: find.text('Fake DNS'),
+      matching: find.byType(SettingsCard),
+    ).first;
+    final relocatedGlobalCard = find.ancestor(
+      of: find.text('VPN MTU'),
+      matching: find.byType(SettingsCard),
+    ).first;
+    expect(
+      tester.getTopLeft(existingGlobalCard).dy,
+      lessThan(tester.getTopLeft(relocatedGlobalCard).dy),
+      reason: 'Relocated network settings must be in a separate card below existing Global options',
+    );
 
     // Connection is a root tab. Its landing page contains the five moved cards.
     await _tapText(tester, 'Connection');
