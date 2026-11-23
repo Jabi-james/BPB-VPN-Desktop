@@ -58,7 +58,6 @@ class _SshSettingsPageState extends State<SshSettingsPage> {
     _passphrase.dispose();
     _keepAlive.dispose();
     _tcpKeepAlive.dispose();
-    widget.onSaveStateChanged?.call(() {}, false);
     super.dispose();
   }
 
