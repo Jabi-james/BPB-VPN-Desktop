@@ -164,10 +164,9 @@ void main() {
       await tester.tap(groupTile);
       await tester.pumpAndSettle();
 
-      final sectionTile = find.descendant(
-        of: navigation,
-        matching: find.text(section),
-      );
+      // Connection subsections are now shown as cards in the content pane,
+      // not as entries in the fixed side navigation.
+      final sectionTile = find.text(section);
       await tester.ensureVisible(sectionTile);
       await tester.tap(sectionTile);
       await tester.pumpAndSettle();
