@@ -130,11 +130,11 @@ class UpdateChecker {
       var item = line.replaceFirst(RegExp(r'^[-*]\s+'), '');
       item = item.replaceAll(RegExp(r'[\x60*_]'), '').replaceAll(RegExp(r'\s+'), ' ').trim();
       if (item.isEmpty) continue;
-      if (item.length > 112) item = item.substring(0, 109).trimRight() + '…';
+      if (item.length > 112) item = '${item.substring(0, 109).trimRight()}…';
       bullets.add(item);
       if (bullets.length == 3) break;
     }
-    return bullets.map((item) => '• ' + item).join('\n');
+    return bullets.map((item) => '• $item').join('\n');
   }
 }
 
