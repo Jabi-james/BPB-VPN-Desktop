@@ -116,22 +116,25 @@ class UpdateChecker {
   }
 
   static String _shortReleaseNotes(String body) {
-    final lines = body.split(RegExp(r'\r?\n'));
+    final lines = body.split(RegExp(r'\\r?\\n'));
     var inNotes = false;
     final bullets = <String>[];
     for (final raw in lines) {
       final line = raw.trim();
-      if (RegExp(r'^#{1,6}\s*(what.?s changed|release notes)\s*$', caseSensitive: false)
-          .hasMatch(line)) {
+      if (RegExp(r'^#{1,6}\\s*(what.?s changed|release notes)\\s*$', caseSensitive: false).hasMatch(line)) {
         inNotes = true;
         continue;
       }
-      if (inNotes && RegExp(r'^#{1,6}\s+').hasMatch(line)) break;
-      if (inNotes && RegExp(r'^[-*]\s+').hasMatch(line)) {
-        bullets.add(line.replaceFirst(RegExp(r'^[-*]\s+'), ''));
-      }
+      if (inNotes && RegExp(r'^#{1,6}\\s+').hasMatch(line)) break;
+      if (!inNotes || !RegExp(r'^[-*]\\s+').hasMatch(line)) continue;
+      var item = line.replaceFirst(RegExp(r'^[-*]\\s+'), '');
+      item = item.replaceAll(RegExp(r'[`*_]'), '').replaceAll(RegExp(r'\\s+'), ' ').trim();
+      if (item.isEmpty) continue;
+      if (item.length > 112) item = item.substring(0, 109).trimRight() + '…';
+      bullets.add(item);
+      if (bullets.length == 3) break;
     }
-    return bullets.map((item) => '• $item').join('\n');
+    return bullets.map((item) => '• ' + item).join('\\n');
   }
 }
 
