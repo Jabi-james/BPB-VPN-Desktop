@@ -9,8 +9,6 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:shared_preferences_platform_interface/shared_preferences_platform_interface.dart';
-import 'package:shared_preferences_platform_interface/types.dart';
 
 import '../models/cf_account.dart';
 import '../models/settings.dart';
@@ -38,7 +36,6 @@ class AppState extends ChangeNotifier {
   static const _kDevice = 'device';
   static const _kSecretAccounts = 'cloudflareAccounts';
   static const _kGeoAssetsUpdatedAt = 'geoAssetsUpdatedAt';
-  static String? _sharedPreferencesPrefix;
 
   late SharedPreferences _prefs;
   late String _portableNamespace;
@@ -382,86 +379,17 @@ class AppState extends ChangeNotifier {
   // region init
 
   Future<void> init({bool cleanStart = false, bool startLanTimer = true}) async {
-    // Keep one stable namespace per installation folder. Read legacy namespaces
-    // directly from the platform store before configuring SharedPreferences once.
-    final executable = File(Platform.resolvedExecutable);
-    final executablePath = executable.absolute.path.toLowerCase();
-    final installDirectory = executable.parent.absolute.path.toLowerCase();
-    _portableNamespace = _pathHash(installDirectory);
-    final legacyNamespaces = <String>{
-      _pathHash(executablePath),
-      _pathHash('$installDirectory${Platform.pathSeparator}bpb.exe'),
-    }..remove(_portableNamespace);
-
-    final store = SharedPreferencesStorePlatform.instance;
-    final legacyValues = <String, Object>{};
-    // Unit tests use an in-memory store; there is no on-disk legacy namespace
-    // to migrate, and querying it can leave the test platform waiting forever.
-    if (store is! InMemorySharedPreferencesStore) {
-      for (final namespace in legacyNamespaces) {
-        final prefix = 'bpb_$namespace.';
-        final values = await store.getAllWithParameters(
-          GetAllParameters(filter: PreferencesFilter(prefix: prefix)),
-        );
-        for (final entry in values.entries) {
-          legacyValues.putIfAbsent(
-            entry.key.substring(prefix.length),
-            () => entry.value,
-          );
-        }
-      }
+    // Portable copies keep independent settings/secrets based on their own folder.
+    // Moving a portable folder intentionally starts a separate profile; old folders remain untouched.
+    final executablePath = Platform.resolvedExecutable.toLowerCase();
+    var hash = 0x811c9dc5;
+    for (final unit in executablePath.codeUnits) {
+      hash = ((hash ^ unit) * 0x01000193) & 0xffffffff;
     }
-
-    // SharedPreferences.setPrefix is process-global and may only be called
-    // before the singleton is initialized. AppState.init can run more than once
-    // in tests, so configure it once for this installation.
-    final preferencesPrefix = 'bpb_$_portableNamespace.';
-    final configuredPrefix = _sharedPreferencesPrefix;
-    if (configuredPrefix == null) {
-      SharedPreferences.setPrefix(preferencesPrefix);
-      _sharedPreferencesPrefix = preferencesPrefix;
-    } else if (configuredPrefix != preferencesPrefix) {
-      throw StateError(
-        'SharedPreferences is already configured for another installation.',
-      );
-    }
-    _prefs = await SharedPreferences.getInstance();
-    for (final entry in legacyValues.entries) {
-      if (_prefs.containsKey(entry.key)) continue;
-      final value = entry.value;
-      switch (value) {
-        case String v:
-          await _prefs.setString(entry.key, v);
-          break;
-        case bool v:
-          await _prefs.setBool(entry.key, v);
-          break;
-        case int v:
-          await _prefs.setInt(entry.key, v);
-          break;
-        case double v:
-          await _prefs.setDouble(entry.key, v);
-          break;
-        case List<String> v:
-          await _prefs.setStringList(entry.key, v);
-          break;
-        default:
-          break;
-      }
-    }
-
-    // Secrets and Aether identities can exist even if a legacy preferences file is empty.
-    for (final namespace in legacyNamespaces) {
-      if (await _secrets.read(key: _secretAccountsKey) == null) {
-        final oldSecrets = await _secrets.read(key: '$_kSecretAccounts.$namespace');
-        if (oldSecrets != null) {
-          await _secrets.write(key: _secretAccountsKey, value: oldSecrets);
-        }
-      }
-      await _copyAetherDirectory(namespace);
-    }
-
+    _portableNamespace = hash.toRadixString(16).padLeft(8, '0');
     VpnChannel.configureAetherLogPath(_aetherConfigDir);
+    SharedPreferences.setPrefix('bpb_$_portableNamespace.');
+    _prefs = await SharedPreferences.getInstance();
     allTimeUp = _prefs.getInt('traffic.allTimeUp') ?? 0;
     allTimeDown = _prefs.getInt('traffic.allTimeDown') ?? 0;
     if (cleanStart) {
@@ -512,36 +440,6 @@ class AppState extends ChangeNotifier {
         (_) => refreshLanIp(),
       );
     }
-  }
-
-  static String _pathHash(String path) {
-    var hash = 0x811c9dc5;
-    for (final unit in path.codeUnits) {
-      hash = ((hash ^ unit) * 0x01000193) & 0xffffffff;
-    }
-    return hash.toRadixString(16).padLeft(8, '0');
-  }
-
-  Future<void> _copyAetherDirectory(String oldNamespace) async {
-    final base = Platform.environment['LOCALAPPDATA'] ?? Directory.systemTemp.path;
-    final separator = Platform.pathSeparator;
-    final source = Directory('$base${separator}BPB VPN${separator}aether-$oldNamespace');
-    final target = Directory(_aetherConfigDir);
-    if (!await source.exists() || await target.exists()) return;
-
-    Future<void> copyContents(Directory from, Directory to) async {
-      await to.create(recursive: true);
-      await for (final entity in from.list(followLinks: false)) {
-        final destination = '${to.path}$separator${entity.uri.pathSegments.last}';
-        if (entity is Directory) {
-          await copyContents(entity, Directory(destination));
-        } else if (entity is File) {
-          await entity.copy(destination);
-        }
-      }
-    }
-
-    await copyContents(source, target);
   }
 
   static Map<String, dynamic> _decodeMap(String? raw) {
