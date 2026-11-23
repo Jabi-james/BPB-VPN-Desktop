@@ -397,7 +397,7 @@ class AppState extends ChangeNotifier {
     final legacyValues = <String, Object>{};
     // Unit tests use an in-memory store; there is no on-disk legacy namespace
     // to migrate, and querying it can leave the test platform waiting forever.
-    if (!store.isMock) {
+    if (store is! InMemorySharedPreferencesStore) {
       for (final namespace in legacyNamespaces) {
         final prefix = 'bpb_$namespace.';
         final values = await store.getAllWithParameters(
