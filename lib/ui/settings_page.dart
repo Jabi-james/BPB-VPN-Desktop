@@ -243,13 +243,6 @@ class _SettingsPageState extends State<SettingsPage> {
             ],
           ),
           const SizedBox(height: 16),
-          const SectionHeader('Browser Security'),
-          SettingsCard(
-            children: [
-              const _WebRtcProtectionPref(),
-              const _BrowserPrivacyTile(),
-            ],
-          ),
           const SizedBox(height: 16),
           SettingsCard(
             children: [
@@ -332,6 +325,7 @@ class _SettingsPageState extends State<SettingsPage> {
             ],
           ),
 
+          const ConnectionGroupHeader(),
           const CoreGroupHeader('BPB Core'),
           const SectionHeader('VLESS'),
           SettingsCard(
@@ -904,6 +898,15 @@ class _SettingsPageState extends State<SettingsPage> {
             ],
           ),
 
+          const ConnectionGroupEnd(),
+          const SectionHeader('Browser Security'),
+          SettingsCard(
+            children: [
+              const _WebRtcProtectionPref(),
+              const _BrowserPrivacyTile(),
+            ],
+          ),
+
           const SectionHeader('Routing'),
           SettingsCard(
             children: [
@@ -1180,8 +1183,7 @@ class _CompactSettingsTheme extends StatelessWidget {
   }
 }
 
-/// Desktop settings navigation: keep the section list fixed while the selected
-/// section's settings are shown independently on the right.
+/// Desktop settings navigation with a dedicated Connection landing page.
 class _SettingsSections extends StatefulWidget {
   final List<Widget> children;
   final ValueChanged<bool>? onSectionChanged;
@@ -1189,6 +1191,18 @@ class _SettingsSections extends StatefulWidget {
 
   @override
   State<_SettingsSections> createState() => _SettingsSectionsState();
+}
+
+class ConnectionGroupHeader extends StatelessWidget {
+  const ConnectionGroupHeader({super.key});
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
+}
+
+class ConnectionGroupEnd extends StatelessWidget {
+  const ConnectionGroupEnd({super.key});
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
 }
 
 class CoreGroupHeader extends StatelessWidget {
@@ -1211,53 +1225,81 @@ class _SettingsSectionEntry {
   const _SettingsSectionEntry(this.id, this.title, this.children);
 }
 
-class _SettingsGroupEntry {
+class _ConnectionNode {
   final String title;
   final List<_SettingsSectionEntry> sections;
-  const _SettingsGroupEntry(this.title, this.sections);
+  final _SettingsSectionEntry? directSection;
+  const _ConnectionNode.group(this.title, this.sections) : directSection = null;
+  const _ConnectionNode.direct(this.directSection)
+      : title = directSection!.title,
+        sections = const [];
+}
+
+class _SettingsNavigation {
+  final List<_SettingsSectionEntry> rootSections;
+  final List<_ConnectionNode> connectionItems;
+  const _SettingsNavigation(this.rootSections, this.connectionItems);
 }
 
 class _SettingsSectionsState extends State<_SettingsSections> {
   String _selectedId = 'root::Global';
-  final Set<String> _expandedGroups = {};
+  String? _connectionGroup;
+  String? _connectionSection;
 
-  List<Object> _navigation() {
-    final result = <Object>[];
-    final groupSections = <_SettingsSectionEntry>[];
-    String? groupTitle;
+  _SettingsNavigation _navigation() {
+    final rootSections = <_SettingsSectionEntry>[];
+    final connectionItems = <_ConnectionNode>[];
+    var inConnection = false;
+    String? coreTitle;
     String? sectionTitle;
     var sectionChildren = <Widget>[];
+    var coreSections = <_SettingsSectionEntry>[];
 
     void finishSection() {
       if (sectionTitle == null) return;
-      final id = groupTitle == null
-          ? 'root::$sectionTitle'
-          : '$groupTitle::$sectionTitle';
-      final section = _SettingsSectionEntry(id, sectionTitle!, sectionChildren);
-      if (groupTitle == null) {
-        result.add(section);
+      final entry = _SettingsSectionEntry(
+        inConnection
+            ? (coreTitle == null
+                ? 'connection::direct::${sectionTitle!}'
+                : 'connection::section::${coreTitle!}::${sectionTitle!}')
+            : 'root::${sectionTitle!}',
+        sectionTitle!,
+        sectionChildren,
+      );
+      if (!inConnection) {
+        rootSections.add(entry);
+      } else if (coreTitle == null) {
+        connectionItems.add(_ConnectionNode.direct(entry));
       } else {
-        groupSections.add(section);
+        coreSections.add(entry);
       }
       sectionTitle = null;
       sectionChildren = <Widget>[];
     }
 
-    void finishGroup() {
-      if (groupTitle == null) return;
-      result.add(_SettingsGroupEntry(groupTitle!, List.of(groupSections)));
-      groupSections.clear();
-      groupTitle = null;
+    void finishCoreGroup() {
+      if (coreTitle == null) return;
+      connectionItems.add(_ConnectionNode.group(coreTitle!, List.of(coreSections)));
+      coreSections.clear();
+      coreTitle = null;
     }
 
     for (final child in widget.children) {
-      if (child is CoreGroupHeader) {
+      if (child is ConnectionGroupHeader) {
         finishSection();
-        finishGroup();
-        groupTitle = child.title;
+        finishCoreGroup();
+        inConnection = true;
+      } else if (child is ConnectionGroupEnd) {
+        finishSection();
+        finishCoreGroup();
+        inConnection = false;
+      } else if (child is CoreGroupHeader) {
+        finishSection();
+        finishCoreGroup();
+        coreTitle = child.title;
       } else if (child is CoreGroupEnd) {
         finishSection();
-        finishGroup();
+        finishCoreGroup();
       } else if (child is SectionHeader) {
         finishSection();
         sectionTitle = child.title;
@@ -1266,103 +1308,209 @@ class _SettingsSectionsState extends State<_SettingsSections> {
       }
     }
     finishSection();
-    finishGroup();
-    return result;
+    finishCoreGroup();
+    return _SettingsNavigation(rootSections, connectionItems);
   }
 
-  Widget _sectionTile(
-    BuildContext context,
-    _SettingsSectionEntry section,
-    bool active,
-    ThemeData theme, {
-    bool nested = false,
-  }) =>
-      Padding(
-        padding: EdgeInsets.only(left: nested ? 18 : 0, bottom: 2),
-        child: Material(
-          color: active ? theme.colorScheme.secondaryContainer : Colors.transparent,
-          borderRadius: BorderRadius.circular(9),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(9),
-            onTap: () => setState(() {
-              _selectedId = section.id;
-              widget.onSectionChanged?.call(section.title == 'SSH');
-            }),
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: nested ? 10 : 12, vertical: 10),
-              child: Row(
-                children: [
-                  _sectionIconWidget(section.title, 17),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      section.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: active ? theme.colorScheme.onSecondaryContainer : theme.colorScheme.onSurfaceVariant,
-                        fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
+  bool get _isConnection => _selectedId == 'connection::home';
 
-  Widget _groupTile(BuildContext context, _SettingsGroupEntry group, ThemeData theme) {
-    final expanded = _expandedGroups.contains(group.title);
+  void _openConnection() {
+    setState(() {
+      _selectedId = 'connection::home';
+      _connectionGroup = null;
+      _connectionSection = null;
+      widget.onSectionChanged?.call(false);
+    });
+  }
+
+  void _openGroup(String title) {
+    setState(() {
+      _selectedId = 'connection::group::$title';
+      _connectionGroup = title;
+      _connectionSection = null;
+      widget.onSectionChanged?.call(false);
+    });
+  }
+
+  void _openConnectionSection(_SettingsSectionEntry section, {String? group}) {
+    setState(() {
+      _selectedId = section.id;
+      _connectionGroup = group;
+      _connectionSection = section.title;
+      widget.onSectionChanged?.call(section.title == 'SSH');
+    });
+  }
+
+  void _back() {
+    setState(() {
+      if (_connectionSection != null && _connectionGroup != null) {
+        _selectedId = 'connection::group::$_connectionGroup';
+        _connectionSection = null;
+        widget.onSectionChanged?.call(false);
+      } else if (_connectionGroup != null || _connectionSection != null) {
+        _selectedId = 'connection::home';
+        _connectionGroup = null;
+        _connectionSection = null;
+        widget.onSectionChanged?.call(false);
+      }
+    });
+  }
+
+  Color _iconColor(String title) => _sectionColor(title);
+
+  Widget _navTile(BuildContext context, String title, String id, bool active,
+      ThemeData theme, VoidCallback onTap) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 2),
+      padding: const EdgeInsets.only(bottom: 3),
       child: Material(
-        color: Colors.transparent,
+        color: active ? theme.colorScheme.secondaryContainer : Colors.transparent,
         borderRadius: BorderRadius.circular(9),
         child: InkWell(
           borderRadius: BorderRadius.circular(9),
-          onTap: () => setState(() {
-            if (expanded) {
-              _expandedGroups.remove(group.title);
-            } else {
-              _expandedGroups.add(group.title);
-            }
-          }),
+          onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-            child: Row(
-              children: [
-                _sectionIconWidget(group.title, 18),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(group.title, style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700)),
-                ),
-                Icon(expanded ? Icons.expand_less_rounded : Icons.chevron_right_rounded, size: 18),
-              ],
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 11),
+            child: Row(children: [
+              _sectionIconWidget(title, 18),
+              const SizedBox(width: 9),
+              Expanded(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: active ? theme.colorScheme.onSecondaryContainer : theme.colorScheme.onSurfaceVariant,
+                  fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                ))),
+            ]),
           ),
         ),
       ),
     );
   }
 
+  String _description(String title) => switch (title) {
+    'BPB Core' => 'VLESS, MASQUE and WARP connection settings',
+    'Aether Core' => 'Alternative core and tunnel configurations',
+    'SSH' => 'Configure SSH servers and exit-node tunneling',
+    'Tor' => 'Tor routing and custom bridge settings',
+    'Serverless' => 'DNS-based and serverless connection options',
+    'Browser Security' => 'Browser leak protection and location privacy',
+    'VLESS' => 'Configure servers, TLS, routing and VLESS transport',
+    'MASQUE' => 'Configure MASQUE endpoints and transport options',
+    'WARP' => 'Configure WireGuard endpoints and WARP behavior',
+    _ => 'Open ${title} configuration',
+  };
+
+  Widget _choiceCard(BuildContext context, String title, String subtitle,
+      VoidCallback onTap, ThemeData theme) {
+    final color = _iconColor(title);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: theme.colorScheme.surface.withValues(alpha: 0.88),
+        borderRadius: BorderRadius.circular(13),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(13),
+          onTap: onTap,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(13),
+              border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.8)),
+            ),
+            child: Row(children: [
+              Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(color: color.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(11)),
+                child: Center(child: _sectionIconWidget(title, 22)),
+              ),
+              const SizedBox(width: 13),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(title, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 3),
+                Text(subtitle, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+              ])),
+              Icon(Icons.chevron_right_rounded, color: theme.colorScheme.onSurfaceVariant),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _pageHeader(String title, VoidCallback onBack, ThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+      child: Row(children: [
+        IconButton(
+          tooltip: 'Back',
+          visualDensity: VisualDensity.compact,
+          onPressed: onBack,
+          icon: const Icon(Icons.arrow_back_rounded),
+        ),
+        const SizedBox(width: 4),
+        Text(title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+      ]),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final navigation = _navigation();
-    final allSections = <_SettingsSectionEntry>[
-      for (final item in navigation)
-        if (item is _SettingsSectionEntry) item
-        else if (item is _SettingsGroupEntry) ...item.sections,
-    ];
-    if (allSections.isEmpty) return const SizedBox.shrink();
-    final selected = allSections.where((s) => s.id == _selectedId).firstOrNull ?? allSections.first;
     final theme = Theme.of(context);
+    final connectionSelected = _selectedId.startsWith('connection::');
+    final rootSelected = navigation.rootSections.where((s) => s.id == _selectedId).firstOrNull;
+    final selectedGroup = _connectionGroup == null
+        ? null
+        : navigation.connectionItems.where((n) => n.title == _connectionGroup && n.directSection == null).firstOrNull;
+    _SettingsSectionEntry? selectedConnectionSection;
+    if (_connectionSection != null) {
+      for (final node in navigation.connectionItems) {
+        if (node.directSection?.title == _connectionSection && node.directSection?.id == _selectedId) {
+          selectedConnectionSection = node.directSection;
+        }
+        for (final section in node.sections) {
+          if (section.id == _selectedId) selectedConnectionSection = section;
+        }
+      }
+    }
+
+    final isConnectionHome = _selectedId == 'connection::home';
+    final isGroupHome = _selectedId.startsWith('connection::group::');
+    final children = <Widget>[];
+    if (rootSelected != null) {
+      children.addAll(rootSelected.children);
+    } else if (isConnectionHome) {
+      children.add(const SizedBox(height: 12));
+      for (final node in navigation.connectionItems) {
+        children.add(_choiceCard(context, node.title, _description(node.title), () {
+          if (node.directSection != null) {
+            _openConnectionSection(node.directSection!);
+          } else {
+            _openGroup(node.title);
+          }
+        }, theme));
+      }
+    } else if (isGroupHome && selectedGroup != null) {
+      children.add(_pageHeader('Connection', _back, theme));
+      for (final section in selectedGroup.sections) {
+        children.add(_choiceCard(context, section.title, _description(section.title),
+          () => _openConnectionSection(section, group: selectedGroup.title), theme));
+      }
+    } else if (selectedConnectionSection != null) {
+      children.add(_pageHeader(_connectionGroup ?? 'Connection', _back, theme));
+      children.addAll(selectedConnectionSection.children);
+    }
+
+    final showConnection = connectionSelected;
+    final isSsh = selectedConnectionSection?.title == 'SSH';
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.onSectionChanged?.call(isSsh);
+    });
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SizedBox(
-          width: 176,
+          width: 204,
           child: DecoratedBox(
             decoration: BoxDecoration(
               color: theme.colorScheme.surfaceContainerLow,
@@ -1371,47 +1519,48 @@ class _SettingsSectionsState extends State<_SettingsSections> {
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 12),
               children: [
-                for (final item in navigation)
-                  if (item is _SettingsSectionEntry)
-                    _sectionTile(context, item, item.id == selected.id, theme)
-                  else if (item is _SettingsGroupEntry) ...[
-                    _groupTile(context, item, theme),
-                    if (_expandedGroups.contains(item.title))
-                      for (final section in item.sections)
-                        _sectionTile(context, section, section.id == selected.id, theme, nested: true),
-                  ],
+                for (final section in navigation.rootSections.where((s) => s.title == 'Global'))
+                  _navTile(context, section.title, section.id, section.id == _selectedId, theme, () {
+                    setState(() { _selectedId = section.id; _connectionGroup = null; _connectionSection = null; });
+                    widget.onSectionChanged?.call(false);
+                  }),
+                _navTile(context, 'Connection', 'connection::home', isConnectionHome || showConnection, theme, _openConnection),
+                for (final section in navigation.rootSections.where((s) => s.title == 'Browser Security'))
+                  _navTile(context, section.title, section.id, section.id == _selectedId, theme, () {
+                    setState(() { _selectedId = section.id; _connectionGroup = null; _connectionSection = null; });
+                    widget.onSectionChanged?.call(false);
+                  }),
+                for (final section in navigation.rootSections.where((s) => !['Global', 'Browser Security'].contains(s.title)))
+                  _navTile(context, section.title, section.id, section.id == _selectedId, theme, () {
+                    setState(() { _selectedId = section.id; _connectionGroup = null; _connectionSection = null; });
+                    widget.onSectionChanged?.call(false);
+                  }),
               ],
             ),
           ),
         ),
         Expanded(
           child: DecoratedBox(
-            decoration: BoxDecoration(
-              image: DecorationImage(
-                image: const AssetImage('images/icon/bgs.jpg'),
-                fit: BoxFit.cover,
-                opacity: 0.24,
-              ),
+            decoration: const BoxDecoration(
+              image: DecorationImage(image: AssetImage('images/icon/bgs.jpg'), fit: BoxFit.cover, opacity: 0.24),
             ),
             child: Theme(
-            data: theme.copyWith(
-              textTheme: theme.textTheme.copyWith(
-                titleMedium: theme.textTheme.titleMedium?.copyWith(fontSize: 14),
-                bodyMedium: theme.textTheme.bodyMedium?.copyWith(fontSize: 12.5),
-                bodySmall: theme.textTheme.bodySmall?.copyWith(fontSize: 11.5),
+              data: theme.copyWith(
+                textTheme: theme.textTheme.copyWith(
+                  titleMedium: theme.textTheme.titleMedium?.copyWith(fontSize: 14),
+                  bodyMedium: theme.textTheme.bodyMedium?.copyWith(fontSize: 12.5),
+                  bodySmall: theme.textTheme.bodySmall?.copyWith(fontSize: 11.5),
+                ),
+                iconTheme: theme.iconTheme.copyWith(size: 18, color: theme.colorScheme.primary),
+                listTileTheme: theme.listTileTheme.copyWith(
+                  visualDensity: VisualDensity.compact, minTileHeight: 44, minVerticalPadding: 4,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                ),
               ),
-              iconTheme: theme.iconTheme.copyWith(size: 18, color: theme.colorScheme.primary),
-              listTileTheme: theme.listTileTheme.copyWith(
-                visualDensity: VisualDensity.compact,
-                minTileHeight: 44,
-                minVerticalPadding: 4,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+              child: ListView(
+                padding: const EdgeInsets.only(bottom: 32, top: 4),
+                children: children,
               ),
-            ),
-            child: ListView(
-              padding: const EdgeInsets.only(bottom: 32, top: 4),
-              children: selected.children,
-            ),
             ),
           ),
         ),
@@ -1421,9 +1570,10 @@ class _SettingsSectionsState extends State<_SettingsSections> {
 }
 
 
-
 Color _sectionColor(String title) => switch (title) {
   'Global' => const Color(0xFF3B82F6),
+  'Connection' => const Color(0xFF0EA5E9),
+  'Browser Security' => const Color(0xFF10B981),
   'VLESS' => const Color(0xFF22A6B3),
   'BPB Core' => const Color(0xFF64748B),
   'Aether Core' => const Color(0xFF8B5CF6),
@@ -1456,6 +1606,8 @@ Widget _sectionIconWidget(String title, double size) {
 /// Consistent rounded icons for the Settings navigation.
 IconData _sectionIcon(String title) => switch (title) {
   'Global' => Icons.tune_rounded,
+  'Connection' => Icons.hub_rounded,
+  'Browser Security' => Icons.security_rounded,
   'VLESS' => Icons.route_rounded,
   'BPB Core' => Icons.memory_rounded,
   'Aether Core' => Icons.bubble_chart_rounded,
