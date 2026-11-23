@@ -43,8 +43,7 @@ class _BrowserPrivacyTile extends StatelessWidget {
           'your browser time zone and reported language with your VPN location.\n\n'
           'GeoSpoof is an independent third-party extension, not part of BPB. '
           'You can review its details and choose the store for your browser '
-          'on its official website. Installation and setup are always your choice. '
-          'You can also improve browser privacy by adding geo spoof add-on to your browser.',
+          'on its official website. Installation and setup are always your choice.',
         ),
         actions: [
           TextButton(
@@ -73,7 +72,7 @@ class _BrowserPrivacyTile extends StatelessWidget {
     return ListTile(
       leading: const Icon(Symbols.language_rounded),
       title: const Text('Browser Privacy'),
-      subtitle: const Text('Align browser language and time zone with your VPN IP'),
+      subtitle: const Text('Align browser language and time zone with your VPN IP. You can also improve browser privacy by adding geo spoof add-on to your browser.'),
       trailing: const Icon(Symbols.open_in_new_rounded, size: 20),
       onTap: () => _showPrompt(context),
     );
