@@ -379,17 +379,60 @@ class AppState extends ChangeNotifier {
   // region init
 
   Future<void> init({bool cleanStart = false, bool startLanTimer = true}) async {
-    // Portable copies keep independent settings/secrets based on their own folder.
-    // Moving a portable folder intentionally starts a separate profile; old folders remain untouched.
-    final executablePath = Platform.resolvedExecutable.toLowerCase();
-    var hash = 0x811c9dc5;
-    for (final unit in executablePath.codeUnits) {
-      hash = ((hash ^ unit) * 0x01000193) & 0xffffffff;
+    // Use the installation/portable folder rather than the EXE filename. This keeps
+    // settings stable when an update renames bpb.exe to BPB-VPN.exe, while separate
+    // portable folders still keep independent profiles.
+    final executable = File(Platform.resolvedExecutable);
+    final executablePath = executable.absolute.path.toLowerCase();
+    final installDirectory = executable.parent.absolute.path.toLowerCase();
+    _portableNamespace = _pathHash(installDirectory);
+    final legacyNamespaces = <String>{
+      _pathHash(executablePath),
+      _pathHash('${installDirectory}${Platform.pathSeparator}bpb.exe'),
+    }..remove(_portableNamespace);
+
+    // Migrate settings, encrypted accounts and Aether identities from previous
+    // executable-path namespaces before loading any app state.
+    final legacyPrefs = <(String, SharedPreferences)>[];
+    for (final namespace in legacyNamespaces) {
+      SharedPreferences.setPrefix('bpb_$namespace.');
+      final oldPrefs = await SharedPreferences.getInstance();
+      if (oldPrefs.getKeys().isNotEmpty) {
+        legacyPrefs.add((namespace, oldPrefs));
+      }
     }
-    _portableNamespace = hash.toRadixString(16).padLeft(8, '0');
-    VpnChannel.configureAetherLogPath(_aetherConfigDir);
     SharedPreferences.setPrefix('bpb_$_portableNamespace.');
     _prefs = await SharedPreferences.getInstance();
+    for (final entry in legacyPrefs) {
+      for (final key in entry.$2.getKeys()) {
+        if (_prefs.containsKey(key)) continue;
+        final value = entry.$2.get(key);
+        switch (value) {
+          case String v:
+            await _prefs.setString(key, v);
+          case bool v:
+            await _prefs.setBool(key, v);
+          case int v:
+            await _prefs.setInt(key, v);
+          case double v:
+            await _prefs.setDouble(key, v);
+          case List<String> v:
+            await _prefs.setStringList(key, v);
+          default:
+            break;
+        }
+      }
+      final oldSecretKey = '$_kSecretAccounts.${entry.$1}';
+      if (await _secrets.read(key: _secretAccountsKey) == null) {
+        final oldSecrets = await _secrets.read(key: oldSecretKey);
+        if (oldSecrets != null) {
+          await _secrets.write(key: _secretAccountsKey, value: oldSecrets);
+        }
+      }
+      await _copyAetherDirectory(entry.$1);
+    }
+
+    VpnChannel.configureAetherLogPath(_aetherConfigDir);
     allTimeUp = _prefs.getInt('traffic.allTimeUp') ?? 0;
     allTimeDown = _prefs.getInt('traffic.allTimeDown') ?? 0;
     if (cleanStart) {
@@ -440,6 +483,36 @@ class AppState extends ChangeNotifier {
         (_) => refreshLanIp(),
       );
     }
+  }
+
+  static String _pathHash(String path) {
+    var hash = 0x811c9dc5;
+    for (final unit in path.codeUnits) {
+      hash = ((hash ^ unit) * 0x01000193) & 0xffffffff;
+    }
+    return hash.toRadixString(16).padLeft(8, '0');
+  }
+
+  Future<void> _copyAetherDirectory(String oldNamespace) async {
+    final base = Platform.environment['LOCALAPPDATA'] ?? Directory.systemTemp.path;
+    final separator = Platform.pathSeparator;
+    final source = Directory('$base${separator}BPB VPN${separator}aether-$oldNamespace');
+    final target = Directory(_aetherConfigDir);
+    if (!await source.exists() || await target.exists()) return;
+
+    Future<void> copyContents(Directory from, Directory to) async {
+      await to.create(recursive: true);
+      await for (final entity in from.list(followLinks: false)) {
+        final destination = '${to.path}$separator${entity.uri.pathSegments.last}';
+        if (entity is Directory) {
+          await copyContents(entity, Directory(destination));
+        } else if (entity is File) {
+          await entity.copy(destination);
+        }
+      }
+    }
+
+    await copyContents(source, target);
   }
 
   static Map<String, dynamic> _decodeMap(String? raw) {
