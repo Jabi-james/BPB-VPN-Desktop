@@ -388,7 +388,7 @@ class AppState extends ChangeNotifier {
     _portableNamespace = _pathHash(installDirectory);
     final legacyNamespaces = <String>{
       _pathHash(executablePath),
-      _pathHash('${installDirectory}${Platform.pathSeparator}bpb.exe'),
+      _pathHash('$installDirectory${Platform.pathSeparator}bpb.exe'),
     }..remove(_portableNamespace);
 
     // Migrate settings, encrypted accounts and Aether identities from previous
