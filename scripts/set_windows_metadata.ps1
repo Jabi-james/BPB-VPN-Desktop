@@ -23,9 +23,9 @@ $rcSource = [regex]::Replace($rcSource, '(?m)^FILEVERSION.*$', 'FILEVERSION 0,0,
 $rcSource = [regex]::Replace($rcSource, '(?m)^PRODUCTVERSION.*$', 'PRODUCTVERSION 1,3,0,0')
 
 if ($rcSource -match 'VALUE "CompanyName"|VALUE "FileDescription"|VALUE "FileVersion"' -or
-    $rcSource -notmatch 'VALUE "ProductName", "BPB VPN Desktop\0"' -or
-    $rcSource -notmatch 'VALUE "ProductVersion", "1.3.0\0"' -or
-    $rcSource -notmatch 'VALUE "Comments", "Developed by NotDev\0"') {
+    !$rcSource.Contains('VALUE "ProductName", "BPB VPN Desktop\0"') -or
+    !$rcSource.Contains('VALUE "ProductVersion", "1.3.0\0"') -or
+    !$rcSource.Contains('VALUE "Comments", "Developed by NotDev\0"')) {
     throw "Windows VERSIONINFO metadata did not match the requested BPB fields."
 }
 
