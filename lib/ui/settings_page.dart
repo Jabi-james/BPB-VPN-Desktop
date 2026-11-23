@@ -245,39 +245,6 @@ class _SettingsPageState extends State<SettingsPage> {
           const SizedBox(height: 16),
           SettingsCard(
             children: [
-              FutureBuilder<bool>(
-                future: VpnChannel.supportsAppendHttpProxy,
-                builder: (context, snapshot) => snapshot.data == true
-                    ? const SwitchPref(
-                        'device.appendHttpProxy',
-                        'Add HTTP proxy to VPN',
-                        icon: Symbols.http_rounded,
-                        subtitle:
-                            'Use proxy directly for supported apps, browsers',
-                      )
-                    : const SizedBox.shrink(),
-              ),
-              if (defaultTargetPlatform != TargetPlatform.windows)
-                ListTile(
-                  leading: const Icon(Symbols.apps_rounded),
-                  title: const Text('Per-app proxy'),
-                  subtitle: Text(switch (d.perAppMode) {
-                    PerAppMode.include =>
-                      'Proxy selected apps (${d.perAppApps.length})',
-                    PerAppMode.exclude =>
-                      'Exclude selected apps (${d.perAppApps.length})',
-                    PerAppMode.off => 'Proxy all apps',
-                  }),
-                  trailing: const Icon(Symbols.chevron_right_rounded),
-                  onTap: () => Navigator.of(
-                    context,
-                  ).push(MaterialPageRoute(builder: (_) =>_CompactSettingsTheme(child:  const PerAppPage()))),
-                ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          SettingsCard(
-            children: [
               const SwitchPref(
                 'general.enableIpv6',
                 'IPv6 connection',
@@ -326,6 +293,34 @@ class _SettingsPageState extends State<SettingsPage> {
                 min: 1280,
                 max: 9000,
               ),
+              FutureBuilder<bool>(
+                future: VpnChannel.supportsAppendHttpProxy,
+                builder: (context, snapshot) => snapshot.data == true
+                    ? const SwitchPref(
+                        'device.appendHttpProxy',
+                        'Add HTTP proxy to VPN',
+                        icon: Symbols.http_rounded,
+                        subtitle:
+                            'Use proxy directly for supported apps, browsers',
+                      )
+                    : const SizedBox.shrink(),
+              ),
+              if (defaultTargetPlatform != TargetPlatform.windows)
+                ListTile(
+                  leading: const Icon(Symbols.apps_rounded),
+                  title: const Text('Per-app proxy'),
+                  subtitle: Text(switch (d.perAppMode) {
+                    PerAppMode.include =>
+                      'Proxy selected apps (${d.perAppApps.length})',
+                    PerAppMode.exclude =>
+                      'Exclude selected apps (${d.perAppApps.length})',
+                    PerAppMode.off => 'Proxy all apps',
+                  }),
+                  trailing: const Icon(Symbols.chevron_right_rounded),
+                  onTap: () => Navigator.of(
+                    context,
+                  ).push(MaterialPageRoute(builder: (_) =>_CompactSettingsTheme(child:  const PerAppPage()))),
+                ),
             ],
           ),
 
