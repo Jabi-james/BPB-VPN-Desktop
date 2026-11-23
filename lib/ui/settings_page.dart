@@ -1404,7 +1404,7 @@ class _SettingsSectionsState extends State<_SettingsSections> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Material(
-        color: theme.colorScheme.surface.withValues(alpha: 0.88),
+        color: theme.colorScheme.surface.withOpacity(0.88),
         borderRadius: BorderRadius.circular(13),
         child: InkWell(
           borderRadius: BorderRadius.circular(13),
@@ -1414,12 +1414,12 @@ class _SettingsSectionsState extends State<_SettingsSections> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(13),
-              border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.8)),
+              border: Border.all(color: theme.colorScheme.outlineVariant.withOpacity(0.8)),
             ),
             child: Row(children: [
               Container(
                 width: 40, height: 40,
-                decoration: BoxDecoration(color: color.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(11)),
+                decoration: BoxDecoration(color: color.withOpacity(0.14), borderRadius: BorderRadius.circular(11)),
                 child: Center(child: _sectionIconWidget(title, 22)),
               ),
               const SizedBox(width: 13),
@@ -1501,11 +1501,6 @@ class _SettingsSectionsState extends State<_SettingsSections> {
     }
 
     final showConnection = connectionSelected;
-    final isSsh = selectedConnectionSection?.title == 'SSH';
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) widget.onSectionChanged?.call(isSsh);
-    });
-
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
