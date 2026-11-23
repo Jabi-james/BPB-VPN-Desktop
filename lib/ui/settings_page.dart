@@ -43,7 +43,8 @@ class _BrowserPrivacyTile extends StatelessWidget {
           'your browser time zone and reported language with your VPN location.\n\n'
           'GeoSpoof is an independent third-party extension, not part of BPB. '
           'You can review its details and choose the store for your browser '
-          'on its official website. Installation and setup are always your choice.',
+          'on its official website. Installation and setup are always your choice. '
+          'You can also improve browser privacy by adding geo spoof add-on to your browser.',
         ),
         actions: [
           TextButton(
@@ -87,8 +88,22 @@ class _BrowserSecurityTestTile extends StatelessWidget {
     return ListTile(
       leading: const Icon(Symbols.fact_check_rounded),
       title: const Text('Security Test'),
-      subtitle: const Text(
-        'Check your public IP and browser leak indicators after applying your settings.',
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            'Check your public IP and browser leak indicators after applying your settings.',
+          ),
+          const SizedBox(height: 4),
+          InkWell(
+            onTap: () => VpnChannel.openUrl('https://browserleaks.com/ip'),
+            child: const Text(
+              'https://browserleaks.com/ip',
+              style: TextStyle(decoration: TextDecoration.underline),
+            ),
+          ),
+        ],
       ),
       trailing: const Icon(Symbols.open_in_new_rounded, size: 20),
       onTap: () => VpnChannel.openUrl('https://browserleaks.com/ip'),
