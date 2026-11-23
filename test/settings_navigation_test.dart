@@ -59,18 +59,27 @@ void main() {
     ]) {
       expect(find.text(title), findsOneWidget);
     }
-    final existingGlobalCard = find.ancestor(
+    final chainProxyCard = find.ancestor(
+      of: find.text('Chain proxies'),
+      matching: find.byType(SettingsCard),
+    ).first;
+    final dnsCard = find.ancestor(
       of: find.text('Fake DNS'),
       matching: find.byType(SettingsCard),
     ).first;
-    final relocatedGlobalCard = find.ancestor(
+    final networkCard = find.ancestor(
       of: find.text('VPN MTU'),
       matching: find.byType(SettingsCard),
     ).first;
     expect(
-      tester.getTopLeft(existingGlobalCard).dy,
-      lessThan(tester.getTopLeft(relocatedGlobalCard).dy),
-      reason: 'Relocated network settings must be in a separate card below existing Global options',
+      tester.getTopLeft(chainProxyCard).dy,
+      lessThan(tester.getTopLeft(dnsCard).dy),
+      reason: 'Chain proxies must be the first Global card',
+    );
+    expect(
+      tester.getTopLeft(dnsCard).dy,
+      lessThan(tester.getTopLeft(networkCard).dy),
+      reason: 'IPv6, LAN and MTU must be grouped in the third Global card',
     );
 
     // Connection is a root tab. Its landing page contains the five moved cards.
