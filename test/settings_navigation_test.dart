@@ -21,7 +21,11 @@ Future<void> _tapText(WidgetTester tester, String value, {int index = 0}) async 
 }
 
 Future<void> _tapBack(WidgetTester tester) async {
-  final button = tester.widget<IconButton>(find.byTooltip('Back'));
+  final buttonFinder = find.byWidgetPredicate(
+    (widget) => widget is IconButton && widget.tooltip == 'Back',
+  );
+  final button = tester.widget<IconButton>(buttonFinder);
+  expect(button.onPressed, isNotNull);
   button.onPressed!();
   await tester.pumpAndSettle();
 }
