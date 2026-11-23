@@ -155,14 +155,17 @@ void main() {
       // These three settings belong to BPB Core. Aether Core has its own
       // independent WARP and MASQUE settings and must not be opened here.
       const group = 'BPB Core';
-      // Connection groups are cards in the content pane, not side-nav items.
+      // Enter the Connection landing page before opening the BPB Core group.
+      final connectionTab = find.text('Connection').first;
+      await tester.tap(connectionTab);
+      await tester.pumpAndSettle();
+
+      // BPB Core and its protocol pages are cards in the content pane.
       final groupTile = find.text(group);
       await tester.ensureVisible(groupTile);
       await tester.tap(groupTile);
       await tester.pumpAndSettle();
 
-      // Connection subsections are now shown as cards in the content pane,
-      // not as entries in the fixed side navigation.
       final sectionTile = find.text(section);
       await tester.ensureVisible(sectionTile);
       await tester.tap(sectionTile);
