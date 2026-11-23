@@ -96,32 +96,7 @@ jobs:
           if ($cmakeUpdated -eq $cmakeSource) { throw "Could not rename the Windows executable in $cmake" }
           Set-Content -Path $cmake -Value $cmakeUpdated -Encoding utf8
 
-          # Set Windows Explorer Details without company, file description,
-          # or file-version string. Keep the product version (1.3.0).
-          $rc = "windows/runner/Runner.rc"
-          $rcSource = Get-Content $rc -Raw
-          $rcSource = [regex]::Replace($rcSource, '(?m)^\s*VALUE "CompanyName".*\r?\n', '')
-          $rcSource = [regex]::Replace($rcSource, '(?m)^\s*VALUE "FileDescription".*\r?\n', '')
-          $rcSource = [regex]::Replace($rcSource, '(?m)^\s*VALUE "FileVersion".*\r?\n', '')
-          $rcSource = [regex]::Replace($rcSource, '(?m)^\s*VALUE "ProductName".*$', '            VALUE "ProductName", "BPB VPN Desktop\0"')
-          $rcSource = [regex]::Replace($rcSource, '(?m)^\s*VALUE "ProductVersion".*$', '            VALUE "ProductVersion", "1.3.0\0"')
-          if ($rcSource -notmatch 'VALUE "Comments"') {
-            $productVersionLine = [regex]::Match($rcSource, '(?m)^\s*VALUE "ProductVersion".*$')
-            if (!$productVersionLine.Success) { throw "ProductVersion resource entry is missing." }
-            $commentsLine = [Environment]::NewLine + '            VALUE "Comments", "Developed by NotDev\0"'
-            $rcSource = $rcSource.Insert($productVersionLine.Index + $productVersionLine.Length, $commentsLine)
-          } else {
-            $rcSource = [regex]::Replace($rcSource, '(?m)^\s*VALUE "Comments".*$', '            VALUE "Comments", "Developed by NotDev\0"')
-          }
-          $rcSource = [regex]::Replace($rcSource, '(?m)^FILEVERSION.*$', 'FILEVERSION 0,0,0,0')
-          $rcSource = [regex]::Replace($rcSource, '(?m)^PRODUCTVERSION.*$', 'PRODUCTVERSION 1,3,0,0')
-          if ($rcSource -match 'VALUE "CompanyName"|VALUE "FileDescription"|VALUE "FileVersion"' -or
-              $rcSource -notmatch 'VALUE "ProductName", "BPB VPN Desktop\0"' -or
-              $rcSource -notmatch 'VALUE "ProductVersion", "1.3.0\0"' -or
-              $rcSource -notmatch 'VALUE "Comments", "Developed by NotDev\0"') {
-            throw "Windows VERSIONINFO metadata did not match the requested BPB fields."
-          }
-          Set-Content -Path $rc -Value $rcSource -Encoding utf8
+          pwsh -File scripts/set_windows_metadata.ps1
       - name: Resolve dependencies
         run: flutter pub get
 
