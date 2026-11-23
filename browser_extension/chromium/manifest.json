@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "BPB Browser Privacy",
+  "version": "0.1.0",
+  "description": "Synchronizes website-visible language and timezone with the current public IP.",
+  "permissions": ["storage", "alarms", "declarativeNetRequestWithHostAccess"],
+  "host_permissions": ["https://ipapi.co/*", "<all_urls>"],
+  "background": { "service_worker": "service_worker.js" },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["main_world.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["<all_urls>"],
+      "js": ["bridge.js"],
+      "run_at": "document_start",
+      "world": "ISOLATED"
+    }
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "bpb-browser-privacy@nottdevv.github.io",
+      "strict_min_version": "128.0"
+    }
+  }
+}
