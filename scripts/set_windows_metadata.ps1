@@ -50,4 +50,4 @@ if ($written -notmatch '(?s)VALUE "ProductVersion", "1\.3\.0\\0".*?VALUE "Compan
     $written -notmatch '(?m)^[ \t]*PRODUCTVERSION 1,3,0,0$') {
     throw "Windows VERSIONINFO metadata was not written exactly as requested."
 }
-Write-Host "Configured Runner.rc: ProductName=BPB VPN Desktop, ProductVersion=1.3.0, CompanyName=NotDev; unwanted string fields are absent; fixed versions are File=0.0.0.0 and Product=1.3.0.0."
+Write-Host "Configured Runner.rc: CompanyName=NotDev, ProductName=BPB VPN Desktop, ProductVersion=1.3.0; FileVersion string is absent; fixed versions are File=0.0.0.0 and Product=1.3.0.0."
