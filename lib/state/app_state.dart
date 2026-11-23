@@ -38,6 +38,7 @@ class AppState extends ChangeNotifier {
   static const _kDevice = 'device';
   static const _kSecretAccounts = 'cloudflareAccounts';
   static const _kGeoAssetsUpdatedAt = 'geoAssetsUpdatedAt';
+  static String? _sharedPreferencesPrefix;
 
   late SharedPreferences _prefs;
   late String _portableNamespace;
@@ -394,17 +395,36 @@ class AppState extends ChangeNotifier {
 
     final store = SharedPreferencesStorePlatform.instance;
     final legacyValues = <String, Object>{};
-    for (final namespace in legacyNamespaces) {
-      final prefix = 'bpb_$namespace.';
-      final values = await store.getAllWithParameters(
-        GetAllParameters(filter: PreferencesFilter(prefix: prefix)),
-      );
-      for (final entry in values.entries) {
-        legacyValues.putIfAbsent(entry.key.substring(prefix.length), () => entry.value);
+    // Unit tests use an in-memory store; there is no on-disk legacy namespace
+    // to migrate, and querying it can leave the test platform waiting forever.
+    if (!store.isMock) {
+      for (final namespace in legacyNamespaces) {
+        final prefix = 'bpb_$namespace.';
+        final values = await store.getAllWithParameters(
+          GetAllParameters(filter: PreferencesFilter(prefix: prefix)),
+        );
+        for (final entry in values.entries) {
+          legacyValues.putIfAbsent(
+            entry.key.substring(prefix.length),
+            () => entry.value,
+          );
+        }
       }
     }
 
-    SharedPreferences.setPrefix('bpb_$_portableNamespace.');
+    // SharedPreferences.setPrefix is process-global and may only be called
+    // before the singleton is initialized. AppState.init can run more than once
+    // in tests, so configure it once for this installation.
+    final preferencesPrefix = 'bpb_$_portableNamespace.';
+    final configuredPrefix = _sharedPreferencesPrefix;
+    if (configuredPrefix == null) {
+      SharedPreferences.setPrefix(preferencesPrefix);
+      _sharedPreferencesPrefix = preferencesPrefix;
+    } else if (configuredPrefix != preferencesPrefix) {
+      throw StateError(
+        'SharedPreferences is already configured for another installation.',
+      );
+    }
     _prefs = await SharedPreferences.getInstance();
     for (final entry in legacyValues.entries) {
       if (_prefs.containsKey(entry.key)) continue;
