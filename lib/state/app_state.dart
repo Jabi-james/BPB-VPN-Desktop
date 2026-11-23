@@ -395,7 +395,9 @@ class AppState extends ChangeNotifier {
     final legacyValues = <String, Object>{};
     for (final namespace in legacyNamespaces) {
       final prefix = 'bpb_$namespace.';
-      final values = await store.getAllWithPrefix(prefix);
+      final values = await store.getAllWithParameters(
+        GetAllParameters(filter: PreferencesFilter(prefix: prefix)),
+      );
       for (final entry in values.entries) {
         legacyValues.putIfAbsent(entry.key.substring(prefix.length), () => entry.value);
       }
