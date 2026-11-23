@@ -155,11 +155,8 @@ void main() {
       // These three settings belong to BPB Core. Aether Core has its own
       // independent WARP and MASQUE settings and must not be opened here.
       const group = 'BPB Core';
-      final navigation = find.byType(ListView).first;
-      final groupTile = find.descendant(
-        of: navigation,
-        matching: find.text(group),
-      );
+      // Connection groups are cards in the content pane, not side-nav items.
+      final groupTile = find.text(group);
       await tester.ensureVisible(groupTile);
       await tester.tap(groupTile);
       await tester.pumpAndSettle();
