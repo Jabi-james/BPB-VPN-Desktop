@@ -410,14 +410,19 @@ class AppState extends ChangeNotifier {
         switch (value) {
           case String v:
             await _prefs.setString(key, v);
+            break;
           case bool v:
             await _prefs.setBool(key, v);
+            break;
           case int v:
             await _prefs.setInt(key, v);
+            break;
           case double v:
             await _prefs.setDouble(key, v);
+            break;
           case List<String> v:
             await _prefs.setStringList(key, v);
+            break;
           default:
             break;
         }
