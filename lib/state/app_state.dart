@@ -422,14 +422,17 @@ class AppState extends ChangeNotifier {
             break;
         }
       }
-      final oldSecretKey = '$_kSecretAccounts.${entry.$1}';
+    }
+
+    // Secrets and Aether identities can exist even if a legacy preferences file is empty.
+    for (final namespace in legacyNamespaces) {
       if (await _secrets.read(key: _secretAccountsKey) == null) {
-        final oldSecrets = await _secrets.read(key: oldSecretKey);
+        final oldSecrets = await _secrets.read(key: '$_kSecretAccounts.$namespace');
         if (oldSecrets != null) {
           await _secrets.write(key: _secretAccountsKey, value: oldSecrets);
         }
       }
-      await _copyAetherDirectory(entry.$1);
+      await _copyAetherDirectory(namespace);
     }
 
     VpnChannel.configureAetherLogPath(_aetherConfigDir);
