@@ -10,6 +10,7 @@ import '../services/vpn_channel.dart';
 import '../state/app_state.dart';
 import 'chip_menu.dart';
 import 'prefs.dart';
+import 'flag_text.dart';
 
 /// Settings → Chain proxies: the saved configs a connection can exit through (picked per
 /// connection type on the home page). Added from the clipboard, a QR code or a WireGuard file.
@@ -150,7 +151,7 @@ class _ChainTile extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete config?'),
-        content: Text('${chain.name} will be removed from the chain proxies.'),
+        content: FlagText('${chain.name} will be removed from the chain proxies.'),
         actions: [
           TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
           FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Delete')),
