@@ -79,28 +79,29 @@ class _DonationTile extends StatelessWidget {
   void _showQr(BuildContext context, String address) {
     showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) {
+        final size = MediaQuery.sizeOf(context);
+        // Keep the QR at one-third of its previous responsive size, while
+        // ensuring it fits vertically in short windows.
+        final maxQrHeight = (size.height - 220).clamp(0.0, double.infinity);
+        final qrSize = ((size.width - 128) / 3)
+            .clamp(0.0, maxQrHeight)
+            .toDouble();
+        return AlertDialog(
         title: Text('Tether - $network'),
         scrollable: true,
         content: Column(
           mainAxisSize: MainAxisSize.min,
           spacing: 20,
           children: [
-            SizedBox(
-              width: MediaQuery.sizeOf(context).width - 128,
-              child: AspectRatio(
-                aspectRatio: 1,
-                // QrImageView uses LayoutBuilder, which cannot report intrinsic sizes.
-                child: SizedBox.square(
-                  dimension: MediaQuery.sizeOf(context).width - 128,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: QrImageView(
-                      data: address,
-                      backgroundColor: Colors.white,
-                      padding: const EdgeInsets.all(16),
-                    ),
-                  ),
+            SizedBox.square(
+              dimension: qrSize,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: QrImageView(
+                  data: address,
+                  backgroundColor: Colors.white,
+                  padding: const EdgeInsets.all(8),
                 ),
               ),
             ),
@@ -113,7 +114,8 @@ class _DonationTile extends StatelessWidget {
             child: const Text('Close'),
           ),
         ],
-      ),
+      );
+      },
     );
   }
 

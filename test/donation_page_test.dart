@@ -121,7 +121,7 @@ void main() {
       await tester.tap(find.byTooltip('Copy $network address'));
       await tester.pump();
       expect(copied, address);
-      await tester.tap(find.byTooltip('$network QR code'));
+      await tester.tap(find.byTooltip(network == 'BEP20' ? 'BEP-20 QR code' : '$network QR code'));
       await tester.pumpAndSettle();
       expect(find.byType(QrImageView), findsOneWidget);
       expect(
@@ -142,7 +142,7 @@ void main() {
     const Size(400, 700),
     const Size(800, 400),
   ]) {
-    testWidgets('QR fills dialog width and stays square at $screenSize', (
+    testWidgets('QR is one-third of its previous responsive size at $screenSize', (
       tester,
     ) async {
       tester.view.physicalSize = screenSize;
@@ -157,9 +157,11 @@ void main() {
       final qr = find.byType(QrImageView);
       final content = find.ancestor(of: qr, matching: find.byType(Column)).first;
       final qrSize = tester.getSize(qr);
-      expect(qrSize.width, tester.getSize(content).width);
-      expect(qrSize.height, qrSize.width);
-      expect(qrSize.width, screenSize.width - 80 - 48);
+      expect(qrSize.width, qrSize.height);
+      final expectedSize = ((screenSize.width - 128) / 3)
+          .clamp(0.0, (screenSize.height - 220).clamp(0.0, double.infinity));
+      expect(qrSize.width, closeTo(expectedSize, 0.01));
+      expect(find.byType(Scrollable).last, findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   }
