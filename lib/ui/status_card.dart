@@ -347,46 +347,60 @@ class _PingButton extends StatelessWidget {
     final ping = state.pingMs;
     final noPing = !state.isConnected || ping == null || ping < 0;
     const color = _green;
-    return Tooltip(
-      message: state.isConnected ? 'Test ping' : 'No active connection',
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: state.isConnected && !state.pinging ? state.testPing : null,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(0, 2, 8, 2),
-          child: Row(
-            textDirection: TextDirection.rtl,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (state.pinging)
-                SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    color: color,
-                  ),
-                )
-              else if (noPing)
-                Image.asset(
-                  'images/icon/Warning.png',
-                  width: 18,
-                  height: 18,
-                  fit: BoxFit.contain,
-                ),
-              if (state.pinging || noPing) const SizedBox(width: 6),
-              Text(
-                state.pinging ? 'Testing' : noPing ? 'No Ping' : '$ping ms',
-                textDirection: TextDirection.ltr,
-                style: TextStyle(
-                  color: noPing && !state.pinging
-                      ? theme.colorScheme.error
-                      : color,
-                ),
+
+    final content = Padding(
+      padding: const EdgeInsets.fromLTRB(0, 2, 8, 2),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (state.pinging)
+            SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: color,
+              ),
+            )
+          else ...[
+            Text(
+              noPing ? 'No Ping' : '$ping ms',
+              textDirection: TextDirection.ltr,
+              style: TextStyle(
+                color: noPing ? theme.colorScheme.error : color,
+              ),
+            ),
+            if (noPing) ...[
+              const SizedBox(width: 6),
+              Image.asset(
+                'images/icon/Warning.png',
+                width: 18,
+                height: 18,
+                fit: BoxFit.contain,
               ),
             ],
-          ),
-        ),
+          ],
+          if (state.pinging) const SizedBox(width: 6),
+          if (state.pinging)
+            Text(
+              'Testing',
+              textDirection: TextDirection.ltr,
+              style: const TextStyle(color: color),
+            ),
+        ],
+      ),
+    );
+
+    // Keep the disconnected indicator passive: the status card's separate
+    // connect/cancel control remains its only InkWell while connecting.
+    if (!state.isConnected) return content;
+
+    return Tooltip(
+      message: 'Test ping',
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: state.pinging ? null : state.testPing,
+        child: content,
       ),
     );
   }
