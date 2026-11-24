@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart';
-
 /// Health probes are deliberately less frequent for Worker/VLESS deployments,
 /// whose Cloudflare Worker request budget is limited.
 Duration connectionHealthInterval({required bool workerMode}) =>

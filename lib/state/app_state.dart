@@ -690,6 +690,7 @@ class AppState extends ChangeNotifier {
       upSpeed = downSpeed = 0;
       if (status == VpnStatus.disconnected) {
         pingMs = null;
+        pinging = false;
         myIps = null;
         loadingIps = false;
         needsReconnect = false;
@@ -909,8 +910,9 @@ class AppState extends ChangeNotifier {
     } catch (_) {
       // The native stop path still emits DISCONNECTED when cleanup fails.
     }
-    if (connectedAt == session) {
+    if (status == VpnStatus.disconnected || connectedAt == session) {
       status = VpnStatus.disconnected;
+      error = reason;
       connectedAt = null;
       pingMs = null;
       myIps = null;
