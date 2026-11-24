@@ -78,4 +78,27 @@ void main() {
     expect(ink.top - card.top, 24);
     expect(card.right - ink.right, 24);
   });
+
+  testWidgets('shows image warning and red No Ping when disconnected', (tester) async {
+    final state = AppState();
+    addTearDown(state.dispose);
+    await tester.pumpWidget(
+      AppScope(
+        state: state,
+        child: const MaterialApp(home: Scaffold(body: StatusCard())),
+      ),
+    );
+
+    expect(find.text('No Ping'), findsOneWidget);
+    expect(
+      find.byWidgetPredicate(
+        (widget) => widget is Image &&
+            widget.image is AssetImage &&
+            (widget.image as AssetImage).assetName == 'images/icon/Warning.png',
+      ),
+      findsOneWidget,
+    );
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
 }

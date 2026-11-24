@@ -200,7 +200,6 @@ class AppState extends ChangeNotifier {
   bool _trafficSampleInProgress = false;
   bool _healthCheckInProgress = false;
   int _healthFailures = 0;
-  DateTime? _lastTrafficAt;
   int _windowsVerificationToken = 0;
   Timer? _lanTimer;
   Future<void>? _aetherProvisioning;
@@ -686,7 +685,6 @@ class AppState extends ChangeNotifier {
       _trafficTimer?.cancel();
       _healthTimer?.cancel();
       _healthFailures = 0;
-      _lastTrafficAt = null;
       upSpeed = downSpeed = 0;
       if (status == VpnStatus.disconnected) {
         pingMs = null;
@@ -778,7 +776,6 @@ class AppState extends ChangeNotifier {
   void _startTrafficTimer() {
     _trafficTimer?.cancel();
     _trafficSampleInProgress = false;
-    _lastTrafficAt = null;
     _trafficTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
       if (_trafficSampleInProgress || !isConnected) return;
       _trafficSampleInProgress = true;
@@ -787,7 +784,6 @@ class AppState extends ChangeNotifier {
         if (!isConnected) return;
         upSpeed = t.up;
         downSpeed = t.down;
-        if (t.up > 0 || t.down > 0) _lastTrafficAt = DateTime.now();
         if (defaultTargetPlatform == TargetPlatform.windows) {
           // The Windows host reads and resets Xray's counters each second, so
           // these values are deltas; accumulate them for the session totals.
@@ -814,9 +810,7 @@ class AppState extends ChangeNotifier {
     _healthTimer?.cancel();
     _healthFailures = 0;
     _healthCheckInProgress = false;
-    final interval = connectionHealthInterval(
-      workerMode: mode == ConnectionMode.worker,
-    );
+    final interval = connectionHealthInterval();
     _healthTimer = Timer.periodic(
       interval,
       (_) => unawaited(_checkConnectionHealth()),
@@ -842,15 +836,6 @@ class AppState extends ChangeNotifier {
       if (mode == ConnectionMode.serverless &&
           serverlessMode == ServerlessMode.dns) {
         _healthFailures = 0;
-        return;
-      }
-
-      final now = DateTime.now();
-      if (shouldSkipConnectionProbe(
-        workerMode: mode == ConnectionMode.worker,
-        lastTrafficAt: _lastTrafficAt,
-        now: now,
-      )) {
         return;
       }
 

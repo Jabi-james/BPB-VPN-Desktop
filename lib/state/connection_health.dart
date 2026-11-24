@@ -1,14 +1,2 @@
-/// Health probes are deliberately less frequent for Worker/VLESS deployments,
-/// whose Cloudflare Worker request budget is limited.
-Duration connectionHealthInterval({required bool workerMode}) =>
-    workerMode ? const Duration(minutes: 1) : const Duration(seconds: 5);
-
-/// Skip a Worker probe while any traffic has passed during the current interval.
-bool shouldSkipConnectionProbe({
-  required bool workerMode,
-  required DateTime? lastTrafficAt,
-  required DateTime now,
-}) {
-  if (!workerMode || lastTrafficAt == null) return false;
-  return now.difference(lastTrafficAt) < const Duration(minutes: 1);
-}
+/// All connection modes use the same lightweight health-check interval.
+Duration connectionHealthInterval() => const Duration(seconds: 5);

@@ -216,9 +216,7 @@ class _Metrics extends StatelessWidget {
               child: _Metric(
                 icon: Symbols.speed_rounded,
                 label: 'Ping',
-                value: state.isConnected
-                    ? const _PingButton()
-                    : const Text('—'),
+                value: const _PingButton(),
               ),
             ),
           ],
@@ -338,7 +336,7 @@ class _Metric extends StatelessWidget {
   }
 }
 
-/// Bold bolt that tests the ping; shows the result next to it once measured.
+/// Tests the tunnel ping and shows an image warning when no ping is available.
 class _PingButton extends StatelessWidget {
   const _PingButton();
 
@@ -347,15 +345,17 @@ class _PingButton extends StatelessWidget {
     final state = AppScope.of(context);
     final theme = Theme.of(context);
     final ping = state.pingMs;
+    final noPing = !state.isConnected || ping == null || ping < 0;
     const color = _green;
     return Tooltip(
-      message: 'Test ping',
+      message: state.isConnected ? 'Test ping' : 'No active connection',
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: state.pinging ? null : state.testPing,
+        onTap: state.isConnected && !state.pinging ? state.testPing : null,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(0, 2, 8, 2),
           child: Row(
+            textDirection: TextDirection.rtl,
             mainAxisSize: MainAxisSize.min,
             children: [
               if (state.pinging)
@@ -366,16 +366,20 @@ class _PingButton extends StatelessWidget {
                     strokeWidth: 2.5,
                     color: color,
                   ),
+                )
+              else if (noPing)
+                Image.asset(
+                  'images/icon/Warning.png',
+                  width: 18,
+                  height: 18,
+                  fit: BoxFit.contain,
                 ),
-              if (state.pinging) const SizedBox(width: 6),
+              if (state.pinging || noPing) const SizedBox(width: 6),
               Text(
-                state.pinging
-                    ? 'Testing'
-                    : ping == null
-                    ? 'Test'
-                    : (ping < 0 ? 'Timeout' : '$ping ms'),
+                state.pinging ? 'Testing' : noPing ? 'No Ping' : '$ping ms',
+                textDirection: TextDirection.ltr,
                 style: TextStyle(
-                  color: ping != null && ping < 0
+                  color: noPing && !state.pinging
                       ? theme.colorScheme.error
                       : color,
                 ),
