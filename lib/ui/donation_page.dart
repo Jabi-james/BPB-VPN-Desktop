@@ -87,12 +87,12 @@ class _DonationTile extends StatelessWidget {
           spacing: 20,
           children: [
             SizedBox(
-              width: MediaQuery.sizeOf(context).width,
+              width: MediaQuery.sizeOf(context).width - 128,
               child: AspectRatio(
                 aspectRatio: 1,
                 // QrImageView uses LayoutBuilder, which cannot report intrinsic sizes.
                 child: SizedBox.square(
-                  dimension: MediaQuery.sizeOf(context).width,
+                  dimension: MediaQuery.sizeOf(context).width - 128,
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
                     child: QrImageView(
@@ -127,7 +127,7 @@ class _DonationTile extends StatelessWidget {
         children: [
           Icon(icon, color: color, size: 19),
           const SizedBox(width: 8),
-          Text('Tether - $network'),
+          Flexible(child: Text('Tether - $network')),
         ],
       ),
       subtitle: Text(
@@ -145,7 +145,7 @@ class _DonationTile extends StatelessWidget {
                 : () => _copy(context, configuredAddress),
           ),
           IconButton(
-            tooltip: '$network QR code',
+            tooltip: network == 'BEP20' ? 'BEP-20 QR code' : '$network QR code',
             icon: const Icon(Symbols.qr_code_rounded),
             onPressed: configuredAddress == null
                 ? null
