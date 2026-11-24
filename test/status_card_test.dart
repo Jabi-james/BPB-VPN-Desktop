@@ -80,6 +80,9 @@ void main() {
   });
 
   testWidgets('No Ping remains tappable while the tunnel is connected', (tester) async {
+    // Exercise the MethodChannel path; Windows uses its native child-process bridge.
+    debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
     final state = AppState()
       ..status = VpnStatus.connected
       ..connectedAt = DateTime.now()
