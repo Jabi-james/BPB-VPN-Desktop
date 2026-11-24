@@ -2683,22 +2683,22 @@ class _VersionsPage extends StatelessWidget {
               SettingsCard(
                 children: [
                   ListTile(
-                    leading: const Icon(Symbols.widgets_rounded),
+                    leading: const Icon(Symbols.widgets_rounded, color: Color(0xFF8B5CF6)),
                     title: const Text('Xray core · Mod'),
                     subtitle: Text(shown((s) => s, v?.xray)),
                   ),
                   ListTile(
-                    leading: const Icon(Symbols.cloud_rounded),
+                    leading: const Icon(Symbols.cloud_rounded, color: Color(0xFFF48120)),
                     title: const Text('Worker version'),
                     subtitle: Text('v${CloudflareApi.workerVersion}'),
                   ),
                   ListTile(
-                    leading: const Icon(Symbols.widgets_rounded),
+                    leading: const Icon(Symbols.widgets_rounded, color: Color(0xFF3B82F6)),
                     title: const Text('Psiphon tunnel core · Mod'),
                     subtitle: Text(shown(_psiphon, v?.psiphon)),
                   ),
                   ListTile(
-                    leading: const Icon(Symbols.widgets_rounded),
+                    leading: const Icon(Symbols.widgets_rounded, color: Color(0xFF7D4698)),
                     title: const Text('Tor Expert Bundle'),
                     subtitle: Text(shown(_tor, v?.tor)),
                   ),
