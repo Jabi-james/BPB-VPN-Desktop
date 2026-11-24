@@ -352,6 +352,7 @@ class _PingButton extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(0, 2, 8, 2),
       child: Wrap(
         spacing: 6,
+        textDirection: TextDirection.ltr,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           if (state.pinging)
@@ -364,13 +365,6 @@ class _PingButton extends StatelessWidget {
               ),
             )
           else ...[
-            Text(
-              noPing ? 'No Ping' : '$ping ms',
-              textDirection: TextDirection.ltr,
-              style: TextStyle(
-                color: noPing ? theme.colorScheme.error : color,
-              ),
-            ),
             if (noPing)
               Image.asset(
                 'images/icon/Warning.png',
@@ -378,7 +372,14 @@ class _PingButton extends StatelessWidget {
                 height: 18,
                 fit: BoxFit.contain,
               ),
-            ],
+            Text(
+              noPing ? 'No Ping' : '$ping ms',
+              textDirection: TextDirection.ltr,
+              style: TextStyle(
+                color: noPing ? theme.colorScheme.error : color,
+              ),
+            ),
+          ],
           ],
           if (state.pinging)
             Text(
