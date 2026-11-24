@@ -1044,12 +1044,34 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
               ),
               ListTile(
+                leading: const Icon(Symbols.favorite_rounded, color: Color(0xFF16A36A)),
+                title: const Text('Donation (NotDev)'),
+                subtitle: const Text('Support NotDev'),
+                trailing: const Icon(Symbols.chevron_right_rounded),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => _CompactSettingsTheme(
+                      child: const DonationPage(
+                        title: 'Donation (NotDev)',
+                        trc20Address: 'TNMUWffS9VPhBsNTaTcHNHV6eErbRjVL51',
+                        bep20Address: '0x1Ef196A6949A53e6Cc73e2A3c406fF3e312084A0',
+                        tonAddress: 'UQAu1EXaAjVFFi60K4O8lIudr01xAruRPydqx0DsuxvXu2Oe',
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              ListTile(
                 leading: const Icon(Symbols.favorite_rounded),
-                title: const Text('Donation'),
+                title: const Text('Donation (BPB)'),
                 subtitle: const Text('Keep this project alive'),
                 trailing: const Icon(Symbols.chevron_right_rounded),
                 onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) =>_CompactSettingsTheme(child:  const DonationPage())),
+                  MaterialPageRoute(
+                    builder: (_) => _CompactSettingsTheme(
+                      child: const DonationPage(title: 'Donation (BPB)'),
+                    ),
+                  ),
                 ),
               ),
             ],
