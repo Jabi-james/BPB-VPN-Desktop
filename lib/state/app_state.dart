@@ -774,7 +774,6 @@ class AppState extends ChangeNotifier {
   void _startTrafficTimer() {
     _trafficTimer?.cancel();
     _trafficSampleInProgress = false;
-    _lastTrafficAt = null;
     _trafficTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
       if (_trafficSampleInProgress || !isConnected) return;
       _trafficSampleInProgress = true;
@@ -807,7 +806,6 @@ class AppState extends ChangeNotifier {
 
   void _startHealthTimer() {
     _healthTimer?.cancel();
-    _healthFailures = 0;
     _healthCheckInProgress = false;
     final interval = connectionHealthInterval(
       workerMode: mode == ConnectionMode.worker,
@@ -871,7 +869,6 @@ class AppState extends ChangeNotifier {
 
       if (delay >= 0) {
         pingMs = delay;
-        _healthFailures = 0;
       } else {
         pingMs = -1;
         await _disconnectAfterHealthFailure(
