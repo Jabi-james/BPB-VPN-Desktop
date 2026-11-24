@@ -11,6 +11,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/cf_account.dart';
+import 'connection_health.dart';
 import '../models/settings.dart';
 import '../models/theme_color.dart';
 import '../services/cloudflare_api.dart';
@@ -195,6 +196,11 @@ class AppState extends ChangeNotifier {
 
   StreamSubscription<VpnStateEvent>? _stateSub;
   Timer? _trafficTimer;
+  Timer? _healthTimer;
+  bool _trafficSampleInProgress = false;
+  bool _healthCheckInProgress = false;
+  int _healthFailures = 0;
+  DateTime? _lastTrafficAt;
   int _windowsVerificationToken = 0;
   Timer? _lanTimer;
   Future<void>? _aetherProvisioning;
@@ -456,6 +462,7 @@ class AppState extends ChangeNotifier {
   void dispose() {
     _stateSub?.cancel();
     _trafficTimer?.cancel();
+    _healthTimer?.cancel();
     _lanTimer?.cancel();
     super.dispose();
   }
@@ -659,6 +666,7 @@ class AppState extends ChangeNotifier {
     exitDetail = event.detail;
     if (status == VpnStatus.connected) {
       _startTrafficTimer();
+      _startHealthTimer();
       if (!wasConnected && !sameSession) {
         needsReconnect = false;
         totalUp = totalDown = 0;
@@ -676,6 +684,9 @@ class AppState extends ChangeNotifier {
       }
     } else {
       _trafficTimer?.cancel();
+      _healthTimer?.cancel();
+      _healthFailures = 0;
+      _lastTrafficAt = null;
       upSpeed = downSpeed = 0;
       if (status == VpnStatus.disconnected) {
         pingMs = null;
@@ -698,6 +709,7 @@ class AppState extends ChangeNotifier {
         connectedAt = event.connectedAt ?? DateTime.now();
         needsReconnect = false;
         _startTrafficTimer();
+        _startHealthTimer();
         unawaited(refreshUsage());
         return;
       }
@@ -728,6 +740,7 @@ class AppState extends ChangeNotifier {
       needsReconnect = false;
       totalUp = totalDown = 0;
       _startTrafficTimer();
+      _startHealthTimer();
       unawaited(refreshUsage());
       _redeployDue();
     } catch (e) {
@@ -763,11 +776,17 @@ class AppState extends ChangeNotifier {
 
   void _startTrafficTimer() {
     _trafficTimer?.cancel();
+    _trafficSampleInProgress = false;
+    _lastTrafficAt = null;
     _trafficTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
+      if (_trafficSampleInProgress || !isConnected) return;
+      _trafficSampleInProgress = true;
       try {
         final t = await VpnChannel.traffic();
+        if (!isConnected) return;
         upSpeed = t.up;
         downSpeed = t.down;
+        if (t.up > 0 || t.down > 0) _lastTrafficAt = DateTime.now();
         if (defaultTargetPlatform == TargetPlatform.windows) {
           // The Windows host reads and resets Xray's counters each second, so
           // these values are deltas; accumulate them for the session totals.
@@ -778,15 +797,129 @@ class AppState extends ChangeNotifier {
           unawaited(_prefs.setInt('traffic.allTimeUp', allTimeUp));
           unawaited(_prefs.setInt('traffic.allTimeDown', allTimeDown));
         } else {
-          // Android's TrafficMeter already returns cumulative session totals.
           totalUp = t.totalUp;
           totalDown = t.totalDown;
         }
         notifyListeners();
       } catch (_) {
         // Core stopping; ignore.
+      } finally {
+        _trafficSampleInProgress = false;
       }
     });
+  }
+
+  void _startHealthTimer() {
+    _healthTimer?.cancel();
+    _healthFailures = 0;
+    _healthCheckInProgress = false;
+    final interval = connectionHealthInterval(
+      workerMode: mode == ConnectionMode.worker,
+    );
+    _healthTimer = Timer.periodic(
+      interval,
+      (_) => unawaited(_checkConnectionHealth()),
+    );
+  }
+
+  Future<void> _checkConnectionHealth() async {
+    if (!isConnected || _healthCheckInProgress) return;
+    final session = connectedAt;
+    _healthCheckInProgress = true;
+    try {
+      // The native status check detects a stopped core without spending a probe.
+      if (!await VpnChannel.isCoreRunning()) {
+        await _disconnectAfterHealthFailure(
+          session,
+          'The VPN core stopped unexpectedly.',
+        );
+        return;
+      }
+      if (!isConnected || connectedAt != session) return;
+
+      // DNS-only Serverless has no tunneled HTTP route to ping.
+      if (mode == ConnectionMode.serverless &&
+          serverlessMode == ServerlessMode.dns) {
+        _healthFailures = 0;
+        return;
+      }
+
+      final now = DateTime.now();
+      if (shouldSkipConnectionProbe(
+        workerMode: mode == ConnectionMode.worker,
+        lastTrafficAt: _lastTrafficAt,
+        now: now,
+      )) {
+        return;
+      }
+
+      pinging = true;
+      notifyListeners();
+      final delay = await VpnChannel.measureDelay().timeout(
+        const Duration(seconds: 22),
+        onTimeout: () => -1,
+      );
+      if (!isConnected || connectedAt != session) return;
+      if (delay >= 0) {
+        pingMs = delay;
+        _healthFailures = 0;
+      } else {
+        // Never leave a previous successful value displayed after a failed probe.
+        pingMs = -1;
+        _healthFailures++;
+        if (_healthFailures >= 2) {
+          await _disconnectAfterHealthFailure(
+            session,
+            'The VPN connection lost internet connectivity.',
+          );
+        }
+      }
+      notifyListeners();
+    } catch (_) {
+      if (isConnected && connectedAt == session) {
+        pingMs = -1;
+        _healthFailures++;
+        notifyListeners();
+        if (_healthFailures >= 2) {
+          await _disconnectAfterHealthFailure(
+            session,
+            'The VPN connection health check failed twice.',
+          );
+        }
+      }
+    } finally {
+      pinging = false;
+      _healthCheckInProgress = false;
+      if (!isConnected) _healthTimer?.cancel();
+      notifyListeners();
+    }
+  }
+
+  Future<void> _disconnectAfterHealthFailure(
+    DateTime? session,
+    String reason,
+  ) async {
+    if (!isConnected || connectedAt != session) return;
+    _healthTimer?.cancel();
+    pingMs = -1;
+    error = reason;
+    notifyListeners();
+    try {
+      await VpnChannel.stop();
+    } catch (_) {
+      // The native stop path still emits DISCONNECTED when cleanup fails.
+    }
+    if (connectedAt == session) {
+      status = VpnStatus.disconnected;
+      connectedAt = null;
+      pingMs = null;
+      myIps = null;
+      loadingIps = false;
+      upSpeed = downSpeed = 0;
+      _trafficTimer?.cancel();
+      _healthTimer?.cancel();
+      notifyListeners();
+    }
   }
 
   Future<void> toggle() =>

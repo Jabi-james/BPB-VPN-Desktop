@@ -920,6 +920,20 @@ if (\$match) { 'true' } else { 'false' }
     );
   }
 
+  /// Whether the native Xray core is still running. Windows exposes this through
+  /// the existing lightweight status command; other platforms keep their native
+  /// state-event lifecycle and do not use this Windows-only poll.
+  static Future<bool> isCoreRunning() async {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
+      final result = await _sendWindowsCommand(
+        {'command': 'status'},
+        timeout: const Duration(seconds: 5),
+      );
+      return result['running'] == true;
+    }
+    return true;
+  }
+
   /// Delay in ms through the running tunnel.
   static Future<int> measureDelay() async {
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
