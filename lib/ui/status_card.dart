@@ -380,7 +380,6 @@ class _PingButton extends StatelessWidget {
               ),
             ),
           ],
-          ],
           if (state.pinging)
             Text(
               'Testing',
