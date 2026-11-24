@@ -9,10 +9,6 @@ const String _bpbBep20Address = '0xbdf15d41C56f861f25b2b11C835bd45dfD5b792F';
 const String _bpbTrc20Address = 'TSEi338sydN11xh8E7ZLPUL5qc8sQtt8G4';
 const String _bpbTonAddress = 'UQCHVokmmzsShpLL3FEUuLcnb9Bb6IKXWwEhJcfpr50EqMUa';
 
-const String _notDevTrc20Address = 'TNMUWffS9VPhBsNTaTcHNHV6eErbRjVL51';
-const String _notDevBep20Address = '0x1Ef196A6949A53e6Cc73e2A3c406fF3e312084A0';
-const String _notDevTonAddress = 'UQAu1EXaAjVFFi60K4O8lIudr01xAruRPydqx0DsuxvXu2Oe';
-
 class DonationPage extends StatelessWidget {
   const DonationPage({
     super.key,
