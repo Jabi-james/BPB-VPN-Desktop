@@ -37,7 +37,7 @@ class BpbApp extends StatelessWidget {
         listenable: Listenable.merge([state.themeColor, state.themeMode, state.fontScale]),
         builder: (context, _) => MaterialApp(
           navigatorKey: _navigatorKey,
-          title: 'BPB VPN',
+          title: 'BPB VPN - (NotDev)',
           debugShowCheckedModeBanner: false,
           // Android can draw the app into the navigation bar area (notably with
           // gesture navigation). Keep every route's content above that inset.
