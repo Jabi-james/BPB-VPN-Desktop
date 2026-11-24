@@ -39,7 +39,7 @@ class _LogPageState extends State<LogPage> {
 
   /// The log on screen, and the logs with something in them (Xray's always shown).
   String _log = 'xray';
-  List<String> _available = const ['xray'];
+  List<String> _available = const ['xray', 'ssh'];
 
   /// Search visibility and query.
   bool _searching = false;
@@ -71,7 +71,7 @@ class _LogPageState extends State<LogPage> {
       return;
     }
     if (!mounted || log != _log) return;
-    final available = _logs.keys.where((l) => l == 'xray' || (sizes[l] ?? 0) > 0).toList();
+    final available = _logs.keys.where((l) => l == 'xray' || l == 'ssh' || (sizes[l] ?? 0) > 0).toList();
     if (available.join() != _available.join()) setState(() => _available = available);
     final tail = text.length > 200000 ? text.substring(text.length - 200000) : text;
     var lines = tail.split('\n').where((l) => l.trim().isNotEmpty).toList();
@@ -93,7 +93,7 @@ class _LogPageState extends State<LogPage> {
       setState(() {
         _lines = const [];
         _log = 'xray';
-        _available = const ['xray'];
+        _available = const ['xray', 'ssh'];
         _searching = false;
         _searchQuery = '';
         _searchController.clear();
