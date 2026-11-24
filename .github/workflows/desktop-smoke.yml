@@ -495,10 +495,15 @@ jobs:
           $setup = "installer-output/BPB-VPN-Setup-v1.3.0.exe"
           if (!(Test-Path $setup)) { throw "Installer output missing" }
           $setupInfo = [System.Diagnostics.FileVersionInfo]::GetVersionInfo((Resolve-Path $setup).Path)
-          if ($setupInfo.CompanyName -ne "NotDev" -or
-              $setupInfo.ProductName -ne "BPB VPN Desktop" -or
-              $setupInfo.ProductVersion -ne "1.3.0") {
-            throw "Setup metadata mismatch: Company='$($setupInfo.CompanyName)', Product='$($setupInfo.ProductName)', ProductVersion='$($setupInfo.ProductVersion)'"
+          $setupCompany = $setupInfo.CompanyName.Trim()
+          $setupProduct = $setupInfo.ProductName.Trim()
+          $setupProductVersion = $setupInfo.ProductVersion.Trim()
+          $setupFileVersion = $setupInfo.FileVersion.Trim()
+          if ($setupCompany -ne "NotDev" -or
+              $setupProduct -ne "BPB VPN Desktop" -or
+              $setupProductVersion -ne "1.3.0" -or
+              $setupFileVersion -ne "1.3.0.0") {
+            throw "Setup metadata mismatch: Company='$setupCompany', Product='$setupProduct', ProductVersion='$setupProductVersion', FileVersion='$setupFileVersion'"
           }
           Write-Host "Verified Setup metadata: CompanyName=NotDev, ProductName=BPB VPN Desktop, ProductVersion=1.3.0; numeric FileVersion=1.3.0.0; FileVersion text field intentionally blank."
 
