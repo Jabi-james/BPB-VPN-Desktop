@@ -26,6 +26,7 @@ class WindowsLifecycle with WindowListener, TrayListener {
   static WindowsLifecycle? _instance;
   bool _handlingClose = false;
   bool _exiting = false;
+  bool _windowWasBlurred = false;
   late final MenuItem _proxyMenuItem;
   late final MenuItem _systemProxyMenuItem;
   late final MenuItem _tunMenuItem;
@@ -81,6 +82,20 @@ class WindowsLifecycle with WindowListener, TrayListener {
         ],
       ),
     );
+  }
+
+  @override
+  void onWindowBlur() {
+    _windowWasBlurred = true;
+  }
+
+  @override
+  void onWindowFocus() {
+    if (!_windowWasBlurred) return;
+    _windowWasBlurred = false;
+    if (appState.isConnected) {
+      unawaited(appState.checkConnectionHealthNow());
+    }
   }
 
   @override

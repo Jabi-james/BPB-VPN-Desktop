@@ -40,7 +40,7 @@ class HomePage extends StatelessWidget {
               TextSpan(
                 children: [
                   TextSpan(text: 'BPB VPN', style: TextStyle(fontWeight: FontWeight.w600)),
-                  TextSpan(text: ' - (NotDev)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                  TextSpan(text: ' (NotDev)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
                 ],
               ),
             ),

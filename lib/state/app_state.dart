@@ -823,12 +823,25 @@ class AppState extends ChangeNotifier {
     );
   }
 
+  /// Runs immediately when the app window is restored, using the scheduled retry/recovery flow.
+  Future<void> checkConnectionHealthNow() => _checkConnectionHealth();
+
+  Future<int> _measureHealthPing() async {
+    try {
+      return await VpnChannel.measureDelay().timeout(
+        const Duration(seconds: 22),
+        onTimeout: () => -1,
+      );
+    } catch (_) {
+      return -1;
+    }
+  }
+
   Future<void> _checkConnectionHealth() async {
     if (!isConnected || _healthCheckInProgress) return;
     final session = connectedAt;
     _healthCheckInProgress = true;
     try {
-      // The native status check detects a stopped core without spending a probe.
       if (!await VpnChannel.isCoreRunning()) {
         await _disconnectAfterHealthFailure(
           session,
@@ -845,49 +858,42 @@ class AppState extends ChangeNotifier {
         return;
       }
 
-      // Until VLESS probes are proven to reuse the existing Worker WebSocket,
-      // avoid creating extra probe connections while user traffic is active.
-      if (shouldSkipConnectionProbe(
-        workerMode: mode == ConnectionMode.worker,
-        lastTrafficAt: _lastTrafficAt,
-        now: DateTime.now(),
-      )) {
-        return;
-      }
-
       pinging = true;
       notifyListeners();
-      final delay = await VpnChannel.measureDelay().timeout(
-        const Duration(seconds: 22),
-        onTimeout: () => -1,
-      );
+      var delay = await _measureHealthPing();
       if (!isConnected || connectedAt != session) return;
+
+      if (delay < 0) {
+        pingMs = -1;
+        pinging = false;
+        notifyListeners();
+        await Future<void>.delayed(const Duration(seconds: 10));
+        if (!isConnected || connectedAt != session) return;
+        pinging = true;
+        notifyListeners();
+        delay = await _measureHealthPing();
+        if (!isConnected || connectedAt != session) return;
+      }
+
       if (delay >= 0) {
         pingMs = delay;
         _healthFailures = 0;
       } else {
-        // Never leave a previous successful value displayed after a failed probe.
         pingMs = -1;
-        _healthFailures++;
-        if (_healthFailures >= 2) {
-          await _disconnectAfterHealthFailure(
-            session,
-            'The VPN connection lost internet connectivity.',
-          );
-        }
+        _healthFailures = 2;
+        await _disconnectAfterHealthFailure(
+          session,
+          'The VPN connection lost internet connectivity.',
+        );
       }
       notifyListeners();
     } catch (_) {
       if (isConnected && connectedAt == session) {
         pingMs = -1;
-        _healthFailures++;
-        notifyListeners();
-        if (_healthFailures >= 2) {
-          await _disconnectAfterHealthFailure(
-            session,
-            'The VPN connection health check failed twice.',
-          );
-        }
+        await _disconnectAfterHealthFailure(
+          session,
+          'The VPN connection health check failed.',
+        );
       }
     } finally {
       pinging = false;
@@ -918,13 +924,33 @@ class AppState extends ChangeNotifier {
     upSpeed = downSpeed = 0;
     notifyListeners();
 
+    final recoveryStartedAt = DateTime.now();
     try {
-      if (!await VpnChannel.prepare(vpn: tunMode)) {
+      if (!await VpnChannel.prepare(vpn: tunMode)
+          .timeout(const Duration(seconds: 10))) {
         throw StateError('VPN permission denied');
       }
-      await _start();
-      // The normal native state event / Windows verification owns the result.
+      await _start().timeout(const Duration(seconds: 10));
+      final remaining = const Duration(seconds: 10) -
+          DateTime.now().difference(recoveryStartedAt);
+      if (remaining > Duration.zero && !isConnected) {
+        await Future<void>.delayed(remaining);
+      }
+      if (!isConnected) {
+        await VpnChannel.stop();
+        status = VpnStatus.disconnected;
+        error = reason;
+        connectedAt = null;
+        pingMs = null;
+        myIps = null;
+        loadingIps = false;
+        exitDetail = null;
+        notifyListeners();
+      }
     } catch (e) {
+      try {
+        await VpnChannel.stop();
+      } catch (_) {}
       status = VpnStatus.disconnected;
       error = e is StateError ? e.message : '$e';
       connectedAt = null;

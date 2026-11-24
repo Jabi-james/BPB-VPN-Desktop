@@ -1009,24 +1009,24 @@ class _SettingsPageState extends State<SettingsPage> {
           SettingsCard(
             children: [
               ListTile(
-                leading: const Icon(Symbols.code_rounded),
+                leading: const Icon(Symbols.code_rounded, color: Color(0xFF3B82F6)),
                 title: const Text('BPB Source Code'),
                 subtitle: const Text('github.com/bia-pain-bache/BPB-VPN'),
-                trailing: const Icon(Symbols.open_in_new_rounded, size: 20),
+                trailing: const Icon(Symbols.open_in_new_rounded, size: 20, color: Color(0xFF3B82F6)),
                 onTap: () => VpnChannel.openUrl('https://github.com/bia-pain-bache/BPB-VPN'),
               ),
               ListTile(
                 leading: const Icon(Icons.desktop_windows_rounded, color: Color(0xFF1685D8)),
                 title: const Text('Desktop App Repo'),
                 subtitle: const Text('github.com/NottDevv/BPB-VPN-Desktop'),
-                trailing: const Icon(Symbols.open_in_new_rounded, size: 20),
+                trailing: const Icon(Symbols.open_in_new_rounded, size: 20, color: Color(0xFF1685D8)),
                 onTap: () => VpnChannel.openUrl('https://github.com/NottDevv/BPB-VPN-Desktop'),
               ),
               ListTile(
-                leading: const Icon(Symbols.code_rounded),
+                leading: const Icon(Symbols.code_rounded, color: Color(0xFF8B5CF6)),
                 title: const Text('Desktop App Source Code'),
                 subtitle: const Text('github.com/NottDevv/BPB-VPN-Desktop-Dev'),
-                trailing: const Icon(Symbols.open_in_new_rounded, size: 20),
+                trailing: const Icon(Symbols.open_in_new_rounded, size: 20, color: Color(0xFF8B5CF6)),
                 onTap: () => VpnChannel.openUrl('https://github.com/NottDevv/BPB-VPN-Desktop-Dev'),
               ),
             ],
@@ -1035,10 +1035,10 @@ class _SettingsPageState extends State<SettingsPage> {
           SettingsCard(
             children: [
               ListTile(
-                leading: const Icon(Symbols.copyright_rounded),
+                leading: const Icon(Symbols.copyright_rounded, color: Color(0xFF8B5CF6)),
                 title: const Text('Open Source License'),
                 subtitle: const Text('GNU GPL v3.0'),
-                trailing: const Icon(Symbols.chevron_right_rounded),
+                trailing: const Icon(Symbols.chevron_right_rounded, color: Color(0xFF8B5CF6)),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) =>_CompactSettingsTheme(child:  const LicensePageView())),
                 ),
@@ -1047,7 +1047,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 leading: const Icon(Symbols.favorite_rounded, color: Color(0xFF16A36A)),
                 title: const Text('Donation (NotDev)'),
                 subtitle: const Text('Support NotDev'),
-                trailing: const Icon(Symbols.chevron_right_rounded),
+                trailing: const Icon(Symbols.chevron_right_rounded, color: Color(0xFF16A36A)),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) => _CompactSettingsTheme(
@@ -1062,10 +1062,10 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
               ),
               ListTile(
-                leading: const Icon(Symbols.favorite_rounded),
+                leading: const Icon(Symbols.favorite_rounded, color: Color(0xFFE0528A)),
                 title: const Text('Donation (BPB)'),
                 subtitle: const Text('Keep this project alive'),
-                trailing: const Icon(Symbols.chevron_right_rounded),
+                trailing: const Icon(Symbols.chevron_right_rounded, color: Color(0xFFE0528A)),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) => _CompactSettingsTheme(
@@ -2632,10 +2632,10 @@ class _VersionTile extends StatelessWidget {
     return FutureBuilder<String>(
       future: VpnChannel.appInfo().then((i) => i.version).catchError((_) => ''),
       builder: (context, snapshot) => ListTile(
-        leading: const Icon(Symbols.info_rounded),
+        leading: const Icon(Symbols.info_rounded, color: Color(0xFF3B82F6)),
         title: const Text('Version'),
         subtitle: Text(snapshot.data ?? '…'),
-        trailing: const Icon(Symbols.chevron_right_rounded),
+        trailing: const Icon(Symbols.chevron_right_rounded, color: Color(0xFF3B82F6)),
         onTap: () =>
             Navigator.of(context)
                 .push(MaterialPageRoute(builder: (_) =>_CompactSettingsTheme(child:  const _VersionsPage()))),
@@ -2798,7 +2798,7 @@ class _UpdateTileState extends State<_UpdateTile> {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: const Icon(Symbols.update_rounded),
+      leading: const Icon(Symbols.update_rounded, color: Color(0xFF0EA5E9)),
       title: const Text('Check for updates'),
       subtitle: const Text('Latest release on GitHub'),
       trailing: _checking
