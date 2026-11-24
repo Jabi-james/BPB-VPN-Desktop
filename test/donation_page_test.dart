@@ -34,21 +34,25 @@ void main() {
     await tester.tap(find.text('About'));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
-      find.text('Donation'),
+      find.text('Donation (NotDev)'),
       500,
       scrollable: find.byType(Scrollable).last,
     );
     await tester.pumpAndSettle();
     expect(
-      tester.getTopLeft(find.text('Donation')).dy,
+      tester.getTopLeft(find.text('Donation (NotDev)')).dy,
       greaterThan(tester.getTopLeft(find.text('Open Source License')).dy),
     );
-    await tester.tap(find.text('Donation'));
+    expect(
+      tester.getTopLeft(find.text('Donation (BPB)')).dy,
+      greaterThan(tester.getTopLeft(find.text('Donation (NotDev)')).dy),
+    );
+    await tester.tap(find.text('Donation (NotDev)'));
     await tester.pumpAndSettle();
     expect(find.byType(DonationPage), findsOneWidget);
-    expect(find.text('Tether · BEP-20'), findsOneWidget);
-    expect(find.text('Tether · TRC-20'), findsOneWidget);
-    expect(find.text('Tether · TON'), findsOneWidget);
+    expect(find.text('Tether - BEP20'), findsOneWidget);
+    expect(find.text('Tether - TRC20'), findsOneWidget);
+    expect(find.text('Tether - TON'), findsOneWidget);
   });
 
   testWidgets('unconfigured addresses disable their actions', (tester) async {
@@ -62,7 +66,7 @@ void main() {
       ),
     );
     expect(find.text('Address not configured'), findsNWidgets(3));
-    for (final network in ['BEP-20', 'TRC-20', 'TON']) {
+    for (final network in ['BEP20', 'TRC20', 'TON']) {
       for (final tooltip in ['Copy $network address', '$network QR code']) {
         expect(
           tester
@@ -107,8 +111,8 @@ void main() {
     );
 
     for (final (network, address) in [
-      ('BEP-20', 'test-bep20-address'),
-      ('TRC-20', 'test-trc20-address'),
+      ('BEP20', 'test-bep20-address'),
+      ('TRC20', 'test-trc20-address'),
       ('TON', 'test-ton-address'),
     ]) {
       await tester.tap(find.byTooltip('Copy $network address'));
