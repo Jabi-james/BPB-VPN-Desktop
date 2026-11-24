@@ -83,7 +83,7 @@ class _DonationTile extends StatelessWidget {
         final size = MediaQuery.sizeOf(context);
         // Keep the QR at one-third of its previous responsive size, while
         // ensuring it fits vertically in short windows.
-        final maxQrHeight = (size.height - 220).clamp(0.0, double.infinity);
+        final maxQrHeight = (size.height - 250).clamp(0.0, double.infinity);
         final qrSize = ((size.width - 128) / 3)
             .clamp(0.0, maxQrHeight)
             .toDouble();

@@ -159,8 +159,9 @@ void main() {
       final qrSize = tester.getSize(qr);
       expect(qrSize.width, qrSize.height);
       final expectedSize = ((screenSize.width - 128) / 3)
-          .clamp(0.0, (screenSize.height - 220).clamp(0.0, double.infinity));
+          .clamp(0.0, (screenSize.height - 250).clamp(0.0, double.infinity));
       expect(qrSize.width, closeTo(expectedSize, 0.01));
+      expect(qrSize.width, lessThan(tester.getSize(content).width));
       expect(find.byType(Scrollable).last, findsOneWidget);
       expect(tester.takeException(), isNull);
     });
