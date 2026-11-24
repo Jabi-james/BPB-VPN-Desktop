@@ -1,6 +1,7 @@
 import 'package:bpb/state/app_state.dart';
 import 'package:bpb/ui/status_card.dart';
 import 'package:bpb/services/vpn_channel.dart';
+import 'package:flutter/foundation.dart' show debugDefaultTargetPlatformOverride, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
