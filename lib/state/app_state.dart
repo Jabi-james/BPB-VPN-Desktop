@@ -902,25 +902,36 @@ class AppState extends ChangeNotifier {
     String reason,
   ) async {
     if (!isConnected || connectedAt != session) return;
+
+    // Give the current tunnel one automatic recovery attempt before declaring
+    // the connection disconnected. Starting again replaces the active session.
     _healthTimer?.cancel();
+    _trafficTimer?.cancel();
+    _windowsVerificationToken++;
+    status = VpnStatus.connecting;
+    error = null;
+    exitDetail = 'Connection lost · Retrying…';
     pingMs = -1;
-    error = reason;
+    connectedAt = null;
+    myIps = null;
+    loadingIps = false;
+    upSpeed = downSpeed = 0;
     notifyListeners();
+
     try {
-      await VpnChannel.stop();
-    } catch (_) {
-      // The native stop path still emits DISCONNECTED when cleanup fails.
-    }
-    if (status == VpnStatus.disconnected || connectedAt == session) {
+      if (!await VpnChannel.prepare(vpn: tunMode)) {
+        throw StateError('VPN permission denied');
+      }
+      await _start();
+      // The normal native state event / Windows verification owns the result.
+    } catch (e) {
       status = VpnStatus.disconnected;
-      error = reason;
+      error = e is StateError ? e.message : '$e';
       connectedAt = null;
       pingMs = null;
       myIps = null;
       loadingIps = false;
-      upSpeed = downSpeed = 0;
-      _trafficTimer?.cancel();
-      _healthTimer?.cancel();
+      exitDetail = null;
       notifyListeners();
     }
   }
