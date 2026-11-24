@@ -36,7 +36,14 @@ class HomePage extends StatelessWidget {
               painter: _BpbMarkPainter(),
             ),
             const SizedBox(width: 6),
-            const Text('BPB VPN', style: TextStyle(fontWeight: FontWeight.w600)),
+            const Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(text: 'BPB VPN', style: TextStyle(fontWeight: FontWeight.w600)),
+                  TextSpan(text: ' - (NotDev)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                ],
+              ),
+            ),
           ],
         ),
         actions: [
@@ -88,6 +95,7 @@ class HomePage extends StatelessWidget {
                   child: Image.asset(
                     'images/icon/bg.jpg',
                     fit: BoxFit.cover,
+                    alignment: const Alignment(0, -0.18),
                     filterQuality: FilterQuality.high,
                     errorBuilder: (_, _, _) => const SizedBox.shrink(),
                   ),
