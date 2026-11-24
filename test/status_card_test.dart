@@ -79,7 +79,7 @@ void main() {
     expect(card.right - ink.right, 24);
   });
 
-  testWidgets('shows image warning and red No Ping when disconnected', (tester) async {
+  testWidgets('shows a warning icon and red Timeout when disconnected', (tester) async {
     final state = AppState();
     addTearDown(state.dispose);
     await tester.pumpWidget(
@@ -89,15 +89,8 @@ void main() {
       ),
     );
 
-    expect(find.text('No Ping'), findsOneWidget);
-    expect(
-      find.byWidgetPredicate(
-        (widget) => widget is Image &&
-            widget.image is AssetImage &&
-            (widget.image as AssetImage).assetName == 'images/icon/Warning.png',
-      ),
-      findsOneWidget,
-    );
+    expect(find.text('Timeout'), findsOneWidget);
+    expect(find.byIcon(Icons.warning_amber_rounded), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
