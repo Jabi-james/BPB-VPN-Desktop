@@ -1656,7 +1656,7 @@ Color _sectionColor(String title) => switch (title) {
   'Routing' => const Color(0xFF0D9488),
   'Import / Export' => const Color(0xFF3B82F6),
   'Appearance' => const Color(0xFF78B7FF),
-  'About' => const Color(0xFF64748B),
+  'About' => const Color(0xFF8B5CF6),
   _ => const Color(0xFF64748B),
 };
 

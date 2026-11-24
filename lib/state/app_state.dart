@@ -199,8 +199,6 @@ class AppState extends ChangeNotifier {
   Timer? _healthTimer;
   bool _trafficSampleInProgress = false;
   bool _healthCheckInProgress = false;
-  int _healthFailures = 0;
-  DateTime? _lastTrafficAt;
   int _windowsVerificationToken = 0;
   Timer? _lanTimer;
   Future<void>? _aetherProvisioning;
@@ -685,9 +683,7 @@ class AppState extends ChangeNotifier {
     } else {
       _trafficTimer?.cancel();
       _healthTimer?.cancel();
-      _healthFailures = 0;
-      _lastTrafficAt = null;
-      upSpeed = downSpeed = 0;
+          upSpeed = downSpeed = 0;
       if (status == VpnStatus.disconnected) {
         pingMs = null;
         pinging = false;
@@ -787,7 +783,6 @@ class AppState extends ChangeNotifier {
         if (!isConnected) return;
         upSpeed = t.up;
         downSpeed = t.down;
-        if (t.up > 0 || t.down > 0) _lastTrafficAt = DateTime.now();
         if (defaultTargetPlatform == TargetPlatform.windows) {
           // The Windows host reads and resets Xray's counters each second, so
           // these values are deltas; accumulate them for the session totals.
@@ -854,7 +849,6 @@ class AppState extends ChangeNotifier {
       // DNS-only Serverless has no tunneled HTTP route to ping.
       if (mode == ConnectionMode.serverless &&
           serverlessMode == ServerlessMode.dns) {
-        _healthFailures = 0;
         return;
       }
 
@@ -880,7 +874,6 @@ class AppState extends ChangeNotifier {
         _healthFailures = 0;
       } else {
         pingMs = -1;
-        _healthFailures = 2;
         await _disconnectAfterHealthFailure(
           session,
           'The VPN connection lost internet connectivity.',
@@ -924,15 +917,19 @@ class AppState extends ChangeNotifier {
     upSpeed = downSpeed = 0;
     notifyListeners();
 
-    final recoveryStartedAt = DateTime.now();
+    final recoveryDeadline = DateTime.now().add(const Duration(seconds: 10));
+    Duration remainingRecoveryTime() =>
+        recoveryDeadline.difference(DateTime.now());
     try {
-      if (!await VpnChannel.prepare(vpn: tunMode)
-          .timeout(const Duration(seconds: 10))) {
+      final prepareTimeout = remainingRecoveryTime();
+      if (prepareTimeout <= Duration.zero) throw TimeoutException('Reconnect timed out');
+      if (!await VpnChannel.prepare(vpn: tunMode).timeout(prepareTimeout)) {
         throw StateError('VPN permission denied');
       }
-      await _start().timeout(const Duration(seconds: 10));
-      final remaining = const Duration(seconds: 10) -
-          DateTime.now().difference(recoveryStartedAt);
+      final startTimeout = remainingRecoveryTime();
+      if (startTimeout <= Duration.zero) throw TimeoutException('Reconnect timed out');
+      await _start().timeout(startTimeout);
+      final remaining = remainingRecoveryTime();
       if (remaining > Duration.zero && !isConnected) {
         await Future<void>.delayed(remaining);
       }
