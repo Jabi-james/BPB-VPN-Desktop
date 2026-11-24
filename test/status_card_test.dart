@@ -79,6 +79,36 @@ void main() {
     expect(card.right - ink.right, 24);
   });
 
+  testWidgets('No Ping remains tappable while the tunnel is connected', (tester) async {
+    final state = AppState()
+      ..status = VpnStatus.connected
+      ..connectedAt = DateTime.now()
+      ..pingMs = -1;
+    const channel = MethodChannel('bpb/core');
+    final calls = <String>[];
+    final messenger = tester.binding.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      calls.add(call.method);
+      if (call.method == 'measureDelay') return 42;
+      return null;
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+    addTearDown(state.dispose);
+    await tester.pumpWidget(
+      AppScope(
+        state: state,
+        child: const MaterialApp(home: Scaffold(body: StatusCard())),
+      ),
+    );
+
+    expect(find.text('No Ping'), findsOneWidget);
+    await tester.tap(find.text('No Ping'));
+    await tester.pump();
+    expect(calls, contains('measureDelay'));
+    expect(find.text('42 ms'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('shows image warning and red No Ping when disconnected', (tester) async {
     final state = AppState();
     addTearDown(state.dispose);
