@@ -67,7 +67,10 @@ void main() {
     );
     expect(find.text('Address not configured'), findsNWidgets(3));
     for (final network in ['BEP20', 'TRC20', 'TON']) {
-      for (final tooltip in ['Copy $network address', '$network QR code']) {
+      for (final tooltip in [
+        'Copy $network address',
+        network == 'BEP20' ? 'BEP-20 QR code' : '$network QR code',
+      ]) {
         expect(
           tester
               .widget<IconButton>(
