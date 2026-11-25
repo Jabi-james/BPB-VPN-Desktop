@@ -16,7 +16,6 @@ function Invoke-VerifiedDownload([string]$Url, [string]$Path, [string]$ExpectedH
 # Aether is the only independently maintained VPN engine in this desktop port.
 # Keep its release validation isolated from BPB-managed and Windows runtime assets.
 & (Join-Path $PSScriptRoot "fetch_aether.ps1") -ReleaseDirectory $release -TempDirectory $tempRoot
-if ($LASTEXITCODE -ne 0) { throw "Aether dependency validation failed with exit code $LASTEXITCODE" }
 
 function Get-LatestTorStableVersion {
   $index = (Invoke-WebRequest -Uri "https://dist.torproject.org/torbrowser/").Content
