@@ -352,8 +352,8 @@ jobs:
           go version
           Push-Location psiphon
           try {
-            go mod download github.com/Psiphon-Labs/psiphon-tunnel-core@v1.0.11-0.20261117173809-66e249dde58a
-            git diff -- go.sum
+            go mod tidy
+            git diff -- go.mod go.sum
             go build -trimpath -buildvcs=false -ldflags="-s -w" -o ../build/windows/x64/runner/Release/bpb_psiphon.exe .
           } finally {
             Pop-Location
