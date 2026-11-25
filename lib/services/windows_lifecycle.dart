@@ -30,6 +30,36 @@ class WindowsLifecycle with WindowListener, TrayListener {
   late final MenuItem _proxyMenuItem;
   late final MenuItem _systemProxyMenuItem;
   late final MenuItem _tunMenuItem;
+  bool? _lastIconsConnected;
+  Future<void> _iconUpdateQueue = Future<void>.value();
+
+  static File _connectionIconFile(bool connected) {
+    final executableDirectory = File(Platform.resolvedExecutable).parent.path;
+    final fileName = connected ? 'bpb_tray_connected.ico' : 'bpb_tray.ico';
+    return File('$executableDirectory\\$fileName');
+  }
+
+  /// Keep both Windows shell icons in sync with the actual VPN connection state.
+  void _updateConnectionIcons() {
+    if (_exiting) return;
+    final connected = appState.isConnected;
+    if (_lastIconsConnected == connected) return;
+    _lastIconsConnected = connected;
+
+    _iconUpdateQueue = _iconUpdateQueue.then((_) async {
+      if (_exiting) return;
+      final icon = _connectionIconFile(connected);
+      if (!await icon.exists()) {
+        debugPrint('BPB: connection-state icon not found: ${icon.path}');
+        return;
+      }
+      await trayManager.setIcon(icon.path);
+      if (_exiting) return;
+      await windowManager.setIcon(icon.path);
+    }).catchError((Object error, StackTrace stackTrace) {
+      debugPrint('BPB: failed to update connection-state icons: $error');
+    });
+  }
 
   /// Keep exactly one check mark beside the connection mode currently selected in the app.
   void _updateTrayMode() {
@@ -50,8 +80,13 @@ class WindowsLifecycle with WindowListener, TrayListener {
     await windowManager.setPreventClose(true);
     windowManager.addListener(lifecycle);
     trayManager.addListener(lifecycle);
-    final trayIcon = File('${File(Platform.resolvedExecutable).parent.path}\\bpb_tray.ico');
-    if (await trayIcon.exists()) await trayManager.setIcon(trayIcon.path);
+    final connected = appState.isConnected;
+    final initialIcon = _connectionIconFile(connected);
+    if (await initialIcon.exists()) {
+      await trayManager.setIcon(initialIcon.path);
+      await windowManager.setIcon(initialIcon.path);
+    }
+    lifecycle._lastIconsConnected = connected;
     await trayManager.setToolTip('BPB VPN');
     lifecycle._proxyMenuItem = MenuItem.checkbox(
       key: 'mode_proxy',
@@ -69,6 +104,7 @@ class WindowsLifecycle with WindowListener, TrayListener {
       checked: appState.device.appMode == AppMode.vpn,
     );
     appState.addListener(lifecycle._updateTrayMode);
+    appState.addListener(lifecycle._updateConnectionIcons);
     await trayManager.setContextMenu(
       Menu(
         items: [
@@ -204,6 +240,7 @@ class WindowsLifecycle with WindowListener, TrayListener {
 
   Future<void> _finishExit() async {
     appState.removeListener(_updateTrayMode);
+    appState.removeListener(_updateConnectionIcons);
     try {
       // Independent helpers shut down concurrently so their waits do not add up.
       await Future.wait([
