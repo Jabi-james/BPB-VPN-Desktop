@@ -16,7 +16,7 @@ class TorCustomBridgesPref extends StatefulWidget {
 }
 
 class _TorBridgeRow extends StatefulWidget {
-  const _TorBridgeRow({required this.bridge});
+  const _TorBridgeRow({super.key, required this.bridge});
 
   final String bridge;
 
