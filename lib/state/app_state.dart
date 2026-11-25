@@ -1320,6 +1320,13 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  /// Removes one custom bridge while preserving every other saved bridge.
+  void removeTorBridge(String line) {
+    final current = profile.tor.bridges;
+    final updated = [...current]..remove(line);
+    if (updated.length != current.length) write('tor.bridges', updated);
+  }
+
   /// Adds [lines] to the custom bridges, skipping ones already there; returns how many were added.
   int installTorBridges(List<String> lines) {
     final current = profile.tor.bridges;

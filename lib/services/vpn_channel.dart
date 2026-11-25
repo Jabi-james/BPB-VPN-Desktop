@@ -173,6 +173,20 @@ class VpnChannel {
     }
   }
 
+  /// Tests one Tor bridge in a temporary isolated Tor instance on Windows.
+  static Future<void> testTorBridge(String bridge) async {
+    if (!Platform.isWindows) {
+      throw UnsupportedError('Tor bridge testing is available on Windows only.');
+    }
+    final result = await _sendWindowsCommand({
+      'command': 'testTorBridge',
+      'torBridgeLine': bridge,
+    }, timeout: const Duration(minutes: 4));
+    if (result['ok'] != true) {
+      throw StateError(result['error'] as String? ?? 'Tor bridge test failed.');
+    }
+  }
+
   static Future<void> provisionAetherIdentities(String configDir) async {
     if (!Platform.isWindows) return;
     final result = await _sendWindowsCommand({

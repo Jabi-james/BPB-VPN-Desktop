@@ -31,6 +31,7 @@ type request struct {
 	PsiphonConfig string `json:"psiphonConfig,omitempty"`
 	TorBridge string `json:"torBridge,omitempty"`
 	TorCustomBridges []string `json:"torCustomBridges,omitempty"`
+	TorBridgeLine string `json:"torBridgeLine,omitempty"`
 	AetherConfigDir string `json:"aetherConfigDir,omitempty"`
 	AetherProtocol string `json:"aetherProtocol,omitempty"`
 	AetherEnvironment map[string]string `json:"aetherEnvironment,omitempty"`
@@ -278,6 +279,12 @@ func main() {
 			} else {
 				res.Delay = ms
 			}
+        case "testTorBridge":
+            if err := testTorBridgeWindows(filepath.Dir(executable), req.TorBridgeLine); err != nil {
+                res = response{Error: err.Error()}
+            } else {
+                res = response{OK: true}
+            }
 		case "checkDns":
 			if req.DNS == "" {
 				res = response{Error: "DNS test request is required"}

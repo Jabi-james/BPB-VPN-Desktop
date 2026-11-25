@@ -25,6 +25,7 @@ import 'per_app_page.dart';
 import 'prefs.dart';
 import 'routing_page.dart';
 import 'tor_bridges_page.dart';
+import 'tor_custom_bridges_pref.dart';
 import 'ssh_settings_page.dart';
 import 'hover_animated_icon.dart';
 
@@ -860,17 +861,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   MaterialPageRoute(builder: (_) =>_CompactSettingsTheme(child:  const TorBridgesPage())),
                 ),
               ),
-              const ListPref(
-                'tor.bridges',
-                'Custom bridges',
-                icon: Symbols.list_arrow_rounded,
-                hint: 'webtunnel [2001:db8::1]:443 FINGERPRINT url=https://example.com/path ver=0.0.1',
-                help:
-                    'Used by the Tor Custom bridges mode. One bridge per line, as given by '
-                    'bridges.torproject.org or @GetBridgesBot (webtunnel, obfs4, snowflake).',
-                itemValidator: validateBridge,
-                commaSeparated: false,
-              ),
+              const TorCustomBridgesPref(),
             ],
           ),
 
