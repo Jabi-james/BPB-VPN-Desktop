@@ -5,6 +5,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"crypto/tls"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -114,14 +115,15 @@ func testTorSOCKS(port int) error {
 	_ = conn.SetDeadline(time.Now().Add(25*time.Second))
 	if _,err=conn.Write([]byte{5,1,0});err!=nil{return err}
 	g:=make([]byte,2);if _,err=io.ReadFull(conn,g);err!=nil{return err};if g[0]!=5||g[1]!=0{return errors.New("Tor SOCKS authentication negotiation failed")}
-	host:="check.torproject.org"; req:=[]byte{5,1,0,3,byte(len(host))};req=append(req,[]byte(host)...);req=append(req,0,80)
+	host:="check.torproject.org"; req:=[]byte{5,1,0,3,byte(len(host))};req=append(req,[]byte(host)...);req=append(req,1,187)
 	if _,err=conn.Write(req);err!=nil{return err}
 	h:=make([]byte,4);if _,err=io.ReadFull(conn,h);err!=nil{return err};if h[1]!=0{return fmt.Errorf("Tor SOCKS connection failed (code %d)",h[1])}
 	var skip int
 	switch h[3] {case 1:skip=4;case 4:skip=16;case 3:var n [1]byte;if _,err=io.ReadFull(conn,n[:]);err!=nil{return err};skip=int(n[0]);default:return errors.New("invalid Tor SOCKS response")}
 	if _,err=io.CopyN(io.Discard,conn,int64(skip+2));err!=nil{return err}
-	if _,err=fmt.Fprintf(conn,"GET /api/ip HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nAccept: application/json\r\n\r\n",host);err!=nil{return err}
-	body,err:=io.ReadAll(conn);if err!=nil{return err};text:=string(body)
+	tlsConn:=tls.Client(conn,&tls.Config{ServerName:host,MinVersion:tls.VersionTLS12}); if err:=tlsConn.Handshake();err!=nil{return fmt.Errorf("TLS through Tor failed: %w",err)}
+	if _,err=fmt.Fprintf(tlsConn,"GET /api/ip HTTP/1.1\\r\\nHost: %s\\r\\nConnection: close\\r\\nAccept: application/json\\r\\n\\r\\n",host);err!=nil{return err}
+	body,err:=io.ReadAll(tlsConn);if err!=nil{return err};text:=string(body)
 	i:=strings.Index(text,"\\r\\n\\r\\n");if i<0{return errors.New("Tor test site returned an invalid HTTP response")}
 	if !strings.Contains(text[:i],"200 OK"){return errors.New("Tor test site returned a non-200 response")}
 	var result struct{ IsTor bool }
