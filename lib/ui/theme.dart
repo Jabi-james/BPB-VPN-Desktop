@@ -84,19 +84,19 @@ ThemeData _buildTheme(ColorScheme scheme) {
       mouseCursor: WidgetStateMouseCursor.clickable,
     ),
     iconButtonTheme: IconButtonThemeData(
-      style: IconButton.styleFrom(mouseCursor: WidgetStateMouseCursor.clickable),
+      style: ButtonStyle(mouseCursor: WidgetStateMouseCursor.clickable),
     ),
     filledButtonTheme: FilledButtonThemeData(
-      style: FilledButton.styleFrom(mouseCursor: WidgetStateMouseCursor.clickable),
+      style: ButtonStyle(mouseCursor: WidgetStateMouseCursor.clickable),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
-      style: OutlinedButton.styleFrom(mouseCursor: WidgetStateMouseCursor.clickable),
+      style: ButtonStyle(mouseCursor: WidgetStateMouseCursor.clickable),
     ),
     textButtonTheme: TextButtonThemeData(
-      style: TextButton.styleFrom(mouseCursor: WidgetStateMouseCursor.clickable),
+      style: ButtonStyle(mouseCursor: WidgetStateMouseCursor.clickable),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(mouseCursor: WidgetStateMouseCursor.clickable),
+      style: ButtonStyle(mouseCursor: WidgetStateMouseCursor.clickable),
     ),
     // Superellipse corners for every card and dialog.
     cardTheme: CardThemeData(shape: roundedShape(kSmallCardRadius)),

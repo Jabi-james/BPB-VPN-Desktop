@@ -344,6 +344,7 @@ class _PingButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
+    final theme = Theme.of(context);
     final ping = state.pingMs;
     if (!state.isConnected) return const Text('—');
     final noPing = ping == null || ping < 0;

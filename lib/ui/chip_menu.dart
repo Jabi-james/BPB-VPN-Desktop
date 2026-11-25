@@ -80,12 +80,18 @@ class ChipMenu<T> extends StatelessWidget {
         for (final v in values)
           MenuItemButton(
             // The selected item gets a tinted background and bold text.
-            style: MenuItemButton.styleFrom(
+            style: ButtonStyle(
               mouseCursor: WidgetStateMouseCursor.clickable,
-              backgroundColor: v == selected ? scheme.secondaryContainer : null,
-              foregroundColor: v == selected ? scheme.onSecondaryContainer : null,
+              backgroundColor: v == selected
+                  ? WidgetStatePropertyAll(scheme.secondaryContainer)
+                  : null,
+              foregroundColor: v == selected
+                  ? WidgetStatePropertyAll(scheme.onSecondaryContainer)
+                  : null,
               textStyle: v == selected
-                  ? theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700)
+                  ? WidgetStatePropertyAll(
+                      theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+                    )
                   : null,
             ),
             onPressed: () => onSelected(v),
