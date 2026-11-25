@@ -81,6 +81,22 @@ ThemeData _buildTheme(ColorScheme scheme) {
     fontFamily: 'OpenSans',
     listTileTheme: const ListTileThemeData(
       contentPadding: EdgeInsets.symmetric(horizontal: 20),
+      mouseCursor: WidgetStateMouseCursor.clickable,
+    ),
+    iconButtonTheme: IconButtonThemeData(
+      style: IconButton.styleFrom(mouseCursor: WidgetStateMouseCursor.clickable),
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(mouseCursor: WidgetStateMouseCursor.clickable),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(mouseCursor: WidgetStateMouseCursor.clickable),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(mouseCursor: WidgetStateMouseCursor.clickable),
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(mouseCursor: WidgetStateMouseCursor.clickable),
     ),
     // Superellipse corners for every card and dialog.
     cardTheme: CardThemeData(shape: roundedShape(kSmallCardRadius)),

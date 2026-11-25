@@ -325,6 +325,7 @@ class _Metric extends StatelessWidget {
     return Tooltip(
       message: tooltip,
       child: InkWell(
+   mouseCursor: WidgetStateMouseCursor.clickable,
         borderRadius: BorderRadius.circular(8),
         onTap: onTap,
         child: Padding(
@@ -343,9 +344,9 @@ class _PingButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
-    final theme = Theme.of(context);
     final ping = state.pingMs;
-    final noPing = !state.isConnected || ping == null || ping < 0;
+    if (!state.isConnected) return const Text('—');
+    final noPing = ping == null || ping < 0;
     const color = _green;
 
     final content = Padding(
@@ -371,10 +372,11 @@ class _PingButton extends StatelessWidget {
             ),
           ] else ...[
             if (noPing) ...[
-              Icon(
-                Icons.warning_amber_rounded,
-                size: 18,
-                color: theme.colorScheme.error,
+              Image.asset(
+                'images/icon/Warning.png',
+                width: 18,
+                height: 18,
+                fit: BoxFit.contain,
               ),
               const SizedBox(width: 5),
             ],
@@ -390,13 +392,10 @@ class _PingButton extends StatelessWidget {
       ),
     );
 
-    // Keep the disconnected indicator passive: the status card's separate
-    // connect/cancel control remains its only InkWell while connecting.
-    if (!state.isConnected) return content;
-
     return Tooltip(
       message: 'Test ping',
       child: InkWell(
+   mouseCursor: WidgetStateMouseCursor.clickable,
         borderRadius: BorderRadius.circular(16),
         onTap: state.pinging ? null : state.testPing,
         child: content,
@@ -519,6 +518,7 @@ class _PowerButtonState extends State<_PowerButton> {
                 shape: const CircleBorder(),
                 clipBehavior: Clip.antiAlias,
                 child: InkWell(
+   mouseCursor: WidgetStateMouseCursor.clickable,
                   // Always tappable: while connecting (Psiphon may search for a long time) it cancels.
                   onTap: state.toggle,
                   onHighlightChanged: (v) => setState(() => _pressed = v),

@@ -79,7 +79,7 @@ void main() {
     expect(card.right - ink.right, 24);
   });
 
-  testWidgets('shows a warning icon and red Timeout when disconnected', (tester) async {
+  testWidgets('disconnected ping displays only a dash', (tester) async {
     final state = AppState();
     addTearDown(state.dispose);
     await tester.pumpWidget(
@@ -89,8 +89,39 @@ void main() {
       ),
     );
 
+    expect(find.text('Timeout'), findsNothing);
+    expect(
+      find.byWidgetPredicate(
+        (widget) => widget is Image &&
+            widget.image is AssetImage &&
+            (widget.image as AssetImage).assetName == 'images/icon/Warning.png',
+      ),
+      findsNothing,
+    );
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('connected ping timeout displays a separate warning image', (tester) async {
+    final state = AppState()
+      ..status = VpnStatus.connected
+      ..pingMs = -1;
+    addTearDown(state.dispose);
+    await tester.pumpWidget(
+      AppScope(
+        state: state,
+        child: const MaterialApp(home: Scaffold(body: StatusCard())),
+      ),
+    );
+
     expect(find.text('Timeout'), findsOneWidget);
-    expect(find.byIcon(Icons.warning_amber_rounded), findsOneWidget);
+    expect(
+      find.byWidgetPredicate(
+        (widget) => widget is Image &&
+            widget.image is AssetImage &&
+            (widget.image as AssetImage).assetName == 'images/icon/Warning.png',
+      ),
+      findsOneWidget,
+    );
     await tester.pumpWidget(const SizedBox.shrink());
   });
 

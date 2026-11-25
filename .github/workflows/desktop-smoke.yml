@@ -147,7 +147,7 @@ jobs:
           fi
 
       - name: Compile desktop shell
-        run: flutter build ${{ matrix.platform }} --release --no-pub --dart-define=BPB_APP_VERSION=1.3.0
+        run: flutter build ${{ matrix.platform }} --release --no-pub --dart-define=BPB_APP_VERSION=1.3.0 --dart-define=BPB_BUILD_NUMBER=${{ github.run_number }}
 
       - name: Verify embedded Windows resources and metadata
         if: matrix.platform == 'windows'

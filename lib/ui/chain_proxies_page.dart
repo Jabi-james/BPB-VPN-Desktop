@@ -94,20 +94,36 @@ class ChainProxiesPage extends StatelessWidget {
     final chains = state.profile.chains;
     return Scaffold(
       appBar: AppBar(title: const Text('Chain proxies')),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _add(context),
-        icon: const Icon(Symbols.add_rounded),
-        label: const Text('Add config'),
-      ),
       body: ListView(
         padding: const EdgeInsets.only(top: 8, bottom: 96),
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-            child: Text(
-              'Traffic exits through the chain proxy when Chain proxy is selected as the exit node.\n'
-              'WireGuard and Hysteria protocols work over WARP and MASQUE only.',
-              style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Chain proxy',
+                        style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    FilledButton.icon(
+                      onPressed: () => _add(context),
+                      icon: const Icon(Symbols.add_rounded, size: 18),
+                      label: const Text('Add config'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Traffic exits through the chain proxy when Chain proxy is selected as the exit node.\n'
+                  'WireGuard and Hysteria protocols work over WARP and MASQUE only.',
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                ),
+              ],
             ),
           ),
           // A card per config.

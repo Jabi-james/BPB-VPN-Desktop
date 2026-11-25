@@ -80,13 +80,14 @@ class ChipMenu<T> extends StatelessWidget {
         for (final v in values)
           MenuItemButton(
             // The selected item gets a tinted background and bold text.
-            style: v == selected
-                ? MenuItemButton.styleFrom(
-                    backgroundColor: scheme.secondaryContainer,
-                    foregroundColor: scheme.onSecondaryContainer,
-                    textStyle: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
-                  )
-                : null,
+            style: MenuItemButton.styleFrom(
+              mouseCursor: WidgetStateMouseCursor.clickable,
+              backgroundColor: v == selected ? scheme.secondaryContainer : null,
+              foregroundColor: v == selected ? scheme.onSecondaryContainer : null,
+              textStyle: v == selected
+                  ? theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700)
+                  : null,
+            ),
             onPressed: () => onSelected(v),
             // Same width on every row; the name takes the free space, so tags line up on the right.
             child: SizedBox(
@@ -120,6 +121,7 @@ class ChipMenu<T> extends StatelessWidget {
         color: scheme.surfaceContainerHighest,
         shape: const StadiumBorder(),
         child: InkWell(
+          mouseCursor: WidgetStateMouseCursor.clickable,
           customBorder: const StadiumBorder(),
           onTap: enabled ? () => controller.isOpen ? controller.close() : controller.open() : null,
           child: Padding(
