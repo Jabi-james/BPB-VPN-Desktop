@@ -325,7 +325,7 @@ class _Metric extends StatelessWidget {
     return Tooltip(
       message: tooltip,
       child: InkWell(
-   mouseCursor: WidgetStateMouseCursor.clickable,
+        mouseCursor: WidgetStateMouseCursor.clickable,
         borderRadius: BorderRadius.circular(8),
         onTap: onTap,
         child: Padding(
@@ -396,7 +396,7 @@ class _PingButton extends StatelessWidget {
     return Tooltip(
       message: 'Test ping',
       child: InkWell(
-   mouseCursor: WidgetStateMouseCursor.clickable,
+        mouseCursor: WidgetStateMouseCursor.clickable,
         borderRadius: BorderRadius.circular(16),
         onTap: state.pinging ? null : state.testPing,
         child: content,
@@ -519,7 +519,7 @@ class _PowerButtonState extends State<_PowerButton> {
                 shape: const CircleBorder(),
                 clipBehavior: Clip.antiAlias,
                 child: InkWell(
-   mouseCursor: WidgetStateMouseCursor.clickable,
+                  mouseCursor: WidgetStateMouseCursor.clickable,
                   // Always tappable: while connecting (Psiphon may search for a long time) it cancels.
                   onTap: state.toggle,
                   onHighlightChanged: (v) => setState(() => _pressed = v),

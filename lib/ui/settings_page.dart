@@ -1433,7 +1433,7 @@ class _SettingsSectionsState extends State<_SettingsSections> {
         color: active ? theme.colorScheme.secondaryContainer : Colors.transparent,
         borderRadius: BorderRadius.circular(9),
         child: InkWell(
-   mouseCursor: WidgetStateMouseCursor.clickable,
+          mouseCursor: WidgetStateMouseCursor.clickable,
           borderRadius: BorderRadius.circular(9),
           onTap: onTap,
           child: Padding(
@@ -1475,7 +1475,7 @@ class _SettingsSectionsState extends State<_SettingsSections> {
         color: theme.colorScheme.surface.withValues(alpha: 0.88),
         borderRadius: BorderRadius.circular(13),
         child: InkWell(
-   mouseCursor: WidgetStateMouseCursor.clickable,
+          mouseCursor: WidgetStateMouseCursor.clickable,
           borderRadius: BorderRadius.circular(13),
           onTap: onTap,
           child: Container(
@@ -1797,7 +1797,7 @@ class _ThemeColorTile extends StatelessWidget {
                     Tooltip(
                       message: c.label,
                       child: InkWell(
-   mouseCursor: WidgetStateMouseCursor.clickable,
+                        mouseCursor: WidgetStateMouseCursor.clickable,
                         customBorder: const CircleBorder(),
                         onTap: () => state.setThemeColor(c),
                         child: AnimatedContainer(
