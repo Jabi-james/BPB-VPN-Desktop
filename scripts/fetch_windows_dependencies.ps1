@@ -93,8 +93,8 @@ function Test-TorPackage([string]$Directory) {
   # name, rather than requiring it to occupy an otherwise-empty line. Keep the
   # same tolerant matching so harmless output formatting cannot reject a valid build.
   foreach ($option in @("ClientTransportPlugin", "GeoIPFile", "GeoIPv6File", "ControlPort", "CookieAuthentication")) {
-    if ($options -notmatch "(?i)\\b$([regex]::Escape($option))\\b") {
-      $sample = ($options -split "\\r?\\n" | Select-Object -First 30) -join " | "
+    if ($options -notmatch "(?i)\b$([regex]::Escape($option))\b") {
+      $sample = ($options -split "\r?\n" | Select-Object -First 30) -join " | "
       throw "Tor compatibility check failed: required option $option is missing from --list-torrc-options output. First output lines: $sample"
     }
   }
