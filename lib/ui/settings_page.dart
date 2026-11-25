@@ -861,7 +861,21 @@ class _SettingsPageState extends State<SettingsPage> {
                   MaterialPageRoute(builder: (_) =>_CompactSettingsTheme(child:  const TorBridgesPage())),
                 ),
               ),
-              const TorCustomBridgesPref(),
+              ListTile(
+                leading: const Icon(Symbols.list_alt_rounded),
+                title: const Text('Custom bridges'),
+                subtitle: Text(p.tor.bridges.isEmpty
+                    ? 'No bridges added'
+                    : '${p.tor.bridges.length} saved bridge(s)'),
+                trailing: const Icon(Symbols.chevron_right_rounded),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => _CompactSettingsTheme(
+                      child: const TorCustomBridgesPref(),
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
 

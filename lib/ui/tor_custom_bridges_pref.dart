@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../models/settings.dart';
@@ -6,18 +7,114 @@ import '../services/vpn_channel.dart';
 import '../state/app_state.dart';
 import 'prefs.dart';
 
-/// Per-bridge management; the underlying tor.bridges setting remains the source of truth.
+/// Opens the dedicated page for managing the existing tor.bridges setting.
 class TorCustomBridgesPref extends StatefulWidget {
   const TorCustomBridgesPref({super.key});
 
   @override
-  State<TorCustomBridgesPref> createState() => _TorCustomBridgesPrefState();
+  State<TorCustomBridgesPref> createState() => _TorCustomBridgesPageState();
 }
 
-class _TorCustomBridgesPrefState extends State<TorCustomBridgesPref> {
-  final Set<String> _testing = {};
-  final Map<String, bool> _results = {};
+class _TorBridgeRow extends StatefulWidget {
+  const _TorBridgeRow({required this.bridge});
 
+  final String bridge;
+
+  @override
+  State<_TorBridgeRow> createState() => _TorBridgeRowState();
+}
+
+class _TorBridgeRowState extends State<_TorBridgeRow> {
+  bool _testing = false;
+  bool? _passed;
+
+  Future<void> _test() async {
+    if (_testing) return;
+    setState(() {
+      _testing = true;
+      _passed = null;
+    });
+    try {
+      await VpnChannel.testTorBridge(widget.bridge);
+      if (mounted) setState(() => _passed = true);
+    } catch (error) {
+      if (mounted) {
+        setState(() => _passed = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Bridge test failed: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _testing = false);
+    }
+  }
+
+  Future<void> _copy() async {
+    await Clipboard.setData(ClipboardData(text: widget.bridge));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Bridge address copied')),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+      padding: const EdgeInsets.fromLTRB(12, 10, 8, 8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            widget.bridge,
+            maxLines: 1,
+            softWrap: false,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodySmall?.copyWith(fontFamily: 'monospace'),
+          ),
+          const SizedBox(height: 7),
+          Row(
+            children: [
+              if (_testing)
+                const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              else if (_passed == true)
+                const Icon(Icons.check_circle, color: Colors.green, size: 19)
+              else if (_passed == false)
+                Icon(Icons.cancel, color: theme.colorScheme.error, size: 19),
+              const Spacer(),
+              TextButton.icon(
+                onPressed: _testing ? null : _test,
+                icon: const Icon(Symbols.network_check_rounded),
+                label: const Text('Test'),
+              ),
+              TextButton.icon(
+                onPressed: _copy,
+                icon: const Icon(Symbols.content_copy_rounded),
+                label: const Text('Copy'),
+              ),
+              TextButton.icon(
+                onPressed: () => AppScope.read(context).removeTorBridge(widget.bridge),
+                icon: const Icon(Symbols.delete_outline_rounded),
+                label: const Text('Delete'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TorCustomBridgesPageState extends State<TorCustomBridgesPref> {
   Future<void> _add() async {
     final state = AppScope.read(context);
     final value = await showTextInputDialog(
@@ -37,86 +134,30 @@ class _TorCustomBridgesPrefState extends State<TorCustomBridgesPref> {
     if (!current.contains(line)) state.write('tor.bridges', [...current, line]);
   }
 
-  Future<void> _test(String bridge) async {
-    if (_testing.contains(bridge)) return;
-    setState(() { _testing.add(bridge); _results.remove(bridge); });
-    try {
-      await VpnChannel.testTorBridge(bridge);
-      if (mounted) setState(() => _results[bridge] = true);
-    } catch (e) {
-      if (mounted) {
-        setState(() => _results[bridge] = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Bridge test failed: $e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _testing.remove(bridge));
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final state = AppScope.of(context);
-    final bridges = state.profile.tor.bridges;
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        ListTile(
-          leading: const Icon(Symbols.list_alt_rounded),
-          title: const Text('Custom bridges'),
-          subtitle: Text(bridges.isEmpty ? 'No bridges added' : '${bridges.length} saved bridge(s)'),
-          trailing: IconButton(
+    final bridges = AppScope.of(context).profile.tor.bridges;
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Custom Bridges'),
+        actions: [
+          IconButton(
             tooltip: 'Add bridge',
             onPressed: _add,
-            icon: const Icon(Symbols.add_circle_outline_rounded),
+            icon: const Icon(Symbols.add_rounded),
           ),
-        ),
-        if (bridges.isNotEmpty)
-          for (final bridge in bridges)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.all(10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SelectableText(bridge, style: theme.textTheme.bodySmall?.copyWith(fontFamily: 'monospace')),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        if (_testing.contains(bridge))
-                          const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                        else if (_results[bridge] == true)
-                          const Icon(Icons.check_circle, color: Colors.green, size: 19)
-                        else if (_results[bridge] == false)
-                          Icon(Icons.cancel, color: theme.colorScheme.error, size: 19),
-                        const Spacer(),
-                        TextButton.icon(
-                          onPressed: _testing.contains(bridge) ? null : () => _test(bridge),
-                          icon: const Icon(Symbols.network_check_rounded),
-                          label: const Text('Test'),
-                        ),
-                        TextButton.icon(
-                          onPressed: () {
-                            state.removeTorBridge(bridge);
-                            setState(() => _results.remove(bridge));
-                          },
-                          icon: const Icon(Symbols.delete_outline_rounded),
-                          label: const Text('Delete'),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+        ],
+      ),
+      body: bridges.isEmpty
+          ? const Center(child: Text('No custom bridges added'))
+          : ListView.builder(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              itemCount: bridges.length,
+              itemBuilder: (context, index) => _TorBridgeRow(
+                key: ValueKey(bridges[index]),
+                bridge: bridges[index],
               ),
             ),
-      ],
     );
   }
 }
