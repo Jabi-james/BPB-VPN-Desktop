@@ -4,6 +4,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -60,8 +61,9 @@ func testTorBridgeWindows(root, bridge string) (retErr error) {
 	cmd := exec.Command(filepath.Join(torDir,"tor.exe"), "-f", torrc)
 	cmd.Dir = torDir; cmd.Stdout = log; cmd.Stderr = log
 	if err := cmd.Start(); err != nil { return fmt.Errorf("start isolated Tor: %w",err) }
-	done := make(chan error,1)
-	go func(){ done <- cmd.Wait() }()
+	done := make(chan struct{})
+	var waitErr error
+	go func(){ waitErr = cmd.Wait(); close(done) }()
 	defer func(){
 		if cmd.Process != nil {
 			ctx,cancel:=contextWithTimeout(2*time.Second); _=exec.CommandContext(ctx,"taskkill.exe","/T","/F","/PID",strconv.Itoa(cmd.Process.Pid)).Run(); cancel()
@@ -70,7 +72,7 @@ func testTorBridgeWindows(root, bridge string) (retErr error) {
 	}()
 	deadline := time.Now().Add(3*time.Minute)
 	for time.Now().Before(deadline) {
-		select { case e:=<-done: if e==nil {return errors.New("isolated Tor exited before bootstrap")}; return fmt.Errorf("isolated Tor exited: %w",e); default: }
+		select { case <-done: if waitErr==nil {return errors.New("isolated Tor exited before bootstrap")}; return fmt.Errorf("isolated Tor exited: %w",waitErr); default: }
 		if _,e:=os.Stat(cookie); e==nil {
 			conn,e:=net.DialTimeout("tcp",fmt.Sprintf("127.0.0.1:%d",controlPort),500*time.Millisecond)
 			if e==nil {
@@ -120,6 +122,9 @@ func testTorSOCKS(port int) error {
 	if _,err=io.CopyN(io.Discard,conn,int64(skip+2));err!=nil{return err}
 	if _,err=fmt.Fprintf(conn,"GET /api/ip HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nAccept: application/json\r\n\r\n",host);err!=nil{return err}
 	body,err:=io.ReadAll(conn);if err!=nil{return err};text:=string(body)
-	if !strings.Contains(text,"200 OK")||!strings.Contains(strings.ToLower(text),"\"istor\":true") {return errors.New("Tor reached the test site but it did not confirm a Tor exit")}
+	i:=strings.Index(text,"\\r\\n\\r\\n");if i<0{return errors.New("Tor test site returned an invalid HTTP response")}
+	if !strings.Contains(text[:i],"200 OK"){return errors.New("Tor test site returned a non-200 response")}
+	var result struct{ IsTor bool }
+	if err:=json.Unmarshal([]byte(text[i+4:]),&result);err!=nil||!result.IsTor{return errors.New("Tor reached the test site but it did not confirm a Tor exit")}
 	return nil
 }
