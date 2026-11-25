@@ -2,40 +2,37 @@ from pathlib import Path
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
-PNG = ROOT / "assets" / "icons" / "ic_stat_vpn.png"
-ICO = ROOT / "windows" / "runner" / "resources" / "app_icon.ico"
+ICONS = ROOT / "assets" / "icons"
+OUTPUT = ROOT / "windows" / "runner" / "resources"
 
-if not PNG.is_file():
-    raise SystemExit(f"Rendered PNG is missing: {PNG}")
 
-with Image.open(PNG) as source:
-    image = source.convert("RGBA")
-    # Keep the in-app title mark unchanged; crop transparent margins only for
-    # Windows taskbar artwork appears larger.
-    # Ignore faint antialias/shadow pixels so transparent padding cannot shrink the artwork.
-    alpha = image.getchannel("A").point(lambda value: 255 if value > 20 else 0)
-    bounds = alpha.getbbox()
-    if bounds is None:
-        raise SystemExit(f"Rendered app icon is fully transparent: {PNG}")
-    left, top, right, bottom = bounds
-    # Crop exactly to visible artwork; do not add transparent padding.
-    pad_x = 0
-    pad_y = 0
-    image = image.crop((
-        max(0, left - pad_x),
-        max(0, top - pad_y),
-        min(image.width, right + pad_x),
-        min(image.height, bottom + pad_y),
-    ))
+def create_windows_icon(png_path: Path, ico_path: Path) -> None:
+    if not png_path.is_file():
+        raise SystemExit(f"Rendered PNG is missing: {png_path}")
 
-    # The source mark is 24x24. Pillow only emits ICO sizes no larger than
-    # the input image, so upscale before saving to produce the full multi-size ICO.
-    image = image.resize((256, 256), Image.Resampling.LANCZOS)
+    with Image.open(png_path) as source:
+        image = source.convert("RGBA")
+        # Ignore faint antialias/shadow pixels so transparent padding cannot shrink the artwork.
+        alpha = image.getchannel("A").point(lambda value: 255 if value > 20 else 0)
+        bounds = alpha.getbbox()
+        if bounds is None:
+            raise SystemExit(f"Rendered app icon is fully transparent: {png_path}")
+        left, top, right, bottom = bounds
+        image = image.crop((left, top, right, bottom))
 
-image.save(
-    ICO,
-    format="ICO",
-    sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)],
+        # The source mark is 24x24. Upscale to produce a full multi-size Windows ICO.
+        image = image.resize((256, 256), Image.Resampling.LANCZOS)
+
+    image.save(
+        ico_path,
+        format="ICO",
+        sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)],
+    )
+    print(f"Generated Windows shell icon: {ico_path}")
+
+
+create_windows_icon(ICONS / "ic_stat_vpn.png", OUTPUT / "app_icon.ico")
+create_windows_icon(
+    ICONS / "ic_stat_vpn_connected.png",
+    OUTPUT / "app_icon_connected.ico",
 )
-
-print(f"Generated enlarged Windows shell icon: {ICO}")
