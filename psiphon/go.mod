@@ -2,9 +2,9 @@ module bpb/psiphon
 
 go 1.26.0
 
-toolchain go1.26.9
+toolchain go1.26.10
 
-require github.com/Psiphon-Labs/psiphon-tunnel-core v1.0.11-0.20261005170209-c4a09096ab40
+require github.com/Psiphon-Labs/psiphon-tunnel-core v1.0.11-0.20261117173809-66e249dde58a
 
 require (
 	filippo.io/bigmod v0.0.1 // indirect
