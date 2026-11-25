@@ -342,7 +342,8 @@ jobs:
         shell: pwsh
         run: |
           $toolchainLine = Get-Content "psiphon/go.mod" | Where-Object { $_ -match '^toolchain\s+' } | Select-Object -First 1
-          if (!$toolchainLine -or $toolchainLine -notmatch '^toolchain\s+(go[0-9.]+)
+          if (!$toolchainLine -or $toolchainLine -notmatch '^toolchain\s+(go[0-9.]+)') { throw "Psiphon go.mod does not declare its tested Go toolchain." }
+          $env:GOTOOLCHAIN = $Matches[1]
           $env:CGO_ENABLED = "0"
           $env:GOOS = "windows"
           $env:GOARCH = "amd64"
