@@ -1113,7 +1113,6 @@ const torBridges = {
   'snowflake-amp': 'Snowflake AMP',
   'snowflake': 'Snowflake',
   'obfs4': 'obfs4',
-  'webtunnel': 'WebTunnel',
   'meek': 'meek',
   'direct': 'Direct',
   'custom': 'Custom bridges',
