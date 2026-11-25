@@ -122,9 +122,9 @@ func testTorSOCKS(port int) error {
 	switch h[3] {case 1:skip=4;case 4:skip=16;case 3:var n [1]byte;if _,err=io.ReadFull(conn,n[:]);err!=nil{return err};skip=int(n[0]);default:return errors.New("invalid Tor SOCKS response")}
 	if _,err=io.CopyN(io.Discard,conn,int64(skip+2));err!=nil{return err}
 	tlsConn:=tls.Client(conn,&tls.Config{ServerName:host,MinVersion:tls.VersionTLS12}); if err:=tlsConn.Handshake();err!=nil{return fmt.Errorf("TLS through Tor failed: %w",err)}
-	if _,err=fmt.Fprintf(tlsConn,"GET /api/ip HTTP/1.1\\r\\nHost: %s\\r\\nConnection: close\\r\\nAccept: application/json\\r\\n\\r\\n",host);err!=nil{return err}
+	if _,err=fmt.Fprintf(tlsConn,"GET /api/ip HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nAccept: application/json\r\n\r\n",host);err!=nil{return err}
 	body,err:=io.ReadAll(tlsConn);if err!=nil{return err};text:=string(body)
-	i:=strings.Index(text,"\\r\\n\\r\\n");if i<0{return errors.New("Tor test site returned an invalid HTTP response")}
+	i:=strings.Index(text,"\r\n\r\n");if i<0{return errors.New("Tor test site returned an invalid HTTP response")}
 	if !strings.Contains(text[:i],"200 OK"){return errors.New("Tor test site returned a non-200 response")}
 	var result struct{ IsTor bool }
 	if err:=json.Unmarshal([]byte(text[i+4:]),&result);err!=nil||!result.IsTor{return errors.New("Tor reached the test site but it did not confirm a Tor exit")}
