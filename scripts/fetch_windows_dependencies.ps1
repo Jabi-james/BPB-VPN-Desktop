@@ -104,19 +104,29 @@ function Test-TorPackage([string]$Directory) {
   # separately and may not include every supported transport. Older bundles
   # expose the ClientTransportPlugin commands under "pluggableTransports".
   $supportedTransports = @()
-  if ($config.transports) {
-    foreach ($transport in $config.transports.PSObject.Properties) {
-      $supportedTransports += @($transport.Value.protocols | ForEach-Object { [string]$_ })
+  $transportsProperty = $config.PSObject.Properties["transports"]
+  $legacyProperty = $config.PSObject.Properties["pluggableTransports"]
+  if ($null -ne $transportsProperty -and $null -ne $transportsProperty.Value) {
+    foreach ($transport in $transportsProperty.Value.PSObject.Properties) {
+      $protocolsProperty = $transport.Value.PSObject.Properties["protocols"]
+      if ($null -ne $protocolsProperty) {
+        $supportedTransports += @($protocolsProperty.Value | ForEach-Object { [string]$_ })
+      }
     }
-  } elseif ($config.pluggableTransports) {
-    foreach ($transport in $config.pluggableTransports.PSObject.Properties) {
-      $supportedTransports += [string]$transport.Value
+  } elseif ($null -ne $legacyProperty -and $null -ne $legacyProperty.Value) {
+    $legacy = $legacyProperty.Value
+    if ($legacy -is [System.Collections.IDictionary] -or $legacy -is [pscustomobject]) {
+      foreach ($transport in $legacy.PSObject.Properties) {
+        $supportedTransports += [string]$transport.Value
+      }
+    } else {
+      $supportedTransports += @($legacy | ForEach-Object { [string]$_ })
     }
   } else {
     throw "Tor pt_config.json contains neither transports nor pluggableTransports definitions."
   }
   foreach ($transport in @("obfs4", "snowflake", "webtunnel")) {
-    $supported = @($supportedTransports | Where-Object { $_ -match "(?i)\\b$([regex]::Escape($transport))\\b" })
+    $supported = @($supportedTransports | Where-Object { $_ -match "(?i)\b$([regex]::Escape($transport))\b" })
     if ($supported.Count -eq 0) { throw "Tor pluggable transport configuration does not support $transport." }
   }
 }
