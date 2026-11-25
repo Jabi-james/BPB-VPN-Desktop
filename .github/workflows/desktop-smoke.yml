@@ -352,6 +352,8 @@ jobs:
           go version
           Push-Location psiphon
           try {
+            go mod download
+            git diff -- go.sum
             go build -trimpath -buildvcs=false -ldflags="-s -w" -o ../build/windows/x64/runner/Release/bpb_psiphon.exe .
           } finally {
             Pop-Location
