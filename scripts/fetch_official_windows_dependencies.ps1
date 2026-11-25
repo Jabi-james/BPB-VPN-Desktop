@@ -20,7 +20,8 @@ function Get-OfficialTorBundle {
   }
   if (!$url) { throw "Could not locate a stable Windows x86_64 Tor Expert Bundle link on the official Tor page." }
 
-  $archive = Join-Path $env:RUNNER_TEMP ([uri]$url).Segments[-1]
+  $archiveName = [System.IO.Path]::GetFileName(([uri]$url).AbsolutePath)
+  $archive = Join-Path $env:RUNNER_TEMP $archiveName
   $signature = "$archive.asc"
   Invoke-WebRequest -Uri $url -OutFile $archive
   Invoke-WebRequest -Uri "$url.asc" -OutFile $signature
