@@ -5,7 +5,7 @@ on:
   push:
     branches: [desktop/**]
   pull_request:
-    branches: [main]
+    branches: [main, 'desktop/**']
   workflow_dispatch:
 
 permissions:

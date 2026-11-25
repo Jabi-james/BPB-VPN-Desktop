@@ -93,6 +93,9 @@ class WindowsLifecycle with WindowListener, TrayListener {
   void onWindowFocus() {
     if (!_windowWasBlurred) return;
     _windowWasBlurred = false;
+    if (appState.isConnected) {
+      unawaited(appState.checkConnectionHealthNow());
+    }
   }
 
   @override
