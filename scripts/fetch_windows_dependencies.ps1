@@ -89,8 +89,14 @@ function Test-TorPackage([string]$Directory) {
   if ($LASTEXITCODE -ne 0 -or $versionOutput -notmatch 'Tor') { throw "Tor executable version check failed." }
   $options = (& $tor --list-torrc-options 2>&1 | Out-String)
   if ($LASTEXITCODE -ne 0) { throw "Tor option compatibility check failed." }
+  # Tor's own command-line tests check this output by searching for each option
+  # name, rather than requiring it to occupy an otherwise-empty line. Keep the
+  # same tolerant matching so harmless output formatting cannot reject a valid build.
   foreach ($option in @("ClientTransportPlugin", "GeoIPFile", "GeoIPv6File", "ControlPort", "CookieAuthentication")) {
-    if ($options -notmatch "(?m)^$([regex]::Escape($option))$") { throw "Tor compatibility check failed: required option $option is missing." }
+    if ($options -notmatch "(?i)\\b$([regex]::Escape($option))\\b") {
+      $sample = ($options -split "\\r?\\n" | Select-Object -First 30) -join " | "
+      throw "Tor compatibility check failed: required option $option is missing from --list-torrc-options output. First output lines: $sample"
+    }
   }
   $config = Get-Content -LiteralPath $ptConfig -Raw | ConvertFrom-Json
   foreach ($bridge in @("obfs4", "snowflake", "webtunnel")) {
