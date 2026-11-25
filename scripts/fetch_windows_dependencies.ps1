@@ -99,8 +99,25 @@ function Test-TorPackage([string]$Directory) {
     }
   }
   $config = Get-Content -LiteralPath $ptConfig -Raw | ConvertFrom-Json
-  foreach ($bridge in @("obfs4", "snowflake", "webtunnel")) {
-    if (!$config.bridges.$bridge -or @($config.bridges.$bridge).Count -eq 0) { throw "Tor pluggable transport configuration is missing the $bridge bridge list." }
+  # Tor Browser changed pt_config.json in November 2026: transport definitions
+  # now live under "transports", while built-in bridge lists are generated
+  # separately and may not include every supported transport. Older bundles
+  # expose the ClientTransportPlugin commands under "pluggableTransports".
+  $supportedTransports = @()
+  if ($config.transports) {
+    foreach ($transport in $config.transports.PSObject.Properties) {
+      $supportedTransports += @($transport.Value.protocols | ForEach-Object { [string]$_ })
+    }
+  } elseif ($config.pluggableTransports) {
+    foreach ($transport in $config.pluggableTransports.PSObject.Properties) {
+      $supportedTransports += [string]$transport.Value
+    }
+  } else {
+    throw "Tor pt_config.json contains neither transports nor pluggableTransports definitions."
+  }
+  foreach ($transport in @("obfs4", "snowflake", "webtunnel")) {
+    $supported = @($supportedTransports | Where-Object { $_ -match "(?i)\\b$([regex]::Escape($transport))\\b" })
+    if ($supported.Count -eq 0) { throw "Tor pluggable transport configuration does not support $transport." }
   }
 }
 function Install-Tor([string]$Version, [string]$ExpectedHash, [string]$Source) {
