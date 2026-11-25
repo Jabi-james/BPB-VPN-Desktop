@@ -358,91 +358,10 @@ jobs:
           }
           if (!(Test-Path "build/windows/x64/runner/Release/bpb_psiphon.exe")) { throw "Psiphon executable was not produced" }
 
-      - name: Fetch and verify the official Tor Windows Expert Bundle
+      - name: Resolve, download and validate Windows runtime dependencies
         if: matrix.platform == 'windows'
         shell: pwsh
-        run: |
-          $version = "16.0.3"
-          $name = "tor-expert-bundle-windows-x86_64-$version.tar.gz"
-          $base = "https://dist.torproject.org/torbrowser/$version"
-          $archive = Join-Path $env:RUNNER_TEMP $name
-          Invoke-WebRequest -Uri "$base/$name" -OutFile $archive
-          $expected = "b70cabe2b93b5b1fd144466e42afaabe7a1a470228912657b3b5776e9cb7a9f1"
-          $actual = (Get-FileHash $archive -Algorithm SHA256).Hash.ToLowerInvariant()
-          if ($actual -ne $expected) { throw "Tor Expert Bundle SHA-256 mismatch: $actual" }
-          $extract = Join-Path $env:RUNNER_TEMP "tor-expert"
-          New-Item -ItemType Directory -Force $extract | Out-Null
-          tar -xzf $archive -C $extract
-          $tor = Join-Path $extract "tor/tor.exe"
-          $pt = Join-Path $extract "tor/pluggable_transports/lyrebird.exe"
-          $geoip = Join-Path $extract "data/geoip"
-          $geoip6 = Join-Path $extract "data/geoip6"
-          foreach ($file in @($tor, $pt, $geoip, $geoip6)) {
-            if (!(Test-Path $file)) { throw "Expected Tor bundle file missing: $file" }
-          }
-          $release = "build/windows/x64/runner/Release"
-          $torDir = Join-Path $release "tor"
-          New-Item -ItemType Directory -Force $torDir | Out-Null
-          Copy-Item $tor (Join-Path $torDir "tor.exe")
-          Copy-Item $pt (Join-Path $torDir "lyrebird.exe")
-          Copy-Item $geoip (Join-Path $torDir "geoip")
-          Copy-Item $geoip6 (Join-Path $torDir "geoip6")
-          $ptConfig = Join-Path $extract "tor/pluggable_transports/pt_config.json"
-          if (!(Test-Path $ptConfig)) { throw "Expected Tor pluggable transport config missing: $ptConfig" }
-          Copy-Item $ptConfig (Join-Path $torDir "pt_config.json")
-          Copy-Item "android/app/src/main/assets/psiphon_config.json" (Join-Path $release "psiphon_config.json")
-          if (!(Test-Path (Join-Path $release "psiphon_config.json"))) { throw "Psiphon configuration asset missing" }
-
-      - name: Fetch and verify the official Aether Windows core
-        if: matrix.platform == 'windows'
-        shell: pwsh
-        run: |
-          $version = "v2.4.0"
-          $name = "aether-windows-x86_64.zip"
-          $archive = Join-Path $env:RUNNER_TEMP $name
-          $url = "https://github.com/CluvexStudio/Aether/releases/download/$version/$name"
-          Invoke-WebRequest -Uri $url -OutFile $archive
-          $expected = "21b1444628d37121e873878e2eddd7932215418af1a2a12470caee5809026f1a"
-          $actual = (Get-FileHash $archive -Algorithm SHA256).Hash.ToLowerInvariant()
-          if ($actual -ne $expected) { throw "Aether archive SHA-256 mismatch: $actual" }
-          $extract = Join-Path $env:RUNNER_TEMP "aether"
-          Expand-Archive -Path $archive -DestinationPath $extract -Force
-          $binary = Join-Path $extract "aether.exe"
-          $pt = Join-Path $extract "pt"
-          $licenses = Join-Path $extract "LICENSES"
-          foreach ($path in @($binary, $pt, $licenses)) {
-            if (!(Test-Path $path)) { throw "Expected Aether bundle item missing: $path" }
-          }
-          $release = "build/windows/x64/runner/Release"
-          $dest = Join-Path $release "aether"
-          New-Item -ItemType Directory -Force $dest | Out-Null
-          Copy-Item $binary (Join-Path $dest "aether.exe")
-          Copy-Item -Recurse $pt (Join-Path $dest "pt")
-          Copy-Item -Recurse $licenses (Join-Path $dest "LICENSES")
-          @"
-          Aether v2.4.0
-          Source: https://github.com/CluvexStudio/Aether
-          License: AGPL-3.0-only
-          Third-party license texts and notices are in the LICENSES directory.
-          "@ | Set-Content -Path (Join-Path $dest "NOTICE.txt") -Encoding utf8
-          if (!(Test-Path (Join-Path $dest "aether.exe"))) { throw "Aether executable was not packaged" }
-          if (!(Test-Path (Join-Path $dest "LICENSES"))) { throw "Aether license bundle was not packaged" }
-
-      - name: Fetch and verify the official Wintun runtime
-        if: matrix.platform == 'windows'
-        shell: pwsh
-        run: |
-          $archive = Join-Path $env:RUNNER_TEMP "wintun-0.14.1.zip"
-          Invoke-WebRequest -Uri "https://www.wintun.net/builds/wintun-0.14.1.zip" -OutFile $archive
-          $hash = (Get-FileHash $archive -Algorithm SHA256).Hash.ToLowerInvariant()
-          if ($hash -ne "07c256185d6ee3652e09fa55c0b673e2624b565e02c4b9091c79ca7d2f24ef51") {
-            throw "Wintun archive SHA-256 mismatch: $hash"
-          }
-          $extract = Join-Path $env:RUNNER_TEMP "wintun"
-          Expand-Archive -Path $archive -DestinationPath $extract -Force
-          $release = "build/windows/x64/runner/Release"
-          Copy-Item (Join-Path $extract "wintun/bin/amd64/wintun.dll") (Join-Path $release "wintun.dll")
-          Copy-Item (Join-Path $extract "wintun/LICENSE.txt") (Join-Path $release "LICENSE-Wintun.txt")
+        run: pwsh -NoProfile -File scripts/fetch_windows_dependencies.ps1
 
       - name: Build Windows installer
         if: matrix.platform == 'windows'
