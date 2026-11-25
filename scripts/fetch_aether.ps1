@@ -5,6 +5,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
+$release = $ReleaseDirectory
+$tempRoot = $TempDirectory
 New-Item -ItemType Directory -Force $TempDirectory, $ReleaseDirectory | Out-Null
 
 function Get-Sha256([string]$Path) {
