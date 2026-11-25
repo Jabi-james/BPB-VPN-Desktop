@@ -1,31 +1,7 @@
 version: 2
 updates:
-  # Keep Go protocol engines and their transitive dependency graphs current.
-  # Major upgrades remain separate PRs so compatibility changes are reviewable.
-  - package-ecosystem: gomod
-    directory: /xray
-    target-branch: desktop/bootstrap
-    schedule:
-      interval: weekly
-      day: monday
-    open-pull-requests-limit: 5
-    groups:
-      go-minor-patch:
-        patterns: ["*"]
-        update-types: ["minor", "patch"]
-
-  - package-ecosystem: gomod
-    directory: /psiphon
-    target-branch: desktop/bootstrap
-    schedule:
-      interval: weekly
-      day: monday
-    open-pull-requests-limit: 5
-    groups:
-      go-minor-patch:
-        patterns: ["*"]
-        update-types: ["minor", "patch"]
-
+  # BPB-managed Xray and Psiphon versions follow upstream BPB source updates.
+  # Keep independent Go dependency PRs only for our desktop networking/scanner modules.
   - package-ecosystem: gomod
     directory: /networking
     target-branch: desktop/bootstrap
