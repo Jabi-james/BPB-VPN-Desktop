@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../models/settings.dart';
+
 import '../state/app_state.dart';
 import 'format.dart';
 import 'theme.dart';
@@ -202,7 +204,7 @@ class _WorkerRequestCard extends StatelessWidget {
     final theme = Theme.of(context);
     final usage = state.usage;
     final total = usage?.total ?? 0;
-    final ratio = (total / _limit).clamp(0.0, 1.0);
+    final ratio = (total / _limit).clamp(0.0, 1.0).toDouble();
 
     return Card(
       margin: EdgeInsets.zero,
@@ -254,7 +256,7 @@ class _WorkerRequestCard extends StatelessWidget {
                 children: [
                   Expanded(child: _RequestValue(label: 'This Worker', value: formatCount(usage.worker))),
                   Expanded(child: _RequestValue(label: 'Account total', value: formatCount(usage.total))),
-                  Expanded(child: _RequestValue(label: 'Remaining', value: formatCount((_limit - total).clamp(0, _limit)))),
+                  Expanded(child: _RequestValue(label: 'Remaining', value: formatCount((_limit - total).clamp(0, _limit).toInt()))),
                 ],
               ),
               const SizedBox(height: 16),
