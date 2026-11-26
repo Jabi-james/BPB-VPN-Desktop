@@ -61,13 +61,6 @@ class ConnectionCardState extends State<ConnectionCard> {
       final chain = state.exitChain;
       return Stack(
         children: [
-          Positioned.fill(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: collapse,
-              child: const ColoredBox(color: Colors.transparent),
-            ),
-          ),
           CompositedTransformFollower(
             link: _link,
             showWhenUnlinked: false,
