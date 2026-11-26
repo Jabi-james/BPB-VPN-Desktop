@@ -25,6 +25,7 @@ import '../services/net_errors.dart';
 import '../services/tor_bridges.dart';
 import '../services/updates.dart';
 import '../services/vpn_channel.dart';
+import '../services/user_fonts.dart';
 import '../services/warp.dart';
 import '../services/webrtc_leak_protection.dart';
 import '../services/xray_config.dart';
@@ -139,6 +140,8 @@ class AppState extends ChangeNotifier {
   final themeColor = ValueNotifier(ThemeColor.blue);
   final themeMode = ValueNotifier(ThemeMode.system);
   final fontScale = ValueNotifier(1.0);
+  final fontFamily = ValueNotifier<String>('ClashGrotesk');
+  List<UserFont> userFonts = [];
 
   VpnStatus status = VpnStatus.disconnected;
   String? error;
@@ -366,6 +369,24 @@ class AppState extends ChangeNotifier {
 
   void setFontScale(double value) => write('device.fontScale', value.clamp(0.8, 1.3));
 
+  Future<void> applyFontFamily(String family) async {
+    final custom = userFonts.where((font) => font.family == family).firstOrNull;
+    if (custom != null) {
+      await UserFontService.load(custom);
+    } else if (!const {'ClashGrotesk', 'Segoe UI', 'Arial', 'Tahoma'}.contains(family)) {
+      return;
+    }
+    write('device.theme.fontFamily', family);
+  }
+
+  Future<void> refreshUserFonts({bool notify = true}) async {
+    if (!Platform.isWindows) return;
+    userFonts = await UserFontService.discover();
+    if (notify) notifyListeners();
+  }
+
+  Future<void> openUserFontsFolder() => UserFontService.openFolder();
+
   // endregion
 
   // region configs
@@ -412,6 +433,21 @@ class AppState extends ChangeNotifier {
       _prefs,
     );
     device = DeviceSettings.fromJson(_decodeMap(_prefs.getString(_kDevice)));
+    if (Platform.isWindows) {
+      try {
+        await refreshUserFonts(notify: false);
+        if (device.fontFamily.startsWith('BPBUser_')) {
+          final selectedFont = userFonts.where((font) => font.family == device.fontFamily).firstOrNull;
+          if (selectedFont == null) {
+            device = device.updated('theme.fontFamily', 'ClashGrotesk');
+          } else {
+            await UserFontService.load(selectedFont);
+          }
+        }
+      } catch (_) {
+        device = device.updated('theme.fontFamily', 'ClashGrotesk');
+      }
+    }
     if (Platform.isWindows) {
       // Register both Aether identities in the background on first launch; existing files are kept.
       _aetherProvisioning = VpnChannel.provisionAetherIdentities(_aetherConfigDir);
@@ -580,6 +616,7 @@ class AppState extends ChangeNotifier {
     themeMode.value =
         ThemeMode.values.asNameMap()[device.themeMode] ?? ThemeMode.system;
     fontScale.value = device.fontScale;
+    fontFamily.value = device.fontFamily;
   }
 
   /// Defaults everywhere except the private parts and the configured clean IPs and endpoints.
