@@ -147,7 +147,9 @@ class _StatusCardState extends State<StatusCard> {
                 ),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
+            const _LiveTrafficRow(),
+            const SizedBox(height: 18),
             _Metrics(),
           ],
         ),
@@ -505,6 +507,70 @@ class _PowerButtonState extends State<_PowerButton> {
           ),
         ],
       ),
+    );
+  }
+}
+
+
+/// Live transfer rates stay visible on the home screen while connected.
+class _LiveTrafficRow extends StatelessWidget {
+  const _LiveTrafficRow();
+
+  @override
+  Widget build(BuildContext context) {
+    final state = AppScope.of(context);
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    Widget rate(String label, int value, IconData icon, Color color) {
+      return Expanded(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainerHighest.withValues(alpha: 0.58),
+            borderRadius: BorderRadius.circular(15),
+            border: Border.all(color: color.withValues(alpha: 0.28)),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: color, size: 20),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(label, style: theme.textTheme.labelSmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    )),
+                    const SizedBox(height: 2),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        state.isConnected ? '${formatBytes(value)}/s' : '—',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Row(
+      children: [
+        rate('DOWNLOAD', state.downSpeed, Symbols.download_rounded, _green),
+        const SizedBox(width: 10),
+        rate('UPLOAD', state.upSpeed, Symbols.upload_rounded, const Color(0xFF8B7CFF)),
+      ],
     );
   }
 }
