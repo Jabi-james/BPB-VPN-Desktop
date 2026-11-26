@@ -131,16 +131,25 @@ class ChipMenu<T> extends StatelessWidget {
           onTap: enabled ? () => controller.isOpen ? controller.close() : controller.open() : null,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(12, 6, 6, 6),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                FlagText(label(selected), style: theme.textTheme.labelLarge, maxLines: 1, overflow: TextOverflow.ellipsis),
-                AnimatedRotation(
-                  turns: controller.isOpen ? 0.5 : 0,
-                  duration: const Duration(milliseconds: 200),
-                  child: Icon(Symbols.expand_more_rounded, size: 20, color: scheme.onSurfaceVariant),
-                ),
-              ],
+            child: SizedBox(
+              width: 170,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: FlagText(
+                      label(selected),
+                      style: theme.textTheme.labelLarge,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  AnimatedRotation(
+                    turns: controller.isOpen ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: Icon(Symbols.expand_more_rounded, size: 20, color: scheme.onSurfaceVariant),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
