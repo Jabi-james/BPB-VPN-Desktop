@@ -16,8 +16,6 @@ import 'theme.dart';
 class ConnectionCard extends StatelessWidget {
   const ConnectionCard({super.key});
 
-  static const _rowAnimation = Duration(milliseconds: 250);
-
   /// What the exit carries: the worker relays only TCP, Tor too; WARP, MASQUE and Psiphon also
   /// UDP; the chain proxy depends on its protocol ([ChainInfo.carries]).
   static List<String> _transports(
