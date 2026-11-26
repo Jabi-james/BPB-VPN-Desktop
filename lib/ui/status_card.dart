@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
-import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../models/settings.dart';
@@ -17,10 +16,6 @@ import 'flag_text.dart';
 const _green = Color(0xFF39FF75);
 const _tabular = TextStyle(fontFeatures: [FontFeature.tabularFigures()]);
 
-// Layout constants: the power button is positioned from these.
-const _pad = 24.0;
-const _rowHeight = 124.0;
-const _button = 116.0;
 
 /// Home status card: state, power button, duration, ping and exit IPs (the connection's
 /// settings are on the ConnectionCard above it).
@@ -67,10 +62,6 @@ class _StatusCardState extends State<StatusCard> {
         : state.status == VpnStatus.disconnected
             ? scheme.onSurface
             : scheme.primary;
-
-    final modes = defaultTargetPlatform == TargetPlatform.windows
-        ? AppMode.values
-        : const [AppMode.vpn, AppMode.proxy];
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12),
@@ -192,83 +183,43 @@ class _Metrics extends StatelessWidget {
 
     final refreshIps = state.isConnected ? state.refreshMyIps : null;
     final twoIps = state.mode.needsWorker && state.exitNode == ExitNode.worker;
-    // This phone's LAN address (always shown); with LAN connections allowed, other
-    // devices use it with port 10808 for the SOCKS/HTTP proxy.
-    final lanIp = state.lanIp;
-    final lan = _Metric(
-      icon: Symbols.network_node_rounded,
-      label: 'LAN IP',
-      value: Text(lanIp ?? '—', maxLines: 1, overflow: TextOverflow.ellipsis),
-      tooltip: 'Tap to copy',
-      onTap: lanIp == null
-          ? null
-          : () {
-              Clipboard.setData(ClipboardData(text: lanIp));
-              ScaffoldMessenger.of(context)
-                  .showSnackBar(SnackBar(content: Text('Copied $lanIp')));
-            },
-    );
-    return Column(
+    return Row(
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: _Metric(
-                icon: Symbols.timer_rounded,
-                label: 'Duration',
-                value: Text(
-                  state.isConnected && since != null
-                      ? formatDuration(DateTime.now().difference(since))
-                      : '—',
-                ),
-              ),
+        Expanded(
+          child: _Metric(
+            icon: Symbols.timer_rounded,
+            label: 'Duration',
+            value: Text(
+              state.isConnected && since != null
+                  ? formatDuration(DateTime.now().difference(since))
+                  : '—',
             ),
-            Expanded(
-              child: _Metric(
-                icon: Symbols.speed_rounded,
-                label: 'Ping',
-                value: const _PingButton(),
-              ),
+          ),
+        ),
+        Expanded(
+          child: _Metric(
+            icon: Symbols.speed_rounded,
+            label: 'Ping',
+            value: const _PingButton(),
+          ),
+        ),
+        Expanded(
+          child: _Metric(
+            icon: Symbols.location_on_rounded,
+            label: 'My IP',
+            value: ip(ips?.other ?? (twoIps ? null : ips?.cloudflare)),
+            onTap: refreshIps,
+          ),
+        ),
+        if (twoIps)
+          Expanded(
+            child: _Metric(
+              icon: Symbols.cloud_rounded,
+              label: 'Cloudflare IP',
+              value: ip(ips?.cloudflare),
+              onTap: refreshIps,
             ),
-          ],
-        ),
-        SizedBox(height: defaultTargetPlatform == TargetPlatform.windows ? 8 : 14),
-        // Through the worker alone, Cloudflare-hosted sites see the proxy IP and others the
-        // worker's exit IP. WARP, Serverless and the chain / Psiphon exits have a single exit IP.
-        Row(
-          children: twoIps
-              ? [
-                  Expanded(
-                    child: _Metric(
-                      icon: Symbols.location_on_rounded,
-                      label: 'My IP',
-                      value: ip(ips?.other),
-                      onTap: refreshIps,
-                    ),
-                  ),
-                  Expanded(
-                    child: _Metric(
-                      icon: Symbols.location_on_rounded,
-                      label: 'My IP Cloudflare',
-                      value: ip(ips?.cloudflare),
-                      onTap: refreshIps,
-                    ),
-                  ),
-                ]
-              : [
-                  Expanded(
-                    child: _Metric(
-                      icon: Symbols.location_on_rounded,
-                      label: 'My IP',
-                      value: ip(ips?.other ?? ips?.cloudflare),
-                      onTap: refreshIps,
-                    ),
-                  ),
-                  Expanded(child: lan),
-                ],
-        ),
-        // Both target IPs fill the row, so the LAN IP gets its own.
-        if (twoIps) ...[const SizedBox(height: 14), lan],
+          ),
       ],
     );
   }
