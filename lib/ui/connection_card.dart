@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
-import 'package:material_symbols_icons/symbols.dart';
 
 import '../models/settings.dart';
 import '../services/chain_proxy.dart';
