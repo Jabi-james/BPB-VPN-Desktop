@@ -18,7 +18,7 @@ class UserFontService {
   static final Set<String> _loadedFamilies = {};
 
   static Directory get directory => Directory(
-    File(Platform.resolvedExecutable).parent.path + Platform.pathSeparator + 'Fonts',
+    '${File(Platform.resolvedExecutable).parent.path}${Platform.pathSeparator}Fonts',
   );
 
   static Future<Directory> ensureDirectory() async {
@@ -56,7 +56,7 @@ class UserFontService {
     for (final unit in file.path.toLowerCase().codeUnits) {
       hash = ((hash ^ unit) * 0x01000193) & 0xffffffff;
     }
-    return 'BPBUser_' + safe + '_' + hash.toRadixString(16);
+    return 'BPBUser_${safe}_${hash.toRadixString(16)}';
   }
 
   static Future<void> load(UserFont font) async {
