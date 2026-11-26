@@ -19,7 +19,7 @@ class UserFontService {
   static final Set<String> _loadedFamilies = {};
 
   static Directory get directory => Directory(
-    '${File(Platform.resolvedExecutable).parent.path}${Platform.pathSeparator}Fonts',
+    File(Platform.resolvedExecutable).parent.path + Platform.pathSeparator + 'Fonts',
   );
 
   static Future<Directory> ensureDirectory() async {
@@ -40,7 +40,10 @@ class UserFontService {
     return [
       for (final file in files)
         UserFont(
-          name: file.uri.pathSegments.last.replaceFirst(RegExp(r'\.(ttf|otf)$', caseSensitive: false), ''),
+          name: file.uri.pathSegments.last.replaceFirst(
+            RegExp(r'\.(ttf|otf)$', caseSensitive: false),
+            '',
+          ),
           path: file.path,
           family: _familyFor(file),
         ),
@@ -48,37 +51,20 @@ class UserFontService {
   }
 
   static String _familyFor(File file) {
-    final base = file.uri.pathSegments.last.replaceAll(RegExp(r'\.[^.]+
-
-  static Future<void> load(UserFont font) async {
-    if (_loadedFamilies.contains(font.family)) return;
-    final bytes = await File(font.path).readAsBytes();
-    final loader = FontLoader(font.family)
-      ..addFont(Future<ByteData>.value(ByteData.sublistView(Uint8List.fromList(bytes))));
-    await loader.load();
-    _loadedFamilies.add(font.family);
-  }
-
-  static Future<void> openFolder() async {
-    final folder = await ensureDirectory();
-    if (!Platform.isWindows) return;
-    await Process.start('explorer.exe', [folder.path]);
-  }
-}
-), '');
+    final base = file.uri.pathSegments.last.replaceAll(RegExp(r'\.[^.]+$'), '');
     final safe = base.replaceAll(RegExp(r'[^A-Za-z0-9_]+'), '_');
     var hash = 0x811c9dc5;
     for (final unit in file.path.toLowerCase().codeUnits) {
       hash = ((hash ^ unit) * 0x01000193) & 0xffffffff;
     }
-    return 'BPBUser_${safe}_${hash.toRadixString(16)}';
+    return 'BPBUser_' + safe + '_' + hash.toRadixString(16);
   }
 
   static Future<void> load(UserFont font) async {
     if (_loadedFamilies.contains(font.family)) return;
     final bytes = await File(font.path).readAsBytes();
     final loader = FontLoader(font.family)
-      ..addFont(Future<ByteData>.value(ByteData.sublistView(Uint8List.fromList(bytes))));
+      ..addFont(Future<ByteData>.value(ByteData.sublistView(bytes)));
     await loader.load();
     _loadedFamilies.add(font.family);
   }
