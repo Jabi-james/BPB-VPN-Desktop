@@ -186,7 +186,7 @@ class _Metrics extends StatelessWidget {
             ],
           ])
         : ip(ips?.other ?? ips?.cloudflare);
-    return Row(children: [
+    return Row(textDirection: TextDirection.ltr, children: [
       Expanded(child: _Metric(icon: Symbols.location_on_rounded, label: 'My IP', value: myIpValue, onTap: refreshIps)),
       const SizedBox(width: 8),
       Expanded(child: _Metric(icon: Symbols.speed_rounded, label: 'Ping', value: const _PingButton())),
