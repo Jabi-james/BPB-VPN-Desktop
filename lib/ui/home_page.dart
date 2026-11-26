@@ -13,7 +13,7 @@ import 'log_page.dart';
 import 'settings_page.dart';
 import 'theme.dart';
 import 'status_card.dart';
-import 'statistics_page.dart';
+import 'format.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -45,6 +45,15 @@ class HomePage extends StatelessWidget {
           ],
         ),
         actions: [
+          if (state.isConnected)
+            Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                _SpeedIndicator(icon: Symbols.download_rounded, value: state.downSpeed, color: const Color(0xFF39FF75)),
+                const SizedBox(width: 7),
+                _SpeedIndicator(icon: Symbols.upload_rounded, value: state.upSpeed, color: const Color(0xFF8B7CFF)),
+              ]),
+            ),
           IconButton(
             tooltip: 'Logs',
             icon: const HoverAnimatedIcon(child: Icon(Symbols.bug_report_rounded, color: Color(0xFFEF5350), size: 22)),
@@ -90,42 +99,53 @@ class HomePage extends StatelessWidget {
             bottom: false,
             child: SingleChildScrollView(
               padding: const EdgeInsets.only(bottom: 16),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final desktop = constraints.maxWidth >= 900;
-                  final dashboard = desktop
-                      ? Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: const [
-                            Expanded(flex: 6, child: StatusCard()),
-                            SizedBox(width: 12),
-                            Expanded(flex: 4, child: StatisticsPanel()),
-                          ],
-                        )
-                      : const Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            StatusCard(),
-                            SizedBox(height: 12),
-                            StatisticsPanel(),
-                          ],
-                        );
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (state.needsReconnect) const _ReconnectBanner(),
-                      SizedBox(height: gap),
-                      dashboard,
-                      SizedBox(height: defaultTargetPlatform == TargetPlatform.windows ? 10 : 16),
-                      const ConnectionCard(),
-                    ],
-                  );
-                },
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (state.needsReconnect) const _ReconnectBanner(),
+                  SizedBox(height: gap),
+                  const ConnectionCard(),
+                  SizedBox(height: defaultTargetPlatform == TargetPlatform.windows ? 10 : 16),
+                  const StatusCard(),
+                ],
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _SpeedIndicator extends StatelessWidget {
+  final IconData icon;
+  final int value;
+  final Color color;
+  const _SpeedIndicator({required this.icon, required this.value, required this.color});
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      constraints: const BoxConstraints(minWidth: 82, maxWidth: 94),
+      height: 34,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainer.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.32)),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 17, color: color),
+        const SizedBox(width: 6),
+        Flexible(child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text('${formatBytes(value)}/s',
+            style: theme.textTheme.labelLarge?.copyWith(
+              fontWeight: FontWeight.w800,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            )),
+        )),
+      ]),
     );
   }
 }
