@@ -6,6 +6,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../state/app_state.dart';
 import 'format.dart';
 import 'theme.dart';
+import 'chip_menu.dart';
 
 const _download = Color(0xFF39FF75);
 const _upload = Color(0xFF8B7CFF);
@@ -176,24 +177,21 @@ class _WorkerRequestCardState extends State<_WorkerRequestCard> {
             Expanded(child: Text('Worker Request',
               style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800))),
             if (accounts.length > 1 && account != null)
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 130),
-                child: DropdownButtonHideUnderline(child: DropdownButton<String>(
-                  value: account.id, isDense: true, isExpanded: true,
-                  items: [for (final item in accounts)
-                    DropdownMenuItem(value: item.id,
-                      child: Text(item.label, maxLines: 1, overflow: TextOverflow.ellipsis))],
-                  onChanged: state.isBusy ? null : (id) {
-                    if (id == null) return;
-                    final next = accounts.firstWhere((a) => a.id == id);
-                    setState(() => _selectedAccountId = id);
-                    if (next.id == state.selected?.account.id) {
-                      unawaited(state.refreshUsage());
-                    } else {
-                      unawaited(state.refreshUsageForAccount(next));
-                    }
-                  },
-                )),
+              ChipMenu<String>(
+                values: [for (final item in accounts) item.id],
+                selected: account.id,
+                label: (id) => accounts.firstWhere((item) => item.id == id).label,
+                width: 130,
+                onSelected: (id) {
+                  final next = accounts.firstWhere((a) => a.id == id);
+                  setState(() => _selectedAccountId = id);
+                  if (next.id == state.selected?.account.id) {
+                    unawaited(state.refreshUsage());
+                  } else {
+                    unawaited(state.refreshUsageForAccount(next));
+                  }
+                },
+                enabled: !state.isBusy,
               ),
             IconButton(
               tooltip: 'Refresh Worker requests',
