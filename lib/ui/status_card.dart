@@ -260,7 +260,7 @@ class _Metric extends StatelessWidget {
                 ?.copyWith(fontWeight: FontWeight.w700)
                 .merge(_tabular),
             child: SizedBox(
-              height: 28,
+              height: 38,
               child: Align(
                 alignment: Alignment.center,
                 child: Center(child: value),
@@ -297,7 +297,7 @@ class _PingButton extends StatelessWidget {
     const color = _green;
 
     final content = Padding(
-      padding: const EdgeInsets.fromLTRB(0, 2, 8, 2),
+      padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         textDirection: TextDirection.ltr,
