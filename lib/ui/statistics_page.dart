@@ -16,7 +16,6 @@ class StatisticsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
-    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(title: const Text('Statistics')),
       body: ListView(
@@ -29,7 +28,7 @@ class StatisticsPage extends StatelessWidget {
           ),
           if (state.worker != null && state.mode.needsWorker) ...[
             const SizedBox(height: 16),
-            const _WorkerRequestCard(),
+            _WorkerRequestCard(),
           ],
         ],
       ),
