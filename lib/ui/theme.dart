@@ -78,7 +78,7 @@ ThemeData _buildTheme(ColorScheme scheme) {
       scheme.brightness == Brightness.dark ? 0.065 : 0.025,
     ),
     useMaterial3: true,
-    fontFamily: 'OpenSans',
+    fontFamily: 'ClashGrotesk',
     listTileTheme: const ListTileThemeData(
       contentPadding: EdgeInsets.symmetric(horizontal: 20),
       mouseCursor: WidgetStateMouseCursor.clickable,
