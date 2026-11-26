@@ -149,6 +149,11 @@ class AppState extends ChangeNotifier {
 
   /// Settings changed while connected; reconnect to apply them.
   bool needsReconnect = false;
+  bool _connectionSelectionDirty = false;
+  bool _otherSettingsNeedReconnect = false;
+  Map<String, dynamic>? _connectedSelectionSnapshot;
+
+  bool get hasPendingConnectionSelectionChanges => _connectionSelectionDirty;
 
   /// What the Psiphon / Tor exit is doing (progress while connecting, or reconnecting).
   String? exitDetail;
@@ -544,6 +549,9 @@ class AppState extends ChangeNotifier {
       _setDevice(
         device.updated(path.substring(7), value),
         reconnect: !path.startsWith('device.theme.'),
+        connectionSelection: path == 'device.appMode' ||
+            path.startsWith('device.connection.') ||
+            path.startsWith('device.exit.'),
       );
     } else if (path.startsWith('vless.')) {
       _setVless(
@@ -614,12 +622,18 @@ class AppState extends ChangeNotifier {
     if (envChanged) unawaited(redeploy(s.account, s.deployment.type));
   }
 
-  void _setDevice(DeviceSettings value, {bool reconnect = true}) {
+  void _setDevice(
+    DeviceSettings value, {
+    bool reconnect = true,
+    bool connectionSelection = false,
+  }) {
     device = value;
     _profile = null;
     _prefs.setString(_kDevice, jsonEncode(device.toSparseJson()));
     _applyDeviceSideEffects();
-    if (reconnect) _markChangedWhileConnected();
+    if (reconnect) {
+      _markChangedWhileConnected(connectionSelection: connectionSelection);
+    }
     notifyListeners();
   }
 
@@ -645,8 +659,53 @@ class AppState extends ChangeNotifier {
     );
   }
 
-  void _markChangedWhileConnected() {
-    if (status != VpnStatus.disconnected) needsReconnect = true;
+  void _markChangedWhileConnected({bool connectionSelection = false}) {
+    if (status == VpnStatus.disconnected) return;
+    if (connectionSelection) {
+      if (status == VpnStatus.connected && _connectedSelectionSnapshot == null) {
+        _connectedSelectionSnapshot = _selectionSnapshot();
+      }
+      _connectionSelectionDirty = true;
+    } else {
+      _otherSettingsNeedReconnect = true;
+    }
+    needsReconnect = true;
+  }
+
+  Map<String, dynamic> _selectionSnapshot() {
+    final json = device.toJson();
+    return {
+      'appMode': json['appMode'],
+      'connection': json['connection'],
+      'exit': json['exit'],
+    };
+  }
+
+  void _captureConnectedSelection() {
+    _connectedSelectionSnapshot = _selectionSnapshot();
+    _connectionSelectionDirty = false;
+    _otherSettingsNeedReconnect = false;
+    needsReconnect = false;
+  }
+
+  void _clearConnectionSelectionTracking() {
+    _connectedSelectionSnapshot = null;
+    _connectionSelectionDirty = false;
+    _otherSettingsNeedReconnect = false;
+    needsReconnect = false;
+  }
+
+  /// Reverts only the connection selectors to the values used by the active session.
+  void cancelConnectionSelectionChanges() {
+    final snapshot = _connectedSelectionSnapshot;
+    if (!_connectionSelectionDirty || snapshot == null) return;
+    final json = device.toJson();
+    json['appMode'] = snapshot['appMode'];
+    json['connection'] = snapshot['connection'];
+    json['exit'] = snapshot['exit'];
+    _connectionSelectionDirty = false;
+    needsReconnect = _otherSettingsNeedReconnect;
+    _setDevice(DeviceSettings.fromJson(json), reconnect: false);
   }
 
   // endregion
@@ -720,7 +779,7 @@ class AppState extends ChangeNotifier {
       _startTrafficTimer();
       _startHealthTimer();
       if (!wasConnected && !sameSession) {
-        needsReconnect = false;
+        _captureConnectedSelection();
         totalUp = totalDown = 0;
         // Fetch exit IPs first, then automatically measure latency through the tunnel.
         unawaited(() async {
@@ -743,7 +802,7 @@ class AppState extends ChangeNotifier {
         pinging = false;
         myIps = null;
         loadingIps = false;
-        needsReconnect = false;
+        _clearConnectionSelectionTracking();
       }
     }
     notifyListeners();
@@ -758,7 +817,7 @@ class AppState extends ChangeNotifier {
         if (token != _windowsVerificationToken) return;
         status = VpnStatus.connected;
         connectedAt = event.connectedAt ?? DateTime.now();
-        needsReconnect = false;
+        _captureConnectedSelection();
         _startTrafficTimer();
         _startHealthTimer();
         unawaited(refreshUsage());
@@ -788,7 +847,7 @@ class AppState extends ChangeNotifier {
       status = VpnStatus.connected;
       error = null;
       connectedAt = event.connectedAt ?? DateTime.now();
-      needsReconnect = false;
+      _captureConnectedSelection();
       totalUp = totalDown = 0;
       _startTrafficTimer();
       _startHealthTimer();
@@ -815,6 +874,7 @@ class AppState extends ChangeNotifier {
       status = VpnStatus.disconnected;
       error = failure;
       connectedAt = null;
+      _clearConnectionSelectionTracking();
       loadingIps = false;
       notifyListeners();
     } finally {
@@ -1049,6 +1109,7 @@ class AppState extends ChangeNotifier {
     } catch (e) {
       status = VpnStatus.disconnected;
       error = e is StateError ? e.message : '$e';
+      _clearConnectionSelectionTracking();
       notifyListeners();
     }
   }
@@ -1065,6 +1126,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     if (!await VpnChannel.prepare(vpn: tunMode)) {
       error = 'VPN permission denied';
+      needsReconnect = _connectionSelectionDirty || _otherSettingsNeedReconnect;
       notifyListeners();
       return;
     }
@@ -1073,6 +1135,7 @@ class AppState extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       error = e is StateError ? e.message : '$e';
+      needsReconnect = _connectionSelectionDirty || _otherSettingsNeedReconnect;
       notifyListeners();
     }
   }
