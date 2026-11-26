@@ -83,7 +83,7 @@ class ConnectionCardState extends State<ConnectionCard> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      _Row(icon: Symbols.category_rounded, color: const Color(0xFF4F9BFF), label: 'Connection',
+                      _Row(icon: Symbols.category_rounded, color: const Color(0xFF4F9BFF), label: 'Type',
                         selector: const _TypeSelector()),
                       if (state.showCoreSelector)
                         _Row(icon: Symbols.memory_rounded, color: const Color(0xFF9B7CFF), label: 'Core',
