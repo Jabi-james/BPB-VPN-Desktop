@@ -160,7 +160,8 @@ class ConnectionCardState extends State<ConnectionCard> {
 
   @override
   void dispose() {
-    collapse();
+    _panelEntry?.remove();
+    _panelEntry = null;
     super.dispose();
   }
 
