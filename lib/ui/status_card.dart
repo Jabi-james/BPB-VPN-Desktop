@@ -57,7 +57,7 @@ class _StatusCardState extends State<StatusCard> {
     final (title, subtitle) = switch (state.status) {
       VpnStatus.connected => ('CONNECTED', 'Tap to disconnect'),
       VpnStatus.connecting => ('CONNECTING', 'Establishing secure connection…'),
-      VpnStatus.disconnecting => ('CONNECTING', 'Stopping connection…'),
+      VpnStatus.disconnecting => ('DISCONNECTING', 'Stopping connection…'),
       VpnStatus.disconnected => ('DISCONNECTED', 'Tap to connect'),
     };
     final titleColor = state.isConnected
@@ -161,28 +161,72 @@ class _Metrics extends StatelessWidget {
     final since = state.connectedAt;
     final ips = state.myIps;
     final twoIps = state.mode.needsWorker && state.exitNode == ExitNode.worker;
-    Widget ip(IpInfo? info) {
-      if (!state.isConnected) return const Text('—', textAlign: TextAlign.center);
-      if (ips == null) return Text(state.loadingIps ? '…' : '—', textAlign: TextAlign.center);
-      if (info == null) return const Text('Unavailable', textAlign: TextAlign.center);
-      return Row(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, children: [
-        Flexible(child: Text(info.ip, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center)),
-        if (info.country != null) ...[
-          const SizedBox(width: 5),
-          CountryFlagImage(countryCode: info.country!),
-        ],
-      ]);
+    Widget ip(IpInfo? info, {bool cloudflare = false}) {
+      if (!state.isConnected) {
+        return const Text('—', textAlign: TextAlign.center);
+      }
+      if (ips == null) {
+        return Text(state.loadingIps ? '…' : '—', textAlign: TextAlign.center);
+      }
+      if (info == null && !cloudflare) {
+        return const Text('Unavailable', textAlign: TextAlign.center);
+      }
+
+      final ipText = info?.ip ?? '—';
+      final flag = info?.country;
+      const yellow = Color(0xFFFFD54F);
+      return SizedBox(
+        height: 24,
+        width: double.infinity,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Keep the IP itself on the exact horizontal center of the metric.
+            Positioned.fill(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 25),
+                child: Center(
+                  child: Text(
+                    ipText,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            ),
+            if (cloudflare)
+              Positioned(
+                left: 0,
+                child: Text(
+                  'CF',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: yellow,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            if (flag != null)
+              Positioned(
+                right: 0,
+                child: CountryFlagImage(
+                  countryCode: flag,
+                  height: 16,
+                  width: 24,
+                ),
+              ),
+          ],
+        ),
+      );
     }
+
     final refreshIps = state.isConnected ? state.refreshMyIps : null;
     final myIpValue = twoIps
         ? Column(mainAxisSize: MainAxisSize.min, children: [
             ip(ips?.other),
             if (state.isConnected) ...[
               const SizedBox(height: 2),
-              Text('CF  ${ips?.cloudflare?.ip ?? '—'}',
-                maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant)),
+              ip(ips?.cloudflare, cloudflare: true),
             ],
           ])
         : ip(ips?.other ?? ips?.cloudflare);
