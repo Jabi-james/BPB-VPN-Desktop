@@ -68,7 +68,6 @@ class ChipMenu<T> extends StatelessWidget {
       MediaQuery.viewPaddingOf(context).bottom,
       48.0,
     ).toDouble();
-    final selectedBadges = badges?.call(selected) ?? const <String>[];
     return MenuAnchor(
       alignmentOffset: const Offset(0, 6),
       // The app-level SafeArea consumes the body padding, but menu overlays can
@@ -136,10 +135,6 @@ class ChipMenu<T> extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 FlagText(label(selected), style: theme.textTheme.labelLarge, maxLines: 1, overflow: TextOverflow.ellipsis),
-                for (final (i, tag) in selectedBadges.indexed) ...[
-                  SizedBox(width: i == 0 ? 6 : 4),
-                  badge(context, tag),
-                ],
                 AnimatedRotation(
                   turns: controller.isOpen ? 0.5 : 0,
                   duration: const Duration(milliseconds: 200),
