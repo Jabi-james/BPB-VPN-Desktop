@@ -1838,7 +1838,7 @@ class _UserFontTileState extends State<_UserFontTile> with WidgetsBindingObserve
               Text('Choose Font:', style: Theme.of(context).textTheme.labelLarge),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
-                value: customSelected ? _selectedFamily : null,
+                initialValue: customSelected ? _selectedFamily : null,
                 isExpanded: true,
                 decoration: const InputDecoration(
                   hintText: 'Select a font from the Fonts folder',
