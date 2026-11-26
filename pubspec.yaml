@@ -41,6 +41,7 @@ flutter:
     - images/icon/bg.jpg
     - images/icon/bgs.jpg
     - images/icon/Connected.png
+    - images/icon/Connecting.png
     - images/icon/Disconnected.png
     - images/icon/Serverless.png
     - images/icon/Warning.png
