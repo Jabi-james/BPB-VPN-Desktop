@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('network recheck displays Reconnecting', (tester) async {
+  testWidgets('network recheck keeps the home status clean', (tester) async {
     final state = AppState()
       ..status = VpnStatus.connecting
       ..connectedAt = DateTime.now()
@@ -18,13 +18,13 @@ void main() {
         child: const MaterialApp(home: Scaffold(body: StatusCard())),
       ),
     );
-    expect(find.text('RECONNECTING'), findsOneWidget);
-    expect(find.text('Checking internet connection…'), findsOneWidget);
+    expect(find.text('CONNECTING'), findsOneWidget);
+    expect(find.text('Checking internet connection…'), findsNothing);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('connecting remains cancellable and describes retrying', (
+  testWidgets('connecting remains cancellable without showing log details', (
     tester,
   ) async {
     final state = AppState()
@@ -47,7 +47,7 @@ void main() {
     );
 
     expect(find.text('CONNECTING'), findsOneWidget);
-    expect(find.text('Failed · Retrying…'), findsOneWidget);
+    expect(find.text('Failed · Retrying…'), findsNothing);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
     expect(
       find.byWidgetPredicate(
@@ -55,13 +55,13 @@ void main() {
       ),
       findsOneWidget,
     );
-    await tester.tap(find.byType(InkWell));
+    await tester.tap(find.byType(InkWell).first);
     await tester.pump();
     expect(calls, ['stop']);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('connect button has equal top and right insets', (tester) async {
+  testWidgets('connect button is centered above the connection status', (tester) async {
     await tester.pumpWidget(
       AppScope(
         state: AppState(),
@@ -69,14 +69,14 @@ void main() {
       ),
     );
 
-    final card = tester.getRect(
-      find
-          .descendant(of: find.byType(Card), matching: find.byType(Stack))
-          .first,
-    );
-    final ink = tester.getRect(find.byType(InkWell));
-    expect(ink.top - card.top, 24);
-    expect(card.right - ink.right, 24);
+    final card = tester.getRect(find.byType(Card).first);
+    final button = tester.getRect(find.byWidgetPredicate(
+      (widget) => widget is Semantics && widget.properties.label == 'Connect',
+    ));
+    final status = tester.getRect(find.text('DISCONNECTED'));
+    expect((button.center.dx - card.center.dx).abs(), lessThan(1));
+    expect(status.top, greaterThanOrEqualTo(button.bottom));
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 
   testWidgets('disconnected ping displays only a dash', (tester) async {
