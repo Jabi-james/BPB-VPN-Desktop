@@ -8,7 +8,6 @@ import 'hover_animated_icon.dart';
 
 import '../models/settings.dart';
 import '../state/app_state.dart';
-import 'chip_menu.dart';
 import 'config_view_page.dart';
 import 'connection_card.dart';
 import 'format.dart';
@@ -47,21 +46,6 @@ class HomePage extends StatelessWidget {
           ],
         ),
         actions: [
-          // VPN captures all traffic; System Proxy changes Windows' proxy setting; Proxy exposes only the local port.
-          ChipMenu(
-            values: defaultTargetPlatform == TargetPlatform.windows
-              ? AppMode.values
-              : const [AppMode.vpn, AppMode.proxy],
-            selected: state.device.appMode,
-            label: (v) => switch (v) {
-              AppMode.vpn => defaultTargetPlatform == TargetPlatform.windows ? 'TUN mode' : 'VPN mode',
-              AppMode.systemProxy => 'System Proxy',
-              AppMode.proxy => 'Proxy mode',
-            },
-            onSelected: state.setAppMode,
-            enabled: !state.isBusy,
-          ),
-          const SizedBox(width: 4),
           IconButton(
             tooltip: 'Logs',
             icon: const HoverAnimatedIcon(child: Icon(Symbols.bug_report_rounded, color: Color(0xFFEF5350), size: 22)),
