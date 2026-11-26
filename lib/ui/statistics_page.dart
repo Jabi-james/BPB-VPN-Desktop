@@ -41,10 +41,8 @@ class StatisticsPanel extends StatelessWidget {
           upload: state.allTimeUp,
           total: state.allTimeDown + state.allTimeUp,
         ),
-        if (state.worker != null) ...[
-          const SizedBox(height: 12),
-          _WorkerRequestCard(),
-        ],
+        const SizedBox(height: 12),
+        _WorkerRequestCard(),
       ],
     );
   }
