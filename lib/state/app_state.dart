@@ -208,6 +208,7 @@ class AppState extends ChangeNotifier {
   int _windowsVerificationToken = 0;
   Timer? _lanTimer;
   Future<void>? _aetherProvisioning;
+  bool _disposed = false;
 
   bool get isConnected => status == VpnStatus.connected;
   bool get isBusy =>
@@ -379,6 +380,27 @@ class AppState extends ChangeNotifier {
     write('device.theme.fontFamily', family);
   }
 
+  Future<void> _restoreUserFonts() async {
+    try {
+      await refreshUserFonts(notify: false);
+      if (device.fontFamily.startsWith('BPBUser_')) {
+        final selectedFont = userFonts
+            .where((font) => font.family == device.fontFamily)
+            .firstOrNull;
+        if (selectedFont == null) {
+          device = device.updated('theme.fontFamily', 'ClashGrotesk');
+          _applyDeviceSideEffects();
+        } else {
+          await UserFontService.load(selectedFont);
+        }
+      }
+    } catch (_) {
+      device = device.updated('theme.fontFamily', 'ClashGrotesk');
+      _applyDeviceSideEffects();
+    }
+    if (!_disposed) notifyListeners();
+  }
+
   Future<void> refreshUserFonts({bool notify = true}) async {
     if (!Platform.isWindows) return;
     try {
@@ -439,21 +461,6 @@ class AppState extends ChangeNotifier {
     );
     device = DeviceSettings.fromJson(_decodeMap(_prefs.getString(_kDevice)));
     if (Platform.isWindows) {
-      try {
-        await refreshUserFonts(notify: false);
-        if (device.fontFamily.startsWith('BPBUser_')) {
-          final selectedFont = userFonts.where((font) => font.family == device.fontFamily).firstOrNull;
-          if (selectedFont == null) {
-            device = device.updated('theme.fontFamily', 'ClashGrotesk');
-          } else {
-            await UserFontService.load(selectedFont);
-          }
-        }
-      } catch (_) {
-        device = device.updated('theme.fontFamily', 'ClashGrotesk');
-      }
-    }
-    if (Platform.isWindows) {
       // Register both Aether identities in the background on first launch; existing files are kept.
       _aetherProvisioning = VpnChannel.provisionAetherIdentities(_aetherConfigDir);
       unawaited(_aetherProvisioning!.catchError((_) {}));
@@ -479,6 +486,7 @@ class AppState extends ChangeNotifier {
     _stateSub = VpnChannel.states.listen(_onVpnState);
     CloudflareClient.tunnelPort = () => isConnected ? LocalProxy.port : null;
     notifyListeners();
+    if (Platform.isWindows) unawaited(_restoreUserFonts());
     _redeployDue();
     unawaited(refreshUsage());
     if (startLanTimer) {
@@ -502,6 +510,7 @@ class AppState extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     _stateSub?.cancel();
     _trafficTimer?.cancel();
     _healthTimer?.cancel();
