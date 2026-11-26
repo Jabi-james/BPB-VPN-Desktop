@@ -83,34 +83,19 @@ class ConnectionCardState extends State<ConnectionCard> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Row(
-                        children: [
-                          Icon(Symbols.tune_rounded, size: 18, color: scheme.primary),
-                          const SizedBox(width: 8),
-                          Expanded(child: Text('Connection options',
-                            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800))),
-                          IconButton(
-                            tooltip: 'Close',
-                            visualDensity: VisualDensity.compact,
-                            onPressed: collapse,
-                            icon: const Icon(Icons.close_rounded, size: 19),
-                          ),
-                        ],
-                      ),
-                      const Divider(height: 8),
-                      _Row(icon: Symbols.category_rounded, label: 'Connection',
+                      _Row(icon: Symbols.category_rounded, color: const Color(0xFF4F9BFF), label: 'Connection',
                         selector: const _TypeSelector()),
                       if (state.showCoreSelector)
-                        _Row(icon: Symbols.memory_rounded, label: 'Core',
+                        _Row(icon: Symbols.memory_rounded, color: const Color(0xFF9B7CFF), label: 'Core',
                           selector: ChipMenu(
                             values: CoreType.values, selected: state.core,
                             label: (core) => core.label, onSelected: state.setCore,
                             enabled: !state.isBusy)),
                       if (state.hasModeOption)
-                        const _Row(icon: Symbols.tune_rounded, label: 'Mode',
+                        const _Row(icon: Symbols.tune_rounded, color: const Color(0xFF26BFA5), label: 'Mode',
                           selector: _ModeSelector()),
                       if (hasExitNode)
-                        _Row(icon: Symbols.exit_to_app_rounded, label: 'Exit Node',
+                        _Row(icon: Symbols.exit_to_app_rounded, color: const Color(0xFFFFA34D), label: 'Exit Node',
                           selector: ChipMenu(
                             values: nodes, selected: exit,
                             label: (n) => switch (n) {
@@ -123,7 +108,7 @@ class ConnectionCardState extends State<ConnectionCard> {
                             onSelected: state.setExitNode,
                             enabled: !state.isBusy && nodes.length > 1)),
                       if (!isServerlessDns && (exit == ExitNode.psiphon || exit == ExitNode.tor))
-                        _Row(icon: Symbols.location_on_rounded, label: 'Region',
+                        _Row(icon: Symbols.location_on_rounded, color: const Color(0xFF62B878), label: 'Region',
                           selector: ChipMenu(
                             values: ['', ...exitRegions.keys],
                             selected: state.device.exitRegion,
@@ -131,7 +116,7 @@ class ConnectionCardState extends State<ConnectionCard> {
                             onSelected: state.setExitRegion,
                             enabled: !state.isBusy)),
                       if (exit == ExitNode.chain && chain != null)
-                        _Row(icon: Symbols.link_rounded, label: 'Chain',
+                        _Row(icon: Symbols.link_rounded, color: const Color(0xFF36B7D8), label: 'Chain',
                           selector: ChipMenu(
                             values: state.usableChains, selected: chain,
                             label: (c) => c.name,
@@ -231,14 +216,15 @@ class _Row extends StatelessWidget {
   final IconData icon;
   final String label;
   final Widget selector;
-  const _Row({required this.icon, required this.label, required this.selector});
+  final Color color;
+  const _Row({required this.icon, required this.label, required this.selector, this.color = Colors.white});
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return SizedBox(
       height: defaultTargetPlatform == TargetPlatform.windows ? 42 : 48,
       child: Row(children: [
-        Icon(icon, size: 20, color: theme.colorScheme.onSurfaceVariant),
+        Icon(icon, size: 20, color: color),
         const SizedBox(width: 8),
         Expanded(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
           style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant))),
