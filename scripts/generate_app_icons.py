@@ -32,10 +32,16 @@ with Image.open(PNG) as source:
     # the input image, so upscale before saving to produce the full multi-size ICO.
     image = image.resize((256, 256), Image.Resampling.LANCZOS)
 
-image.save(
-    ICO,
-    format="ICO",
-    sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)],
-)
+sizes = [(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)]
+image.save(ICO, format="ICO", sizes=sizes)
+
+# Keep the same BPB mark but shift its blue artwork to green for connected state.
+hue, saturation, brightness = image.convert("HSV").split()
+green_hue = Image.new("L", image.size, 96)
+green = Image.merge("HSV", (green_hue, saturation, brightness)).convert("RGBA")
+green.putalpha(image.getchannel("A"))
+connected_ico = ICO.with_name("app_icon_connected.ico")
+green.save(connected_ico, format="ICO", sizes=sizes)
 
 print(f"Generated enlarged Windows shell icon: {ICO}")
+print(f"Generated connected-state Windows shell icon: {connected_ico}")
