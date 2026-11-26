@@ -26,9 +26,31 @@ class WindowsLifecycle with WindowListener, TrayListener {
   static WindowsLifecycle? _instance;
   bool _handlingClose = false;
   bool _exiting = false;
+  bool? _lastIconConnected;
   late final MenuItem _proxyMenuItem;
   late final MenuItem _systemProxyMenuItem;
   late final MenuItem _tunMenuItem;
+
+  /// Update both the notification-area icon and the window/taskbar icon on state changes.
+  void _updateConnectionIcons() {
+    final connected = appState.isConnected;
+    if (_exiting || _lastIconConnected == connected) return;
+    _lastIconConnected = connected;
+    unawaited(_applyConnectionIcons(connected));
+  }
+
+  Future<void> _applyConnectionIcons(bool connected) async {
+    final executableDirectory = File(Platform.resolvedExecutable).parent.path;
+    final fileName = connected ? 'bpb_tray_connected.ico' : 'bpb_tray.ico';
+    final icon = File('$executableDirectory${Platform.pathSeparator}$fileName');
+    if (!await icon.exists()) return;
+    try {
+      await trayManager.setIcon(icon.path);
+      await windowManager.setIcon(icon.path);
+    } catch (_) {
+      // Keep the connection state functional even if Windows rejects an icon update.
+    }
+  }
 
   /// Keep exactly one check mark beside the connection mode currently selected in the app.
   void _updateTrayMode() {
@@ -49,9 +71,11 @@ class WindowsLifecycle with WindowListener, TrayListener {
     await windowManager.setPreventClose(true);
     windowManager.addListener(lifecycle);
     trayManager.addListener(lifecycle);
-    final trayIcon = File('${File(Platform.resolvedExecutable).parent.path}\\bpb_tray.ico');
+    final trayIcon = File('${File(Platform.resolvedExecutable).parent.path}${Platform.pathSeparator}bpb_tray.ico');
     if (await trayIcon.exists()) await trayManager.setIcon(trayIcon.path);
     await trayManager.setToolTip('BPB VPN');
+    appState.addListener(lifecycle._updateConnectionIcons);
+    lifecycle._updateConnectionIcons();
     lifecycle._proxyMenuItem = MenuItem.checkbox(
       key: 'mode_proxy',
       label: 'Proxy service only',
@@ -189,6 +213,7 @@ class WindowsLifecycle with WindowListener, TrayListener {
 
   Future<void> _finishExit() async {
     appState.removeListener(_updateTrayMode);
+    appState.removeListener(_updateConnectionIcons);
     try {
       // Independent helpers shut down concurrently so their waits do not add up.
       await Future.wait([
