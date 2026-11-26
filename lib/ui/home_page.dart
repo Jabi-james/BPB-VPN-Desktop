@@ -15,8 +15,15 @@ import 'theme.dart';
 import 'status_card.dart';
 import 'format.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  final _connectionCardKey = GlobalKey<ConnectionCardState>();
 
   @override
   Widget build(BuildContext context) {
@@ -45,15 +52,6 @@ class HomePage extends StatelessWidget {
           ],
         ),
         actions: [
-          if (state.isConnected)
-            Padding(
-              padding: const EdgeInsets.only(right: 6),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                _SpeedIndicator(icon: Symbols.download_rounded, value: state.downSpeed, color: const Color(0xFF39FF75)),
-                const SizedBox(width: 7),
-                _SpeedIndicator(icon: Symbols.upload_rounded, value: state.upSpeed, color: const Color(0xFF8B7CFF)),
-              ]),
-            ),
           IconButton(
             tooltip: 'Logs',
             icon: const HoverAnimatedIcon(child: Icon(Symbols.bug_report_rounded, color: Color(0xFFEF5350), size: 22)),
@@ -74,6 +72,15 @@ class HomePage extends StatelessWidget {
             onPressed: () => Navigator.of(context)
                 .push(MaterialPageRoute(builder: (_) => const SettingsPage())),
           ),
+          if (state.isConnected)
+            Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                _SpeedIndicator(icon: Symbols.download_rounded, value: state.downSpeed, color: const Color(0xFF39FF75)),
+                const SizedBox(width: 7),
+                _SpeedIndicator(icon: Symbols.upload_rounded, value: state.upSpeed, color: const Color(0xFF8B7CFF)),
+              ]),
+            ),
         ],
       ),
       body: Stack(
@@ -102,9 +109,13 @@ class HomePage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (state.needsReconnect) const _ReconnectBanner(),
+                  if (state.needsReconnect)
+                    _ReconnectBanner(onApply: () async {
+                      _connectionCardKey.currentState?.collapse();
+                      await state.reconnect();
+                    }),
                   SizedBox(height: gap),
-                  const ConnectionCard(),
+                  ConnectionCard(key: _connectionCardKey),
                   SizedBox(height: defaultTargetPlatform == TargetPlatform.windows ? 10 : 16),
                   const StatusCard(),
                 ],
@@ -151,7 +162,8 @@ class _SpeedIndicator extends StatelessWidget {
 }
 
 class _ReconnectBanner extends StatelessWidget {
-  const _ReconnectBanner();
+  final Future<void> Function() onApply;
+  const _ReconnectBanner({required this.onApply});
 
   @override
   Widget build(BuildContext context) {
@@ -177,7 +189,7 @@ class _ReconnectBanner extends StatelessWidget {
         title: const Text('Settings changed'),
         subtitle: const Text('Reconnect to apply them.'),
         trailing: FilledButton.tonal(
-          onPressed: state.reconnect,
+          onPressed: onApply,
           child: const Text('Apply'),
         ),
       ),
