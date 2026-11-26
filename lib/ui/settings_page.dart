@@ -228,21 +228,6 @@ class _SettingsPageState extends State<SettingsPage> {
       body: _SettingsSections(
         onSectionChanged: (isSsh) => setState(() => _sshSelected = isSsh),
         children: [
-          const SectionHeader('Statistics'),
-          SettingsCard(
-            children: [
-              ListTile(
-                leading: const Icon(Symbols.query_stats_rounded, color: Color(0xFF46B8FF)),
-                title: const Text('Statistics'),
-                subtitle: const Text('Live speeds, total traffic and Worker requests'),
-                trailing: const Icon(Symbols.chevron_right_rounded),
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const StatisticsPage()),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
           const SectionHeader('Global'),
           SettingsCard(
             children: [
@@ -1008,6 +993,22 @@ class _SettingsPageState extends State<SettingsPage> {
               const _GeoAssetsTile(),
             ],
           ),
+
+          const SectionHeader('Statistics'),
+          SettingsCard(
+            children: [
+              ListTile(
+                leading: const Icon(Symbols.query_stats_rounded, color: Color(0xFF46B8FF)),
+                title: const Text('Statistics'),
+                subtitle: const Text('Live speeds, total traffic and Worker requests'),
+                trailing: const Icon(Symbols.chevron_right_rounded),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const StatisticsPage()),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
 
           const SectionHeader('Import / Export'),
           const SettingsCard(
