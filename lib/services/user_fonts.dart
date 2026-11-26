@@ -53,7 +53,7 @@ class UserFontService {
     final base = file.uri.pathSegments.last.replaceAll(RegExp(r'\.[^.]+$'), '');
     final safe = base.replaceAll(RegExp(r'[^A-Za-z0-9_]+'), '_');
     var hash = 0x811c9dc5;
-    for (final unit in file.path.toLowerCase().codeUnits) {
+    for (final unit in file.uri.pathSegments.last.toLowerCase().codeUnits) {
       hash = ((hash ^ unit) * 0x01000193) & 0xffffffff;
     }
     return 'BPBUser_${safe}_${hash.toRadixString(16)}';
