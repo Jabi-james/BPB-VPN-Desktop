@@ -25,8 +25,11 @@ class ConnectionCardState extends State<ConnectionCard> {
   OverlayEntry? _panelEntry;
 
   void collapse() {
-    _panelEntry?.remove();
+    final entry = _panelEntry;
+    if (entry == null) return;
     _panelEntry = null;
+    entry.remove();
+    if (mounted) setState(() {});
   }
 
   void _togglePanel() {
@@ -152,6 +155,7 @@ class ConnectionCardState extends State<ConnectionCard> {
       );
     });
     Overlay.of(context, rootOverlay: true).insert(_panelEntry!);
+    setState(() {});
   }
 
   @override
