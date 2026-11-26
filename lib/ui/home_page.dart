@@ -100,10 +100,14 @@ class _HomePageState extends State<HomePage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   if (state.needsReconnect)
-                    _ReconnectBanner(onApply: () async {
-                      _connectionCardKey.currentState?.collapse();
-                      await state.reconnect();
-                    }),
+                    _ReconnectBanner(
+                      onApply: () async {
+                        _connectionCardKey.currentState?.collapse();
+                        await state.reconnect();
+                      },
+                      showCancel: state.hasPendingConnectionSelectionChanges,
+                      onCancel: state.cancelConnectionSelectionChanges,
+                    ),
                   SizedBox(height: gap),
                   ConnectionCard(key: _connectionCardKey),
                   SizedBox(height: defaultTargetPlatform == TargetPlatform.windows ? 10 : 16),
@@ -120,7 +124,13 @@ class _HomePageState extends State<HomePage> {
 
 class _ReconnectBanner extends StatelessWidget {
   final Future<void> Function() onApply;
-  const _ReconnectBanner({required this.onApply});
+  final VoidCallback onCancel;
+  final bool showCancel;
+  const _ReconnectBanner({
+    required this.onApply,
+    required this.onCancel,
+    required this.showCancel,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -144,9 +154,27 @@ class _ReconnectBanner extends StatelessWidget {
         ),
         title: const Text('Settings changed'),
         subtitle: const Text('Reconnect to apply them.'),
-        trailing: FilledButton.tonal(
-          onPressed: onApply,
-          child: const Text('Apply'),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (showCancel) ...[
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF87464C),
+                  foregroundColor: Colors.white,
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                ),
+                onPressed: onCancel,
+                child: const Text('Cancel'),
+              ),
+              const SizedBox(width: 8),
+            ],
+            FilledButton.tonal(
+              onPressed: onApply,
+              child: const Text('Apply'),
+            ),
+          ],
         ),
       ),
     );
