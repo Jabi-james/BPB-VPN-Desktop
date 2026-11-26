@@ -31,35 +31,6 @@ class ChipMenu<T> extends StatelessWidget {
     this.enabled = true,
   });
 
-  /// Icon and accent for each option in the expanded dropdown.
-  /// The collapsed selector remains text-only to keep every selector compact.
-  static (IconData, Color) _optionStyle(String value) {
-    final text = value.toLowerCase();
-    if (text.trim() == 'fastest') return (Icons.fast_forward_rounded, const Color(0xFFFFA34D));
-    if (text.contains('masque')) return (Icons.shield_rounded, const Color(0xFF8B7CF6));
-    if (text.contains('warp') || text.contains('wireguard')) return (Icons.bolt_rounded, const Color(0xFF25A9E0));
-    if (text.contains('vless') || text.contains('worker')) return (Icons.cloud_rounded, const Color(0xFF4F9BFF));
-    if (text.contains('psiphon')) return (Icons.public_rounded, const Color(0xFF31B77A));
-    if (text.contains('tor') || text.contains('onion')) return (Icons.security_rounded, const Color(0xFF9B7CFF));
-    if (text.contains('ssh')) return (Icons.terminal_rounded, const Color(0xFF25BFA5));
-    if (text.contains('chain')) return (Icons.link_rounded, const Color(0xFF36B7D8));
-    if (text.contains('default') || text.contains('direct')) return (Icons.route_rounded, const Color(0xFF62B878));
-    if (text.contains('fastest') || text.contains('region')) return (Icons.location_on_rounded, const Color(0xFFFFA34D));
-    if (text.contains('fragment')) return (Icons.tune_rounded, const Color(0xFFB084F5));
-    if (text.contains('normal')) return (Icons.check_circle_rounded, const Color(0xFF62B878));
-    if (text.contains('packet') || text.contains('fronting')) return (Icons.network_check_rounded, const Color(0xFF26BFA5));
-    if (text.contains('dns')) return (Icons.dns_rounded, const Color(0xFF36B7D8));
-    return (Icons.settings_rounded, const Color(0xFF8A96A8));
-  }
-
-  /// Region labels beginning with a flag emoji use the flag as their visual marker.
-  static bool _isCountryFlagLabel(String value) {
-    final runes = value.runes;
-    if (runes.isEmpty) return false;
-    final first = runes.first;
-    return first >= 0x1F1E6 && first <= 0x1F1FF;
-  }
-
   /// One tag (a protocol, TCP / UDP…), as the chips show it; also used by ChoicePref.
   static Widget badge(BuildContext context, String text) {
     final theme = Theme.of(context);
@@ -128,13 +99,6 @@ class ChipMenu<T> extends StatelessWidget {
               width: 170,
               child: Row(
                 children: [
-                  if (!_isCountryFlagLabel(label(v))) ...[
-                    Builder(builder: (context) {
-                      final (icon, color) = _optionStyle(label(v));
-                      return Icon(icon, size: 19, color: color);
-                    }),
-                    const SizedBox(width: 10),
-                  ],
                   Expanded(
                     child: switch (subtitleBadges?.call(v)) {
                       final tags? when tags.isNotEmpty => Padding(
