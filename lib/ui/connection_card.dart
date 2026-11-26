@@ -64,7 +64,7 @@ class ConnectionCardState extends State<ConnectionCard> {
           CompositedTransformFollower(
             link: _link,
             showWhenUnlinked: false,
-            offset: const Offset(0, 68),
+            offset: const Offset(12, 68),
             child: Material(
               elevation: 18,
               color: Color.lerp(scheme.surfaceContainer, Colors.black, 0.18)!,
