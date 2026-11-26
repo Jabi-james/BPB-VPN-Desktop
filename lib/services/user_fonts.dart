@@ -69,8 +69,8 @@ class UserFontService {
   }
 
   static Future<void> openFolder() async {
-    final folder = await ensureDirectory();
     if (!Platform.isWindows) return;
+    final folder = await ensureDirectory();
     await Process.start('explorer.exe', [folder.path]);
   }
 }
