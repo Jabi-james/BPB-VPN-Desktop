@@ -1764,7 +1764,7 @@ class _FontScaleTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(children: [
-                Icon(Symbols.format_size_rounded, color: theme.colorScheme.primary, size: 20),
+                Icon(Symbols.text_fields_rounded, color: theme.colorScheme.primary, size: 20),
                 const SizedBox(width: 10),
                 Text('Font Size', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
               ]),
@@ -1772,7 +1772,7 @@ class _FontScaleTile extends StatelessWidget {
               Text('Adjust the text scale throughout the app.', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
               const SizedBox(height: 14),
               LayoutBuilder(builder: (context, constraints) {
-                final usableWidth = (constraints.maxWidth - 24).clamp(0.0, double.infinity);
+                final usableWidth = (constraints.maxWidth - 24).clamp(0.0, double.infinity).toDouble();
                 return Column(
                   children: [
                     Slider(
@@ -1787,7 +1787,7 @@ class _FontScaleTile extends StatelessWidget {
                       height: 22,
                       child: Stack(children: [
                         Positioned(
-                          left: (12 + usableWidth * percent).clamp(0.0, constraints.maxWidth - 12),
+                          left: (12 + usableWidth * percent).clamp(0.0, constraints.maxWidth - 12).toDouble(),
                           child: Transform.translate(
                             offset: const Offset(-12, 0),
                             child: Text(
@@ -1882,7 +1882,7 @@ class _UserFontTileState extends State<_UserFontTile> with WidgetsBindingObserve
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            Icon(Symbols.library_books_rounded, color: theme.colorScheme.primary, size: 19),
+            Icon(Symbols.font_download_rounded, color: theme.colorScheme.primary, size: 19),
             const SizedBox(width: 9),
             Text('Built-in Fonts', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
           ]),
