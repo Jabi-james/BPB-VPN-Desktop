@@ -13,6 +13,7 @@ import 'log_page.dart';
 import 'settings_page.dart';
 import 'theme.dart';
 import 'status_card.dart';
+import 'statistics_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -89,15 +90,37 @@ class HomePage extends StatelessWidget {
             bottom: false,
             child: SingleChildScrollView(
               padding: const EdgeInsets.only(bottom: 16),
-              child: Column(
-                children: [
-              if (state.needsReconnect) const _ReconnectBanner(),
-              SizedBox(height: gap),
-              const ConnectionCard(),
-              SizedBox(height: defaultTargetPlatform == TargetPlatform.windows ? 8 : 16),
-              const StatusCard(),
-              SizedBox(height: defaultTargetPlatform == TargetPlatform.windows ? 8 : 16),
-            ],
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final desktop = constraints.maxWidth >= 900;
+                  final dashboard = desktop
+                      ? Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: const [
+                            Expanded(flex: 6, child: StatusCard()),
+                            SizedBox(width: 12),
+                            Expanded(flex: 4, child: StatisticsPanel()),
+                          ],
+                        )
+                      : const Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            StatusCard(),
+                            SizedBox(height: 12),
+                            StatisticsPanel(),
+                          ],
+                        );
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (state.needsReconnect) const _ReconnectBanner(),
+                      SizedBox(height: gap),
+                      dashboard,
+                      SizedBox(height: defaultTargetPlatform == TargetPlatform.windows ? 10 : 16),
+                      const ConnectionCard(),
+                    ],
+                  );
+                },
               ),
             ),
           ),
