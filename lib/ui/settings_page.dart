@@ -1010,7 +1010,10 @@ class _SettingsPageState extends State<SettingsPage> {
           const SectionHeader('Appearance'),
           const SettingsCard(children: [_ThemeModeTile(), _ThemeColorTile()]),
           const SizedBox(height: 12),
-          const SettingsCard(children: [_UserFontTile(), _FontScaleTile()]),
+          SettingsCard(children: [
+            if (defaultTargetPlatform == TargetPlatform.windows) const _UserFontTile(),
+            const _FontScaleTile(),
+          ]),
 
           const SectionHeader('About'),
           SettingsCard(
