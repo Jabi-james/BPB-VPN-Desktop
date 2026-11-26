@@ -1008,7 +1008,9 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
 
           const SectionHeader('Appearance'),
-          const SettingsCard(children: [_ThemeModeTile(), _ThemeColorTile(), _FontScaleTile()]),
+          const SettingsCard(children: [_ThemeModeTile(), _ThemeColorTile()]),
+          const SizedBox(height: 12),
+          const SettingsCard(children: [_UserFontTile(), _FontScaleTile()]),
 
           const SectionHeader('About'),
           SettingsCard(
@@ -1738,6 +1740,154 @@ class _FontScaleTile extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// User fonts are loaded from the Fonts folder beside the running executable.
+class _UserFontTile extends StatefulWidget {
+  const _UserFontTile();
+
+  @override
+  State<_UserFontTile> createState() => _UserFontTileState();
+}
+
+class _UserFontTileState extends State<_UserFontTile> with WidgetsBindingObserver {
+  String? _selectedFamily;
+
+  static const _otherFonts = {
+    'ClashGrotesk': 'Clash Grotesk',
+    'Segoe UI': 'Segoe UI',
+    'Arial': 'Arial',
+    'Tahoma': 'Tahoma',
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    final state = AppScope.read(context);
+    _selectedFamily = state.fontFamily.value;
+    state.refreshUserFonts();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      AppScope.read(context).refreshUserFonts();
+    }
+  }
+
+  Future<void> _apply() async {
+    final family = _selectedFamily;
+    if (family == null) return;
+    try {
+      await AppScope.read(context).applyFontFamily(family);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Font applied: ${_otherFonts[family] ?? AppScope.read(context).userFonts.where((font) => font.family == family).firstOrNull?.name ?? family}')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not load this font: $error')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = AppScope.of(context);
+    final fonts = state.userFonts;
+    final customSelected = fonts.any((font) => font.family == _selectedFamily);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ListTile(
+          leading: const Icon(Symbols.font_download_rounded),
+          title: const Text('Font'),
+          trailing: IconButton(
+            tooltip: 'Open Fonts folder',
+            icon: const Icon(Symbols.folder_open_rounded),
+            onPressed: () async {
+              try {
+                await state.openUserFontsFolder();
+              } catch (error) {
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Could not open Fonts folder: $error')),
+                );
+              }
+            },
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Choose Font:', style: Theme.of(context).textTheme.labelLarge),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                value: customSelected ? _selectedFamily : null,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  hintText: 'Select a font from the Fonts folder',
+                  border: OutlineInputBorder(),
+                ),
+                items: [
+                  for (final font in fonts)
+                    DropdownMenuItem(
+                      value: font.family,
+                      child: Text(font.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    ),
+                ],
+                onChanged: fonts.isEmpty ? null : (value) => setState(() => _selectedFamily = value),
+              ),
+              if (fonts.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    'No custom fonts found. Add .ttf or .otf files to the Fonts folder.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 16),
+              Text('Other fonts', style: Theme.of(context).textTheme.labelLarge),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final entry in _otherFonts.entries)
+                    ChoiceChip(
+                      label: Text(entry.value),
+                      selected: _selectedFamily == entry.key,
+                      onSelected: (_) => setState(() => _selectedFamily = entry.key),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Align(
+                alignment: Alignment.centerRight,
+                child: FilledButton.icon(
+                  onPressed: _selectedFamily == null ? null : _apply,
+                  icon: const Icon(Symbols.check_rounded, size: 18),
+                  label: const Text('Apply'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
