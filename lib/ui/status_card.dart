@@ -14,6 +14,8 @@ import 'flag_text.dart';
 
 /// Connected colour; stays green whatever theme colour is picked.
 const _green = Color(0xFF39FF75);
+const _red = Color(0xFFFF4D5A);
+const _connecting = Color(0xFF8293A8);
 const _tabular = TextStyle(fontFeatures: [FontFeature.tabularFigures()]);
 const _button = 116.0;
 
@@ -66,15 +68,10 @@ class _StatusCardState extends State<StatusCard> {
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12),
-      color: scheme.surfaceContainer.withValues(alpha: 0.80),
+      color: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
       elevation: 0,
-      shape: roundedShape(
-        kHeroRadius,
-        side: BorderSide(
-          color: scheme.outlineVariant.withValues(alpha: 0.75),
-          width: 0.75,
-        ),
-      ),
+      shape: roundedShape(kHeroRadius, side: BorderSide.none),
       child: Padding(
         padding: EdgeInsets.symmetric(
           horizontal: compact ? 16 : 24,
@@ -393,11 +390,8 @@ class _PowerButtonState extends State<_PowerButton> {
     final busy = state.isBusy;
     final (Color fill, Color iconColor) = switch (state.status) {
       VpnStatus.connected => (_green, Colors.white),
-      VpnStatus.disconnected => (
-        scheme.primaryContainer,
-        scheme.onPrimaryContainer,
-      ),
-      _ => (scheme.primary, scheme.onPrimary),
+      VpnStatus.disconnected => (_red, Colors.white),
+      _ => (_connecting, Colors.white),
     };
     final up =
         state.status == VpnStatus.connected ||
@@ -491,14 +485,19 @@ class _PowerButtonState extends State<_PowerButton> {
                       turns: _turns!,
                       duration: const Duration(milliseconds: 700),
                       curve: Curves.easeOutBack,
-                      child: Image.asset(
-                        state.status == VpnStatus.connected
-                            ? 'images/icon/Connected.png'
-                            : 'images/icon/Disconnected.png',
-                        width: widget.size,
-                        height: widget.size,
-                        fit: BoxFit.contain,
-                      ),
+                      child: busy
+                          ? _SpinningArtwork(
+                              asset: 'images/icon/Connecting.png',
+                              size: widget.size,
+                            )
+                          : Image.asset(
+                              state.status == VpnStatus.connected
+                                  ? 'images/icon/Connected.png'
+                                  : 'images/icon/Disconnected.png',
+                              width: widget.size,
+                              height: widget.size,
+                              fit: BoxFit.contain,
+                            ),
                     ),
                   ),
                 ),
@@ -511,6 +510,41 @@ class _PowerButtonState extends State<_PowerButton> {
   }
 }
 
+
+class _SpinningArtwork extends StatefulWidget {
+  final String asset;
+  final double size;
+
+  const _SpinningArtwork({required this.asset, required this.size});
+
+  @override
+  State<_SpinningArtwork> createState() => _SpinningArtworkState();
+}
+
+class _SpinningArtworkState extends State<_SpinningArtwork>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _rotation = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1250),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _rotation.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => RotationTransition(
+    turns: _rotation,
+    child: Image.asset(
+      widget.asset,
+      width: widget.size,
+      height: widget.size,
+      fit: BoxFit.contain,
+    ),
+  );
+}
 
 /// Live transfer rates stay visible on the home screen while connected.
 class _LiveTrafficRow extends StatelessWidget {
