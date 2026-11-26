@@ -284,7 +284,7 @@ class _Metric extends StatelessWidget {
       return Padding(padding: const EdgeInsets.only(right: 8), child: content);
     }
     return Tooltip(
-      message: tooltip,
+      message: 'Refresh IP address',
       child: InkWell(
         mouseCursor: WidgetStateMouseCursor.clickable,
         borderRadius: BorderRadius.circular(8),
