@@ -15,6 +15,7 @@ import 'flag_text.dart';
 /// Connected colour; stays green whatever theme colour is picked.
 const _green = Color(0xFF39FF75);
 const _tabular = TextStyle(fontFeatures: [FontFeature.tabularFigures()]);
+const _button = 116.0;
 
 
 /// Home status card: state, power button, duration, ping and exit IPs (the connection's
