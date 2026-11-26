@@ -1562,7 +1562,7 @@ class _SettingsSectionsState extends State<_SettingsSections> {
     final isConnectionHome = _selectedId == 'connection::home';
     final isGroupHome = _selectedId.startsWith('connection::group::');
     final children = <Widget>[];
-    if (rootSelected != null) {
+    if (rootSelected != null && rootSelected.title != 'Appearance') {
       children.addAll(rootSelected.children);
     } else if (isConnectionHome) {
       children.add(const SizedBox(height: 12));
@@ -1632,7 +1632,7 @@ class _SettingsSectionsState extends State<_SettingsSections> {
                   children: [
                 for (final section in navigation.rootSections.where((s) => s.title == 'Global'))
                   _navTile(context, section.title, section.id, section.id == _selectedId, theme, () {
-                    setState(() { _selectedId = section.id; _connectionGroup = null; _connectionSection = null; });
+                    setState(() { _selectedId = section.id; _connectionGroup = null; _connectionSection = null; _appearanceSubsection = null; });
                     widget.onSectionChanged?.call(false);
                   }),
                 _navTile(context, 'Connection', 'connection::home', isConnectionHome || showConnection, theme, _openConnection),
@@ -1787,7 +1787,7 @@ class _FontScaleTile extends StatelessWidget {
                       height: 22,
                       child: Stack(children: [
                         Positioned(
-                          left: (usableWidth * percent).clamp(0.0, usableWidth),
+                          left: (12 + usableWidth * percent).clamp(0.0, constraints.maxWidth - 12),
                           child: Transform.translate(
                             offset: const Offset(-12, 0),
                             child: Text(
@@ -1795,8 +1795,7 @@ class _FontScaleTile extends StatelessWidget {
                               style: theme.textTheme.labelMedium?.copyWith(
                                 color: theme.colorScheme.primary,
                                 fontWeight: FontWeight.w700,
-                                fontFeatures: const [FontFeature.tabularFigures()],
-                              ),
+                                                              ),
                             ),
                           ),
                         ),
