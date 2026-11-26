@@ -29,6 +29,7 @@ import 'tor_custom_bridges_pref.dart';
 import 'ssh_settings_page.dart';
 import 'statistics_page.dart';
 import 'hover_animated_icon.dart';
+import 'chip_menu.dart';
 
 class _BrowserPrivacyTile extends StatelessWidget {
   const _BrowserPrivacyTile();
@@ -1895,6 +1896,11 @@ class _UserFontTileState extends State<_UserFontTile> with WidgetsBindingObserve
                   ChoiceChip(
                     label: Text(entry.value),
                     selected: _selectedFamily == entry.key,
+                    showCheckmark: false,
+                    visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
+                    labelPadding: const EdgeInsets.symmetric(horizontal: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     onSelected: (_) => setState(() => _selectedFamily = entry.key),
                   ),
                   const SizedBox(width: 8),
@@ -1906,23 +1912,15 @@ class _UserFontTileState extends State<_UserFontTile> with WidgetsBindingObserve
           Row(
             children: [
               Expanded(
-                child: DropdownButtonFormField<String>(
-                  initialValue: customSelected ? _selectedFamily : null,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Custom font',
-                    hintText: 'Select from Fonts folder',
-                    border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 13),
-                  ),
-                  items: [
-                    for (final font in fonts)
-                      DropdownMenuItem(
-                        value: font.family,
-                        child: Text(font.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-                      ),
-                  ],
-                  onChanged: fonts.isEmpty ? null : (value) => setState(() => _selectedFamily = value),
+                child: ChipMenu<String>(
+                  values: [for (final font in fonts) font.family],
+                  selected: customSelected ? _selectedFamily : null,
+                  label: (family) => fonts.firstWhere((font) => font.family == family).name,
+                  placeholder: 'Select from Fonts folder',
+                  width: 280,
+                  expand: true,
+                  onSelected: (value) => setState(() => _selectedFamily = value),
+                  enabled: fonts.isNotEmpty,
                 ),
               ),
               const SizedBox(width: 8),
