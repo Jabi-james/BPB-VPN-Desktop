@@ -145,9 +145,9 @@ class _StatusCardState extends State<StatusCard> {
               ),
             ),
             const SizedBox(height: 18),
-            const _LiveTrafficRow(),
-            const SizedBox(height: 18),
             _Metrics(),
+            const SizedBox(height: 14),
+            const _LiveTrafficRow(),
           ],
         ),
       ),
@@ -409,24 +409,10 @@ class _PowerButtonState extends State<_PowerButton> {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          if (state.status == VpnStatus.connected || state.status == VpnStatus.disconnected)
-            TweenAnimationBuilder<double>(
-              key: ValueKey(state.status),
-              tween: Tween(begin: 0.86, end: 1.18),
-              duration: const Duration(milliseconds: 1500),
-              curve: Curves.easeOut,
-              builder: (context, value, _) => Container(
-                width: widget.size * value,
-                height: widget.size * value,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: (state.status == VpnStatus.connected ? _green : _red)
-                        .withValues(alpha: (1.18 - value).clamp(0.0, 0.22).toDouble()),
-                    width: 3,
-                  ),
-                ),
-              ),
+          if (!busy)
+            _PowerHalo(
+              size: widget.size,
+              color: state.status == VpnStatus.connected ? _green : _red,
             ),
           if (busy)
             Positioned.fill(
@@ -509,6 +495,56 @@ class _PowerButtonState extends State<_PowerButton> {
   }
 }
 
+
+class _PowerHalo extends StatefulWidget {
+  final double size;
+  final Color color;
+
+  const _PowerHalo({required this.size, required this.color});
+
+  @override
+  State<_PowerHalo> createState() => _PowerHaloState();
+}
+
+class _PowerHaloState extends State<_PowerHalo>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1750),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _pulse,
+    builder: (context, _) {
+      final t = Curves.easeInOut.transform(_pulse.value);
+      return Container(
+        width: widget.size * (0.96 + 0.22 * t),
+        height: widget.size * (0.96 + 0.22 * t),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: widget.color.withValues(alpha: 0.12 + 0.16 * (1 - t)),
+            width: 2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: widget.color.withValues(alpha: 0.08 + 0.12 * (1 - t)),
+              blurRadius: 12 + 18 * t,
+              spreadRadius: 1 + 3 * t,
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
 
 class _SpinningArtwork extends StatefulWidget {
   final String asset;
