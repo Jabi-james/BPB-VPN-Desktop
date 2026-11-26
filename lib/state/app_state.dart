@@ -551,7 +551,8 @@ class AppState extends ChangeNotifier {
         reconnect: !path.startsWith('device.theme.'),
         connectionSelection: path == 'device.appMode' ||
             path.startsWith('device.connection.') ||
-            path.startsWith('device.exit.'),
+            path.startsWith('device.exit.') ||
+            path == 'device.aether.masqueFragment',
       );
     } else if (path.startsWith('vless.')) {
       _setVless(
@@ -678,6 +679,7 @@ class AppState extends ChangeNotifier {
       'appMode': json['appMode'],
       'connection': json['connection'],
       'exit': json['exit'],
+      'aetherMasqueFragment': (json['aether'] as Map)['masqueFragment'],
     };
   }
 
@@ -703,6 +705,9 @@ class AppState extends ChangeNotifier {
     json['appMode'] = snapshot['appMode'];
     json['connection'] = snapshot['connection'];
     json['exit'] = snapshot['exit'];
+    final aether = Map<String, dynamic>.from(json['aether'] as Map);
+    aether['masqueFragment'] = snapshot['aetherMasqueFragment'];
+    json['aether'] = aether;
     _connectionSelectionDirty = false;
     needsReconnect = _otherSettingsNeedReconnect;
     _setDevice(DeviceSettings.fromJson(json), reconnect: false);
