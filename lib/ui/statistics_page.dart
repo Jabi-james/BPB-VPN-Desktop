@@ -241,20 +241,65 @@ class _AccountUsage extends StatelessWidget {
   final int total;
   final int limit;
   const _AccountUsage({required this.total, required this.limit});
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final ratio = total / limit;
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      _KeyValue('Account total', Text.rich(TextSpan(children: [
-        TextSpan(text: '${(ratio * 100).toStringAsFixed(1)}% · '),
-        TextSpan(text: formatCount(total), style: const TextStyle(fontWeight: FontWeight.bold)),
-      ]), style: theme.textTheme.bodyMedium?.copyWith(fontFeatures: const [FontFeature.tabularFigures()]))),
-      const SizedBox(height: 10),
-      LinearProgressIndicator(value: ratio.clamp(0.0, 1.0), minHeight: 6,
-        borderRadius: BorderRadius.circular(3),
-        color: ratio >= 0.9 ? theme.colorScheme.error : _worker),
-    ]);
+    final ratio = (total / limit).clamp(0.0, 1.0);
+    final percent = total / limit * 100;
+    final progressColor = percent >= 90 ? theme.colorScheme.error : _worker;
+    return Row(
+      children: [
+        SizedBox(
+          width: 66,
+          height: 66,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              SizedBox.expand(
+                child: CircularProgressIndicator(
+                  value: ratio,
+                  strokeWidth: 6,
+                  strokeCap: StrokeCap.round,
+                  backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                  color: progressColor,
+                ),
+              ),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('${percent.toStringAsFixed(0)}%',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    )),
+                  Text('used', style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant, fontSize: 9)),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Account total', style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant)),
+              const SizedBox(height: 4),
+              Text(formatCount(total), style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w900,
+                fontFeatures: const [FontFeature.tabularFigures()])),
+              const SizedBox(height: 3),
+              Text('of ${formatCount(limit)} requests',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant)),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 }
 
