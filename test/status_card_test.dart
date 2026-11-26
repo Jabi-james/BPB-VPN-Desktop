@@ -24,6 +24,22 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  testWidgets('disconnecting has its own status label', (tester) async {
+    final state = AppState()..status = VpnStatus.disconnecting;
+    addTearDown(state.dispose);
+    await tester.pumpWidget(
+      AppScope(
+        state: state,
+        child: const MaterialApp(home: Scaffold(body: StatusCard())),
+      ),
+    );
+
+    expect(find.text('DISCONNECTING'), findsOneWidget);
+    expect(find.text('CONNECTING'), findsNothing);
+    expect(find.text('Stopping connection…'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('connecting remains cancellable without showing log details', (
     tester,
   ) async {
