@@ -245,7 +245,7 @@ class _AccountUsage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final ratio = (total / limit).clamp(0.0, 1.0);
+    final ratio = (total / limit).clamp(0.0, 1.0).toDouble();
     final percent = total / limit * 100;
     final progressColor = percent >= 90 ? theme.colorScheme.error : _worker;
     return Row(
