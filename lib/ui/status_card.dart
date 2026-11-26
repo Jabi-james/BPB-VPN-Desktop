@@ -54,31 +54,23 @@ class _StatusCardState extends State<StatusCard> {
     final state = AppScope.of(context);
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final failed =
-        state.status == VpnStatus.disconnected && state.error != null;
+    final compact = defaultTargetPlatform == TargetPlatform.windows;
+    final buttonSize = compact ? 104.0 : 116.0;
     final (title, subtitle) = switch (state.status) {
-      // Psiphon / Tor say what they're doing: progress while connecting, or reconnecting.
-      VpnStatus.connected => (
-        'CONNECTED',
-        state.exitDetail ?? 'Tap to disconnect',
-      ),
-      VpnStatus.connecting => (
-        state.connectedAt == null ? 'CONNECTING' : 'RECONNECTING',
-        state.exitDetail ??
-            (state.tunMode ? 'Starting the tunnel…' : 'Checking connection…'),
-      ),
-      VpnStatus.disconnecting => ('DISCONNECTING', 'Stopping the tunnel…'),
-      VpnStatus.disconnected when failed => ('Connection failed', state.error!),
+      VpnStatus.connected => ('CONNECTED', 'Tap to disconnect'),
+      VpnStatus.connecting => ('CONNECTING', 'Establishing secure connection…'),
+      VpnStatus.disconnecting => ('CONNECTING', 'Stopping connection…'),
       VpnStatus.disconnected => ('DISCONNECTED', 'Tap to connect'),
     };
     final titleColor = state.isConnected
         ? _green
-        : (failed ? scheme.error : scheme.onSurface);
-    final muted = scheme.onSurfaceVariant;
-    final compact = defaultTargetPlatform == TargetPlatform.windows;
-    final pad = compact ? 12.0 : _pad;
-    final rowHeight = compact ? 72.0 : _rowHeight;
-    final buttonSize = compact ? 88.0 : _button;
+        : state.status == VpnStatus.disconnected
+            ? scheme.onSurface
+            : scheme.primary;
+
+    final modes = defaultTargetPlatform == TargetPlatform.windows
+        ? AppMode.values
+        : const [AppMode.vpn, AppMode.proxy];
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12),
@@ -91,63 +83,82 @@ class _StatusCardState extends State<StatusCard> {
           width: 0.75,
         ),
       ),
-      child: Stack(
-        // Let the button's shadow spill past the card edge instead of being cut off.
-        clipBehavior: Clip.none,
-        children: [
-          Padding(
-            padding: EdgeInsets.all(pad),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Title and hint on the left; space for the button on the right.
-                ConstrainedBox(
-                  constraints: BoxConstraints(minHeight: rowHeight),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            FittedBox(
-                              fit: BoxFit.scaleDown,
-                              alignment: AlignmentDirectional.centerStart,
-                              child: Text(
-                                title,
-                                style: theme.textTheme.titleLarge?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                  color: titleColor,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              subtitle,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: muted,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      SizedBox(width: 16 + buttonSize),
-                    ],
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: compact ? 16 : 24,
+          vertical: compact ? 16 : 24,
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 4),
+            _PowerButton(size: buttonSize),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.5,
+                color: titleColor,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 18),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 560),
+              child: SegmentedButton<AppMode>(
+                segments: [
+                  ButtonSegment<AppMode>(
+                    value: AppMode.proxy,
+                    label: const Text('Proxy'),
+                    icon: const Icon(Symbols.swap_horiz_rounded),
+                  ),
+                  if (defaultTargetPlatform == TargetPlatform.windows)
+                    const ButtonSegment<AppMode>(
+                      value: AppMode.systemProxy,
+                      label: Text('System Proxy'),
+                      icon: Icon(Symbols.desktop_windows_rounded),
+                    )
+                  else
+                    const ButtonSegment<AppMode>(
+                      value: AppMode.vpn,
+                      label: Text('VPN mode'),
+                      icon: Icon(Symbols.shield_rounded),
+                    ),
+                  if (defaultTargetPlatform == TargetPlatform.windows)
+                    const ButtonSegment<AppMode>(
+                      value: AppMode.vpn,
+                      label: Text('TUN'),
+                      icon: Icon(Symbols.language_rounded),
+                    ),
+                ],
+                selected: {state.device.appMode},
+                onSelectionChanged: state.isBusy
+                    ? null
+                    : (selection) => state.setAppMode(selection.first),
+                showSelectedIcon: false,
+                style: ButtonStyle(
+                  visualDensity: VisualDensity.compact,
+                  padding: WidgetStateProperty.all(
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  ),
+                  shape: WidgetStateProperty.all(
+                    const StadiumBorder(),
                   ),
                 ),
-                SizedBox(height: compact ? 8 : 16),
-                _Metrics(),
-              ],
+              ),
             ),
-          ),
-          Positioned(
-            right: pad - 8,
-            top: pad - 8,
-            width: buttonSize + 16,
-            height: buttonSize + 16,
-            child: _PowerButton(size: buttonSize),
-          ),
-        ],
+            const SizedBox(height: 20),
+            const _Metrics(),
+          ],
+        ),
       ),
     );
   }
