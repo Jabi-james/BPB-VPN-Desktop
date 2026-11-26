@@ -14,24 +14,36 @@ class StatisticsPage extends StatelessWidget {
   const StatisticsPage({super.key});
 
   @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Statistics')),
+    body: const SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(16, 12, 16, 24),
+      child: StatisticsPanel(),
+    ),
+  );
+}
+
+/// The same statistics cards can be embedded in the home dashboard or opened
+/// from Settings. The cards themselves keep one shared implementation.
+class StatisticsPanel extends StatelessWidget {
+  const StatisticsPanel({super.key});
+
+  @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
-    return Scaffold(
-      appBar: AppBar(title: const Text('Statistics')),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-        children: [
-          _TrafficCard(
-            download: state.allTimeDown,
-            upload: state.allTimeUp,
-            total: state.allTimeDown + state.allTimeUp,
-          ),
-          if (state.worker != null && state.mode.needsWorker) ...[
-            const SizedBox(height: 16),
-            _WorkerRequestCard(),
-          ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _TrafficCard(
+          download: state.allTimeDown,
+          upload: state.allTimeUp,
+          total: state.allTimeDown + state.allTimeUp,
+        ),
+        if (state.worker != null && state.mode.needsWorker) ...[
+          const SizedBox(height: 12),
+          _WorkerRequestCard(),
         ],
-      ),
+      ],
     );
   }
 }
