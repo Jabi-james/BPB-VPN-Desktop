@@ -1813,11 +1813,13 @@ class _UserFontTileState extends State<_UserFontTile> with WidgetsBindingObserve
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ListTile(
-          leading: const Icon(Symbols.font_download_rounded),
+          leading: const Icon(Symbols.font_download_rounded, color: Color(0xFF9B7CFF)),
           title: const Text('Font'),
+          subtitle: const Text('Choose a typeface for BPB VPN'),
           trailing: IconButton(
             tooltip: 'Open Fonts folder',
-            icon: const Icon(Symbols.folder_open_rounded),
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Symbols.folder_open_rounded, color: Color(0xFF4F9BFF)),
             onPressed: () async {
               try {
                 await state.openUserFontsFolder();
@@ -1831,38 +1833,46 @@ class _UserFontTileState extends State<_UserFontTile> with WidgetsBindingObserve
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Choose Font:', style: Theme.of(context).textTheme.labelLarge),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                initialValue: customSelected ? _selectedFamily : null,
-                isExpanded: true,
-                decoration: const InputDecoration(
-                  hintText: 'Select a font from the Fonts folder',
-                  border: OutlineInputBorder(),
-                ),
-                items: [
-                  for (final font in fonts)
-                    DropdownMenuItem(
-                      value: font.family,
-                      child: Text(font.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text('Choose Font:', style: Theme.of(context).textTheme.labelLarge),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      initialValue: customSelected ? _selectedFamily : null,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        hintText: 'Select font',
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                      items: [
+                        for (final font in fonts)
+                          DropdownMenuItem(
+                            value: font.family,
+                            child: Text(font.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                          ),
+                      ],
+                      onChanged: fonts.isEmpty ? null : (value) => setState(() => _selectedFamily = value),
                     ),
+                  ),
                 ],
-                onChanged: fonts.isEmpty ? null : (value) => setState(() => _selectedFamily = value),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               Text(
-                'To change the font, place your preferred .ttf or .otf file in the Fonts folder inside the app installation directory.',
+                'To use your own font, place its .ttf or .otf file in the Fonts folder inside the app installation directory, then select it here.',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
               if (fonts.isEmpty)
                 Padding(
-                  padding: const EdgeInsets.only(top: 4),
+                  padding: const EdgeInsets.only(top: 5),
                   child: Text(
                     'No custom fonts found yet.',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -1871,7 +1881,14 @@ class _UserFontTileState extends State<_UserFontTile> with WidgetsBindingObserve
                   ),
                 ),
               const SizedBox(height: 16),
-              Text('Other fonts', style: Theme.of(context).textTheme.labelLarge),
+              Row(
+                children: [
+                  Text('Other fonts', style: Theme.of(context).textTheme.labelLarge),
+                  const Spacer(),
+                  Text('Built-in', style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                ],
+              ),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
