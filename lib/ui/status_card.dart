@@ -386,12 +386,11 @@ class _PowerButtonState extends State<_PowerButton> {
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
-    final scheme = Theme.of(context).colorScheme;
     final busy = state.isBusy;
-    final (Color fill, Color iconColor) = switch (state.status) {
-      VpnStatus.connected => (_green, Colors.white),
-      VpnStatus.disconnected => (_red, Colors.white),
-      _ => (_connecting, Colors.white),
+    final fill = switch (state.status) {
+      VpnStatus.connected => _green,
+      VpnStatus.disconnected => _red,
+      _ => _connecting,
     };
     final up =
         state.status == VpnStatus.connected ||
@@ -422,7 +421,7 @@ class _PowerButtonState extends State<_PowerButton> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: (state.status == VpnStatus.connected ? _green : Colors.red)
+                    color: (state.status == VpnStatus.connected ? _green : _red)
                         .withValues(alpha: (1.18 - value).clamp(0.0, 0.22).toDouble()),
                     width: 3,
                   ),
