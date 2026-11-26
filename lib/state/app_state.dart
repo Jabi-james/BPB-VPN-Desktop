@@ -381,7 +381,12 @@ class AppState extends ChangeNotifier {
 
   Future<void> refreshUserFonts({bool notify = true}) async {
     if (!Platform.isWindows) return;
-    userFonts = await UserFontService.discover();
+    try {
+      userFonts = await UserFontService.discover();
+    } catch (_) {
+      // A read-only portable install can still use the built-in fonts.
+      userFonts = [];
+    }
     if (notify) notifyListeners();
   }
 
