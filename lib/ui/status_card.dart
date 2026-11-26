@@ -209,6 +209,7 @@ class _Metrics extends StatelessWidget {
             if (flag != null)
               Positioned(
                 right: 0,
+                bottom: 6,
                 child: CountryFlagImage(
                   countryCode: flag,
                   height: 16,
