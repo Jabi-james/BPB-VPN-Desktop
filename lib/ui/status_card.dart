@@ -509,12 +509,12 @@ class _PowerHaloState extends State<_PowerHalo>
 
   @override
   Widget build(BuildContext context) => SizedBox(
-    width: widget.size,
-    height: widget.size,
+    width: widget.size + 16,
+    height: widget.size + 16,
     child: OverflowBox(
       alignment: Alignment.center,
-      minWidth: widget.size,
-      minHeight: widget.size,
+      minWidth: widget.size + 16,
+      minHeight: widget.size + 16,
       maxWidth: widget.size * 1.4,
       maxHeight: widget.size * 1.4,
       child: AnimatedBuilder(
