@@ -184,7 +184,7 @@ class _Metrics extends StatelessWidget {
             // Keep the IP itself on the exact horizontal center of the metric.
             Positioned.fill(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 25),
+                padding: const EdgeInsets.symmetric(horizontal: 30),
                 child: Center(
                   child: Text(
                     ipText,
