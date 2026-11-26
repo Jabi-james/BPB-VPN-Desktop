@@ -243,55 +243,66 @@ class _Metric extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final content = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 16,
-              color: theme.colorScheme.onSurfaceVariant,
-              weight: 500,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: theme.textTheme.titleSmall?.copyWith(
+    final content = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 9),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.48),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.48),
+          width: 0.7,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 14,
                 color: theme.colorScheme.onSurfaceVariant,
+                weight: 500,
+              ),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 3),
+          DefaultTextStyle.merge(
+            style: theme.textTheme.titleMedium
+                ?.copyWith(fontWeight: FontWeight.w700)
+                .merge(_tabular),
+            child: SizedBox(
+              height: 28,
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: value,
               ),
             ),
-          ],
-        ),
-        const SizedBox(height: 2),
-        DefaultTextStyle.merge(
-          style: theme.textTheme.titleMedium
-              ?.copyWith(fontWeight: FontWeight.w600)
-              .merge(_tabular),
-          child: SizedBox(
-            height: 28,
-            child: Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: value,
-            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
-    if (onTap == null) {
-      return Padding(padding: const EdgeInsets.only(right: 8), child: content);
-    }
+    if (onTap == null) return content;
     return Tooltip(
       message: 'Refresh IP address',
       child: InkWell(
         mouseCursor: WidgetStateMouseCursor.clickable,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(14),
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.only(right: 8),
-          child: content,
-        ),
+        child: content,
       ),
     );
   }
