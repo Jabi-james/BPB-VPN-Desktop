@@ -1850,11 +1850,18 @@ class _UserFontTileState extends State<_UserFontTile> with WidgetsBindingObserve
                 ],
                 onChanged: fonts.isEmpty ? null : (value) => setState(() => _selectedFamily = value),
               ),
+              const SizedBox(height: 8),
+              Text(
+                'To change the font, place your preferred .ttf or .otf file in the Fonts folder inside the app installation directory.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
               if (fonts.isEmpty)
                 Padding(
-                  padding: const EdgeInsets.only(top: 6),
+                  padding: const EdgeInsets.only(top: 4),
                   child: Text(
-                    'No custom fonts found. Add .ttf or .otf files to the Fonts folder.',
+                    'No custom fonts found yet.',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
