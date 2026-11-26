@@ -393,6 +393,7 @@ class _PowerButtonState extends State<_PowerButton> {
       button: true,
       label: state.status == VpnStatus.disconnected ? 'Connect' : 'Disconnect',
       child: Stack(
+        clipBehavior: Clip.none,
         alignment: Alignment.center,
         children: [
           _PowerHalo(
@@ -507,29 +508,40 @@ class _PowerHaloState extends State<_PowerHalo>
   }
 
   @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-    animation: _pulse,
-    builder: (context, _) {
-      final t = Curves.easeInOut.transform(_pulse.value);
-      return Container(
-        width: widget.size * (0.96 + 0.42 * t),
-        height: widget.size * (0.96 + 0.42 * t),
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: widget.color.withValues(alpha: 0.36 + 0.42 * (1 - t)),
-            width: 6,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: widget.color.withValues(alpha: 0.24 + 0.36 * (1 - t)),
-              blurRadius: 36 + 54 * t,
-              spreadRadius: 3 + 9 * t,
+  Widget build(BuildContext context) => SizedBox(
+    width: widget.size,
+    height: widget.size,
+    child: OverflowBox(
+      alignment: Alignment.center,
+      minWidth: widget.size,
+      minHeight: widget.size,
+      maxWidth: widget.size * 1.4,
+      maxHeight: widget.size * 1.4,
+      child: AnimatedBuilder(
+        animation: _pulse,
+        builder: (context, _) {
+          final t = Curves.easeInOut.transform(_pulse.value);
+          return Container(
+            width: widget.size * (0.96 + 0.42 * t),
+            height: widget.size * (0.96 + 0.42 * t),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: widget.color.withValues(alpha: 0.36 + 0.42 * (1 - t)),
+                width: 6,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: widget.color.withValues(alpha: 0.24 + 0.36 * (1 - t)),
+                  blurRadius: 36 + 54 * t,
+                  spreadRadius: 3 + 9 * t,
+                ),
+              ],
             ),
-          ],
-        ),
-      );
-    },
+          );
+        },
+      ),
+    ),
   );
 }
 
