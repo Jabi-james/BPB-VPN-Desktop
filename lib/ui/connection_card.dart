@@ -89,99 +89,73 @@ class ConnectionCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const _Row(
-              icon: Symbols.category_rounded,
-              label: 'Connection',
-              selector: _TypeSelector(),
-            ),
-            if (state.showCoreSelector)
-              _Row(
-                icon: Symbols.memory_rounded,
-                label: 'Core',
-                selector: ChipMenu(
-                  values: CoreType.values,
-                  selected: state.core,
-                  label: (core) => core.label,
-                  onSelected: state.setCore,
-                  enabled: !state.isBusy,
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _SettingTile(
+                  label: 'Connection',
+                  selector: const _TypeSelector(),
                 ),
-              ),
-            // The variant (Worker, WARP, MASQUE), Serverless's mode or Tor's bridges.
-            AnimatedSize(
-              duration: _rowAnimation,
-              curve: Curves.easeInOut,
-              alignment: Alignment.topCenter,
-              child: state.hasModeOption
-                  ? const _Row(
-                      icon: Symbols.tune_rounded,
-                      label: 'Mode',
-                      selector: _ModeSelector(),
-                    )
-                  : const SizedBox(width: double.infinity),
-            ),
-            AnimatedSize(
-              duration: _rowAnimation,
-              curve: Curves.easeInOut,
-              alignment: Alignment.topCenter,
-              child: hasExitNode
-                  ? _Row(
-                      icon: Symbols.exit_to_app_rounded,
-                      label: 'Exit Node',
-                      selector: ChipMenu(
-                        values: nodes,
-                        selected: exit,
-                        label: (n) => switch (n) {
-                          ExitNode.worker => 'Default',
-                          ExitNode.chain => 'Chain proxy',
-                          ExitNode.psiphon => 'Psiphon',
-                          ExitNode.tor => 'Tor',
-                        },
-                        badges: (n) => _transports(n, state.mode, chain: chain),
-                        onSelected: state.setExitNode,
-                        enabled: !state.isBusy && nodes.length > 1,
-                      ),
-                    )
-                  : const SizedBox(width: double.infinity),
-            ),
-            AnimatedSize(
-              duration: _rowAnimation,
-              curve: Curves.easeInOut,
-              alignment: Alignment.topCenter,
-              child: !isServerlessDns &&
-                      (exit == ExitNode.psiphon || exit == ExitNode.tor)
-                  ? _Row(
-                      icon: Symbols.location_on_rounded,
-                      label: 'Region',
-                      selector: ChipMenu(
-                        values: ['', ...exitRegions.keys],
-                        selected: state.device.exitRegion,
-                        label: _regionLabel,
-                        onSelected: state.setExitRegion,
-                        enabled: !state.isBusy,
-                      ),
-                    )
-                  : const SizedBox(width: double.infinity),
-            ),
-            // The chain proxy this type exits through: names, with their tags in the open menu.
-            AnimatedSize(
-              duration: _rowAnimation,
-              curve: Curves.easeInOut,
-              alignment: Alignment.topCenter,
-              child: exit == ExitNode.chain && chain != null
-                  ? _Row(
-                      icon: Symbols.link_rounded,
-                      label: 'Chain',
-                      selector: ChipMenu(
-                        values: state.usableChains,
-                        selected: chain,
-                        label: (c) => c.name,
-                        subtitleBadges: (c) =>
-                            ChainInfo.of(c.link)?.tags ?? const [],
-                        onSelected: state.setExitChain,
-                        enabled: !state.isBusy && state.usableChains.length > 1,
-                      ),
-                    )
-                  : const SizedBox(width: double.infinity),
+                if (state.showCoreSelector)
+                  _SettingTile(
+                    label: 'Core',
+                    selector: ChipMenu(
+                      values: CoreType.values,
+                      selected: state.core,
+                      label: (core) => core.label,
+                      onSelected: state.setCore,
+                      enabled: !state.isBusy,
+                    ),
+                  ),
+                if (state.hasModeOption)
+                  _SettingTile(
+                    label: 'Mode',
+                    selector: const _ModeSelector(),
+                  ),
+                if (hasExitNode)
+                  _SettingTile(
+                    label: 'Exit Node',
+                    selector: ChipMenu(
+                      values: nodes,
+                      selected: exit,
+                      label: (n) => switch (n) {
+                        ExitNode.worker => 'Default',
+                        ExitNode.chain => 'Chain proxy',
+                        ExitNode.psiphon => 'Psiphon',
+                        ExitNode.tor => 'Tor',
+                      },
+                      badges: (n) => _transports(n, state.mode, chain: chain),
+                      onSelected: state.setExitNode,
+                      enabled: !state.isBusy && nodes.length > 1,
+                    ),
+                  ),
+                if (!isServerlessDns &&
+                    (exit == ExitNode.psiphon || exit == ExitNode.tor))
+                  _SettingTile(
+                    label: 'Region',
+                    selector: ChipMenu(
+                      values: ['', ...exitRegions.keys],
+                      selected: state.device.exitRegion,
+                      label: _regionLabel,
+                      onSelected: state.setExitRegion,
+                      enabled: !state.isBusy,
+                    ),
+                  ),
+                if (exit == ExitNode.chain && chain != null)
+                  _SettingTile(
+                    label: 'Chain',
+                    selector: ChipMenu(
+                      values: state.usableChains,
+                      selected: chain,
+                      label: (c) => c.name,
+                      subtitleBadges: (c) =>
+                          ChainInfo.of(c.link)?.tags ?? const [],
+                      onSelected: state.setExitChain,
+                      enabled: !state.isBusy && state.usableChains.length > 1,
+                    ),
+                  ),
+              ],
             ),
           ],
         ),
@@ -190,31 +164,49 @@ class ConnectionCard extends StatelessWidget {
   }
 }
 
-/// "Label ········ [chip ▾]".
-class _Row extends StatelessWidget {
-  final IconData icon;
+/// Compact setting tile: the selected value is always visible beneath its label.
+class _SettingTile extends StatelessWidget {
   final String label;
   final Widget selector;
-  const _Row({required this.icon, required this.label, required this.selector});
+
+  const _SettingTile({required this.label, required this.selector});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return SizedBox(
-      height: defaultTargetPlatform == TargetPlatform.windows ? 36 : 44,
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: theme.colorScheme.onSurfaceVariant),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: 150, maxWidth: 220),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.42),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.55),
+            width: 0.7,
           ),
-          const Spacer(),
-          selector,
-        ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label.toUpperCase(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                letterSpacing: 0.7,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: selector,
+            ),
+          ],
+        ),
       ),
     );
   }
