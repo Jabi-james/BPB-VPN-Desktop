@@ -13,11 +13,153 @@ import 'theme.dart';
 /// The connection's settings, above the status card: its type and mode, and where traffic
 /// leaves for the internet (the connection itself, the chain proxy, or Psiphon / Tor in a
 /// chosen region).
-class ConnectionCard extends StatelessWidget {
+class ConnectionCard extends StatefulWidget {
   const ConnectionCard({super.key});
 
-  /// What the exit carries: the worker relays only TCP, Tor too; WARP, MASQUE and Psiphon also
-  /// UDP; the chain proxy depends on its protocol ([ChainInfo.carries]).
+  @override
+  State<ConnectionCard> createState() => ConnectionCardState();
+}
+
+class ConnectionCardState extends State<ConnectionCard> {
+  final LayerLink _link = LayerLink();
+  OverlayEntry? _panelEntry;
+
+  void collapse() {
+    _panelEntry?.remove();
+    _panelEntry = null;
+  }
+
+  void _togglePanel() {
+    if (_panelEntry != null) {
+      collapse();
+      return;
+    }
+    _panelEntry = OverlayEntry(builder: (overlayContext) {
+      final media = MediaQuery.of(overlayContext);
+      final state = AppScope.of(overlayContext);
+      final theme = Theme.of(overlayContext);
+      final scheme = theme.colorScheme;
+      final exit = state.exitNode;
+      final isServerlessDns = state.mode == ConnectionMode.serverless &&
+          state.serverlessMode == ServerlessMode.dns;
+      final hasExitNode = state.mode != ConnectionMode.psiphon &&
+          state.mode != ConnectionMode.tor &&
+          state.mode != ConnectionMode.aether &&
+          !isServerlessDns;
+      final nodes = switch (state.mode) {
+        ConnectionMode.serverless => state.serverlessMode == ServerlessMode.domainFronting
+            ? [ExitNode.worker, ExitNode.psiphon]
+            : [ExitNode.worker, ExitNode.psiphon, ExitNode.tor],
+        _ => [
+            for (final n in ExitNode.values)
+              if (n != ExitNode.chain || state.usableChains.isNotEmpty) n,
+          ],
+      };
+      final chain = state.exitChain;
+      return Stack(
+        children: [
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: collapse,
+              child: const ColoredBox(color: Colors.transparent),
+            ),
+          ),
+          CompositedTransformFollower(
+            link: _link,
+            showWhenUnlinked: false,
+            offset: const Offset(0, 68),
+            child: Material(
+              elevation: 18,
+              color: Color.lerp(scheme.surfaceContainer, Colors.black, 0.18)!,
+              shape: roundedShape(kHeroRadius,
+                side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.9), width: 0.9)),
+              clipBehavior: Clip.antiAlias,
+              child: SizedBox(
+                width: media.size.width - 24,
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    defaultTargetPlatform == TargetPlatform.windows ? 16 : 20,
+                    10,
+                    defaultTargetPlatform == TargetPlatform.windows ? 16 : 20,
+                    12,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Symbols.tune_rounded, size: 18, color: scheme.primary),
+                          const SizedBox(width: 8),
+                          Expanded(child: Text('Connection options',
+                            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800))),
+                          IconButton(
+                            tooltip: 'Close',
+                            visualDensity: VisualDensity.compact,
+                            onPressed: collapse,
+                            icon: const Icon(Icons.close_rounded, size: 19),
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 8),
+                      _Row(icon: Symbols.category_rounded, label: 'Connection',
+                        selector: const _TypeSelector()),
+                      if (state.showCoreSelector)
+                        _Row(icon: Symbols.memory_rounded, label: 'Core',
+                          selector: ChipMenu(
+                            values: CoreType.values, selected: state.core,
+                            label: (core) => core.label, onSelected: state.setCore,
+                            enabled: !state.isBusy)),
+                      if (state.hasModeOption)
+                        const _Row(icon: Symbols.tune_rounded, label: 'Mode',
+                          selector: _ModeSelector()),
+                      if (hasExitNode)
+                        _Row(icon: Symbols.exit_to_app_rounded, label: 'Exit Node',
+                          selector: ChipMenu(
+                            values: nodes, selected: exit,
+                            label: (n) => switch (n) {
+                              ExitNode.worker => 'Default',
+                              ExitNode.chain => 'Chain proxy',
+                              ExitNode.psiphon => 'Psiphon',
+                              ExitNode.tor => 'Tor',
+                            },
+                            badges: (n) => ConnectionCard._transports(n, state.mode, chain: chain),
+                            onSelected: state.setExitNode,
+                            enabled: !state.isBusy && nodes.length > 1)),
+                      if (!isServerlessDns && (exit == ExitNode.psiphon || exit == ExitNode.tor))
+                        _Row(icon: Symbols.location_on_rounded, label: 'Region',
+                          selector: ChipMenu(
+                            values: ['', ...exitRegions.keys],
+                            selected: state.device.exitRegion,
+                            label: ConnectionCard._regionLabel,
+                            onSelected: state.setExitRegion,
+                            enabled: !state.isBusy)),
+                      if (exit == ExitNode.chain && chain != null)
+                        _Row(icon: Symbols.link_rounded, label: 'Chain',
+                          selector: ChipMenu(
+                            values: state.usableChains, selected: chain,
+                            label: (c) => c.name,
+                            subtitleBadges: (c) => ChainInfo.of(c.link)?.tags ?? const [],
+                            onSelected: state.setExitChain,
+                            enabled: !state.isBusy && state.usableChains.length > 1)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    });
+    Overlay.of(context, rootOverlay: true).insert(_panelEntry!);
+  }
+
+  @override
+  void dispose() {
+    collapse();
+    super.dispose();
+  }
+
   static List<String> _transports(
     ExitNode node,
     ConnectionMode mode, {
@@ -28,11 +170,8 @@ class ConnectionCard extends StatelessWidget {
       ConnectionMode.warp || ConnectionMode.masque => const ['TCP', 'UDP'],
       _ => const [],
     },
-    ExitNode.chain =>
-      chain == null ? const [] : ChainInfo.of(chain.link)?.carries ?? const [],
-    ExitNode.psiphon => mode == ConnectionMode.ssh
-        ? const ['TCP']
-        : const ['TCP', 'UDP'],
+    ExitNode.chain => chain == null ? const [] : ChainInfo.of(chain.link)?.carries ?? const [],
+    ExitNode.psiphon => mode == ConnectionMode.ssh ? const ['TCP'] : const ['TCP', 'UDP'],
     ExitNode.tor => const ['TCP'],
   };
 
@@ -42,92 +181,48 @@ class ConnectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final state = AppScope.of(context);
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final exit = state.exitNode;
-    final isServerlessDns =
-        state.mode == ConnectionMode.serverless &&
-        state.serverlessMode == ServerlessMode.dns;
-    // The Psiphon and Tor types have no exit node to choose: only the region can change.
-    final hasExitNode =
-        state.mode != ConnectionMode.psiphon &&
-        state.mode != ConnectionMode.tor &&
-        state.mode != ConnectionMode.aether &&
-        !isServerlessDns;
-    final nodes = switch (state.mode) {
-      ConnectionMode.serverless => state.serverlessMode ==
-              ServerlessMode.domainFronting
-          ? [ExitNode.worker, ExitNode.psiphon]
-          : [ExitNode.worker, ExitNode.psiphon, ExitNode.tor],
-      // The chain proxy is an exit node once there's one the type can carry (Settings → Chain proxies).
-      _ => [
-        for (final n in ExitNode.values)
-          if (n != ExitNode.chain || state.usableChains.isNotEmpty) n,
-      ],
-    };
-    final chain = state.exitChain;
-
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12),
-      shape: roundedShape(kHeroRadius,
-        side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.75), width: 0.75)),
-      color: scheme.surfaceContainer.withValues(alpha: 0.72),
-      elevation: 0,
-      clipBehavior: Clip.antiAlias,
-      child: Theme(
-        data: theme.copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
-          initiallyExpanded: false,
-          tilePadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 2),
-          childrenPadding: EdgeInsets.zero,
-          leading: Container(
-            width: 36, height: 36,
-            decoration: BoxDecoration(color: scheme.primary.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12)),
-            child: Icon(Symbols.wifi_tethering_rounded, color: scheme.primary, size: 21),
-          ),
-          title: Text('Connections',
-            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
-          subtitle: Text('Configure How to Connect and Routing Options',
-            maxLines: 1, overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
-          children: [
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                defaultTargetPlatform == TargetPlatform.windows ? 16 : 20, 4,
-                defaultTargetPlatform == TargetPlatform.windows ? 16 : 20,
-                defaultTargetPlatform == TargetPlatform.windows ? 12 : 18),
-              child: Column(children: [
-                _Row(icon: Symbols.category_rounded, label: 'Connection', selector: const _TypeSelector()),
-                if (state.showCoreSelector)
-                  _Row(icon: Symbols.memory_rounded, label: 'Core', selector: ChipMenu(
-                    values: CoreType.values, selected: state.core, label: (core) => core.label,
-                    onSelected: state.setCore, enabled: !state.isBusy)),
-                if (state.hasModeOption)
-                  const _Row(icon: Symbols.tune_rounded, label: 'Mode', selector: _ModeSelector()),
-                if (hasExitNode)
-                  _Row(icon: Symbols.exit_to_app_rounded, label: 'Exit Node', selector: ChipMenu(
-                    values: nodes, selected: exit,
-                    label: (n) => switch (n) {
-                      ExitNode.worker => 'Default', ExitNode.chain => 'Chain proxy',
-                      ExitNode.psiphon => 'Psiphon', ExitNode.tor => 'Tor',
-                    },
-                    badges: (n) => _transports(n, state.mode, chain: chain),
-                    onSelected: state.setExitNode, enabled: !state.isBusy && nodes.length > 1)),
-                if (!isServerlessDns && (exit == ExitNode.psiphon || exit == ExitNode.tor))
-                  _Row(icon: Symbols.location_on_rounded, label: 'Region', selector: ChipMenu(
-                    values: ['', ...exitRegions.keys], selected: state.device.exitRegion,
-                    label: _regionLabel, onSelected: state.setExitRegion, enabled: !state.isBusy)),
-                if (exit == ExitNode.chain && chain != null)
-                  _Row(icon: Symbols.link_rounded, label: 'Chain', selector: ChipMenu(
-                    values: state.usableChains, selected: chain, label: (c) => c.name,
-                    subtitleBadges: (c) => ChainInfo.of(c.link)?.tags ?? const [],
-                    onSelected: state.setExitChain,
-                    enabled: !state.isBusy && state.usableChains.length > 1)),
-              ]),
+    return CompositedTransformTarget(
+      link: _link,
+      child: Card(
+        margin: const EdgeInsets.symmetric(horizontal: 12),
+        shape: roundedShape(kHeroRadius,
+          side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.75), width: 0.75)),
+        color: scheme.surfaceContainer.withValues(alpha: 0.72),
+        elevation: 0,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          mouseCursor: WidgetStateMouseCursor.clickable,
+          onTap: _togglePanel,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 36, height: 36,
+                  decoration: BoxDecoration(color: scheme.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12)),
+                  child: Icon(Symbols.wifi_tethering_rounded, color: scheme.primary, size: 21),
+                ),
+                const SizedBox(width: 12),
+                Expanded(child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('Connections',
+                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+                    Text('Configure How to Connect and Routing Options',
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+                  ],
+                )),
+                const SizedBox(width: 8),
+                Icon(_panelEntry == null ? Icons.keyboard_arrow_down_rounded : Icons.keyboard_arrow_up_rounded,
+                  color: scheme.onSurfaceVariant),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
