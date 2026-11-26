@@ -260,31 +260,3 @@ class _AccountUsage extends StatelessWidget {
   }
 }
 
-class _WorkerBreakdown extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color color;
-  const _WorkerBreakdown({required this.label, required this.value, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.fromLTRB(10, 11, 8, 11),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(13),
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.55),
-        border: Border.all(color: color.withValues(alpha: 0.22)),
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant, fontSize: 9, letterSpacing: 0.25)),
-        const SizedBox(height: 5),
-        FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft,
-          child: Text(value, style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w800, fontFeatures: const [FontFeature.tabularFigures()]))),
-      ]),
-    );
-  }
-}
