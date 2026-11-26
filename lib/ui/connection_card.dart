@@ -92,7 +92,7 @@ class ConnectionCardState extends State<ConnectionCard> {
                             label: (core) => core.label, onSelected: state.setCore,
                             enabled: !state.isBusy)),
                       if (state.hasModeOption)
-                        const _Row(icon: Symbols.tune_rounded, color: const Color(0xFF26BFA5), label: 'Mode',
+                        const _Row(icon: Symbols.tune_rounded, color: Color(0xFF26BFA5), label: 'Mode',
                           selector: _ModeSelector()),
                       if (hasExitNode)
                         _Row(icon: Symbols.exit_to_app_rounded, color: const Color(0xFFFFA34D), label: 'Exit Node',
