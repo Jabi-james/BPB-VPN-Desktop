@@ -123,7 +123,7 @@ class ConnectionCardState extends State<ConnectionCard> {
                               ExitNode.psiphon => 'Psiphon',
                               ExitNode.tor => 'Tor',
                             },
-                            badges: (n) => ConnectionCard._transports(n, state.mode, chain: chain),
+                            badges: (n) => ConnectionCardState._transports(n, state.mode, chain: chain),
                             onSelected: state.setExitNode,
                             enabled: !state.isBusy && nodes.length > 1)),
                       if (!isServerlessDns && (exit == ExitNode.psiphon || exit == ExitNode.tor))
@@ -131,7 +131,7 @@ class ConnectionCardState extends State<ConnectionCard> {
                           selector: ChipMenu(
                             values: ['', ...exitRegions.keys],
                             selected: state.device.exitRegion,
-                            label: ConnectionCard._regionLabel,
+                            label: ConnectionCardState._regionLabel,
                             onSelected: state.setExitRegion,
                             enabled: !state.isBusy)),
                       if (exit == ExitNode.chain && chain != null)
