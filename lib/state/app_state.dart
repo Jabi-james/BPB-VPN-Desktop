@@ -193,6 +193,9 @@ class AppState extends ChangeNotifier {
   ({int total, int worker})? usage;
   bool loadingUsage = false;
   String? usageError;
+  final Map<String, ({int total, int worker})> usageByAccount = {};
+  final Set<String> loadingUsageAccounts = {};
+  final Map<String, String> usageErrorsByAccount = {};
 
   StreamSubscription<VpnStateEvent>? _stateSub;
   Timer? _trafficTimer;
@@ -1537,6 +1540,30 @@ class AppState extends ChangeNotifier {
           : 'Could not load usage';
     } finally {
       loadingUsage = false;
+      notifyListeners();
+    }
+  }
+
+  /// Loads usage for a specific saved account without changing the active VPN deployment.
+  Future<void> refreshUsageForAccount(SavedCfAccount account) async {
+    if (loadingUsageAccounts.contains(account.id)) return;
+    final type = selected?.deployment.type ?? WorkerType.workers;
+    final deployment = account.deployment(type) ?? account.deployments.firstOrNull;
+    if (deployment == null) return;
+    loadingUsageAccounts.add(account.id);
+    usageErrorsByAccount.remove(account.id);
+    notifyListeners();
+    try {
+      usageByAccount[account.id] = await _withApi(
+        account.token,
+        (api) => api.workerUsage(account.id, deployment.name),
+      );
+    } catch (e) {
+      usageErrorsByAccount[account.id] = e is CloudflareException
+          ? e.message
+          : 'Could not load usage';
+    } finally {
+      loadingUsageAccounts.remove(account.id);
       notifyListeners();
     }
   }
