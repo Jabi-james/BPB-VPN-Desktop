@@ -148,7 +148,7 @@ class _StatusCardState extends State<StatusCard> {
               ),
             ),
             const SizedBox(height: 20),
-            const _Metrics(),
+            _Metrics(),
           ],
         ),
       ),
@@ -231,16 +231,14 @@ class _Metric extends StatelessWidget {
   final String label;
   final Widget value;
 
-  /// Tap action (refresh the IPs, copy the proxy address) and its hint.
+  /// Tap action to refresh the displayed exit IP.
   final VoidCallback? onTap;
-  final String tooltip;
 
   const _Metric({
     required this.icon,
     required this.label,
     required this.value,
     this.onTap,
-    this.tooltip = 'Tap to refresh',
   });
 
   @override
