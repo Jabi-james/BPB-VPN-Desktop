@@ -9,7 +9,10 @@ import 'flag_text.dart';
 /// Chip showing the selected value; tapping opens a menu with the selected item highlighted.
 class ChipMenu<T> extends StatelessWidget {
   final List<T> values;
-  final T selected;
+  final T? selected;
+  final String? placeholder;
+  final double width;
+  final bool expand;
   final String Function(T) label;
 
   /// Optional tags after the label (e.g. the protocol), each in its own badge.
@@ -24,6 +27,9 @@ class ChipMenu<T> extends StatelessWidget {
     super.key,
     required this.values,
     required this.selected,
+    this.placeholder,
+    this.width = 170,
+    this.expand = false,
     required this.label,
     this.badges,
     this.subtitleBadges,
@@ -96,7 +102,7 @@ class ChipMenu<T> extends StatelessWidget {
             onPressed: () => onSelected(v),
             // Same width on every row; the name takes the free space, so tags line up on the right.
             child: SizedBox(
-              width: 170,
+              width: width,
               child: Row(
                 children: [
                   Expanded(
@@ -132,12 +138,12 @@ class ChipMenu<T> extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(12, 6, 6, 6),
             child: SizedBox(
-              width: 170,
+              width: expand ? double.infinity : width,
               child: Row(
                 children: [
                   Expanded(
                     child: FlagText(
-                      label(selected),
+                      selected == null ? (placeholder ?? '') : label(selected as T),
                       style: theme.textTheme.labelLarge,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
