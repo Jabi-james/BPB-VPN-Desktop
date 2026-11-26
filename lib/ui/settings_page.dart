@@ -27,6 +27,7 @@ import 'routing_page.dart';
 import 'tor_bridges_page.dart';
 import 'tor_custom_bridges_pref.dart';
 import 'ssh_settings_page.dart';
+import 'statistics_page.dart';
 import 'hover_animated_icon.dart';
 
 class _BrowserPrivacyTile extends StatelessWidget {
@@ -227,6 +228,21 @@ class _SettingsPageState extends State<SettingsPage> {
       body: _SettingsSections(
         onSectionChanged: (isSsh) => setState(() => _sshSelected = isSsh),
         children: [
+          const SectionHeader('Statistics'),
+          SettingsCard(
+            children: [
+              ListTile(
+                leading: const Icon(Symbols.query_stats_rounded, color: Color(0xFF46B8FF)),
+                title: const Text('Statistics'),
+                subtitle: const Text('Live speeds, total traffic and Worker requests'),
+                trailing: const Icon(Symbols.chevron_right_rounded),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const StatisticsPage()),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
           const SectionHeader('Global'),
           SettingsCard(
             children: [
