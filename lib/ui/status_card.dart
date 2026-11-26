@@ -146,8 +146,6 @@ class _StatusCardState extends State<StatusCard> {
             ),
             const SizedBox(height: 18),
             _Metrics(),
-            const SizedBox(height: 14),
-            const _LiveTrafficRow(),
           ],
         ),
       ),
@@ -162,66 +160,41 @@ class _Metrics extends StatelessWidget {
     final state = AppScope.of(context);
     final since = state.connectedAt;
     final ips = state.myIps;
-
-    Widget ip(IpInfo? info) {
-      if (!state.isConnected) return const Text('—');
-      if (ips == null) return Text(state.loadingIps ? '…' : '—');
-      if (info == null) return const Text('Unavailable');
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Flexible(
-            child: Text(info.ip, maxLines: 1, overflow: TextOverflow.ellipsis),
-          ),
-          if (info.country != null) ...[
-            const SizedBox(width: 6),
-            CountryFlagImage(countryCode: info.country!),
-          ],
-        ],
-      );
-    }
-
-    final refreshIps = state.isConnected ? state.refreshMyIps : null;
     final twoIps = state.mode.needsWorker && state.exitNode == ExitNode.worker;
-    return Row(
-      children: [
-        Expanded(
-          child: _Metric(
-            icon: Symbols.timer_rounded,
-            label: 'Duration',
-            value: Text(
-              state.isConnected && since != null
-                  ? formatDuration(DateTime.now().difference(since))
-                  : '—',
-            ),
-          ),
-        ),
-        Expanded(
-          child: _Metric(
-            icon: Symbols.speed_rounded,
-            label: 'Ping',
-            value: const _PingButton(),
-          ),
-        ),
-        Expanded(
-          child: _Metric(
-            icon: Symbols.location_on_rounded,
-            label: 'My IP',
-            value: ip(ips?.other ?? (twoIps ? null : ips?.cloudflare)),
-            onTap: refreshIps,
-          ),
-        ),
-        if (twoIps)
-          Expanded(
-            child: _Metric(
-              icon: Symbols.cloud_rounded,
-              label: 'Cloudflare IP',
-              value: ip(ips?.cloudflare),
-              onTap: refreshIps,
-            ),
-          ),
-      ],
-    );
+    Widget ip(IpInfo? info) {
+      if (!state.isConnected) return const Text('—', textAlign: TextAlign.center);
+      if (ips == null) return Text(state.loadingIps ? '…' : '—', textAlign: TextAlign.center);
+      if (info == null) return const Text('Unavailable', textAlign: TextAlign.center);
+      return Row(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, children: [
+        Flexible(child: Text(info.ip, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center)),
+        if (info.country != null) ...[
+          const SizedBox(width: 5),
+          CountryFlagImage(countryCode: info.country!),
+        ],
+      ]);
+    }
+    final refreshIps = state.isConnected ? state.refreshMyIps : null;
+    final myIpValue = twoIps
+        ? Column(mainAxisSize: MainAxisSize.min, children: [
+            ip(ips?.other),
+            if (state.isConnected) ...[
+              const SizedBox(height: 2),
+              Text('CF  ${ips?.cloudflare?.ip ?? '—'}',
+                maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant)),
+            ],
+          ])
+        : ip(ips?.other ?? ips?.cloudflare);
+    return Row(children: [
+      Expanded(child: _Metric(icon: Symbols.location_on_rounded, label: 'My IP', value: myIpValue, onTap: refreshIps)),
+      const SizedBox(width: 8),
+      Expanded(child: _Metric(icon: Symbols.speed_rounded, label: 'Ping', value: const _PingButton())),
+      const SizedBox(width: 8),
+      Expanded(child: _Metric(icon: Symbols.timer_rounded, label: 'Duration',
+        value: Text(state.isConnected && since != null
+          ? formatDuration(DateTime.now().difference(since)) : '—', textAlign: TextAlign.center))),
+    ]);
   }
 }
 
@@ -254,9 +227,10 @@ class _Metric extends StatelessWidget {
         ),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
@@ -271,6 +245,7 @@ class _Metric extends StatelessWidget {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
                   style: theme.textTheme.labelMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.w600,
@@ -287,8 +262,8 @@ class _Metric extends StatelessWidget {
             child: SizedBox(
               height: 28,
               child: Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: value,
+                alignment: Alignment.center,
+                child: Center(child: value),
               ),
             ),
           ),
@@ -420,11 +395,12 @@ class _PowerButtonState extends State<_PowerButton> {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          if (!busy)
-            _PowerHalo(
-              size: widget.size,
-              color: state.status == VpnStatus.connected ? _green : _red,
-            ),
+          _PowerHalo(
+            size: widget.size,
+            color: state.status == VpnStatus.connected
+                ? _green
+                : state.status == VpnStatus.disconnected ? _red : _connecting,
+          ),
           if (busy)
             Positioned.fill(
               child: CircularProgressIndicator(
@@ -536,19 +512,19 @@ class _PowerHaloState extends State<_PowerHalo>
     builder: (context, _) {
       final t = Curves.easeInOut.transform(_pulse.value);
       return Container(
-        width: widget.size * (0.96 + 0.22 * t),
-        height: widget.size * (0.96 + 0.22 * t),
+        width: widget.size * (0.96 + 0.42 * t),
+        height: widget.size * (0.96 + 0.42 * t),
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           border: Border.all(
-            color: widget.color.withValues(alpha: 0.12 + 0.16 * (1 - t)),
-            width: 2,
+            color: widget.color.withValues(alpha: 0.36 + 0.42 * (1 - t)),
+            width: 6,
           ),
           boxShadow: [
             BoxShadow(
-              color: widget.color.withValues(alpha: 0.08 + 0.12 * (1 - t)),
-              blurRadius: 12 + 18 * t,
-              spreadRadius: 1 + 3 * t,
+              color: widget.color.withValues(alpha: 0.24 + 0.36 * (1 - t)),
+              blurRadius: 36 + 54 * t,
+              spreadRadius: 3 + 9 * t,
             ),
           ],
         ),
@@ -592,65 +568,3 @@ class _SpinningArtworkState extends State<_SpinningArtwork>
   );
 }
 
-/// Live transfer rates stay visible on the home screen while connected.
-class _LiveTrafficRow extends StatelessWidget {
-  const _LiveTrafficRow();
-
-  @override
-  Widget build(BuildContext context) {
-    final state = AppScope.of(context);
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-
-    Widget rate(String label, int value, IconData icon, Color color) {
-      return Expanded(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-          decoration: BoxDecoration(
-            color: scheme.surfaceContainerHighest.withValues(alpha: 0.58),
-            borderRadius: BorderRadius.circular(15),
-            border: Border.all(color: color.withValues(alpha: 0.28)),
-          ),
-          child: Row(
-            children: [
-              Icon(icon, color: color, size: 20),
-              const SizedBox(width: 9),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(label, style: theme.textTheme.labelSmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w600,
-                    )),
-                    const SizedBox(height: 2),
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        state.isConnected ? '${formatBytes(value)}/s' : '—',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          fontFeatures: const [FontFeature.tabularFigures()],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return Row(
-      children: [
-        rate('DOWNLOAD', state.downSpeed, Symbols.download_rounded, _green),
-        const SizedBox(width: 10),
-        rate('UPLOAD', state.upSpeed, Symbols.upload_rounded, const Color(0xFF8B7CFF)),
-      ],
-    );
-  }
-}
