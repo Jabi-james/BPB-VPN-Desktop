@@ -167,7 +167,6 @@ class _ReconnectBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final state = AppScope.of(context);
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     return Card(
