@@ -153,7 +153,7 @@ class _StatusCardState extends State<StatusCard> {
   }
 }
 
-/// Duration, ping and the two exit IPs in a 2×2 grid.
+/// Connection metrics with compact download/upload cards aligned to My IP and Duration.
 class _Metrics extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -186,15 +186,72 @@ class _Metrics extends StatelessWidget {
             ],
           ])
         : ip(ips?.other ?? ips?.cloudflare);
-    return Row(textDirection: TextDirection.ltr, children: [
-      Expanded(child: _Metric(icon: Symbols.location_on_rounded, label: 'My IP', value: myIpValue, onTap: refreshIps)),
-      const SizedBox(width: 8),
-      Expanded(child: _Metric(icon: Symbols.speed_rounded, label: 'Ping', value: const _PingButton())),
-      const SizedBox(width: 8),
-      Expanded(child: _Metric(icon: Symbols.timer_rounded, label: 'Duration',
-        value: Text(state.isConnected && since != null
-          ? formatDuration(DateTime.now().difference(since)) : '—', textAlign: TextAlign.center))),
-    ]);
+    return Column(
+      children: [
+        Row(textDirection: TextDirection.ltr, children: [
+          Expanded(child: _Metric(icon: Symbols.location_on_rounded, label: 'My IP', value: myIpValue, onTap: refreshIps)),
+          const SizedBox(width: 8),
+          Expanded(child: _Metric(icon: Symbols.speed_rounded, label: 'Ping', value: const _PingButton(), valueWeight: FontWeight.w700)),
+          const SizedBox(width: 8),
+          Expanded(child: _Metric(icon: Symbols.timer_rounded, label: 'Duration',
+            value: Text(state.isConnected && since != null
+              ? formatDuration(DateTime.now().difference(since)) : '—', textAlign: TextAlign.center))),
+        ]),
+        const SizedBox(height: 8),
+        Row(textDirection: TextDirection.ltr, children: [
+          Expanded(child: _SpeedMetric(icon: Symbols.download_rounded, value: state.downSpeed, color: const Color(0xFF39FF75))),
+          const SizedBox(width: 8),
+          const Expanded(child: SizedBox.shrink()),
+          const SizedBox(width: 8),
+          Expanded(child: _SpeedMetric(icon: Symbols.upload_rounded, value: state.upSpeed, color: const Color(0xFF8B7CFF))),
+        ]),
+      ],
+    );
+  }
+}
+
+class _SpeedMetric extends StatelessWidget {
+  final IconData icon;
+  final int value;
+  final Color color;
+  const _SpeedMetric({required this.icon, required this.value, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      height: 44,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.48),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.48),
+          width: 0.7,
+        ),
+      ),
+      alignment: Alignment.center,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 6),
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                '${formatBytes(value)}/s',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w400,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -205,12 +262,14 @@ class _Metric extends StatelessWidget {
 
   /// Tap action to refresh the displayed exit IP.
   final VoidCallback? onTap;
+  final FontWeight valueWeight;
 
   const _Metric({
     required this.icon,
     required this.label,
     required this.value,
     this.onTap,
+    this.valueWeight = FontWeight.w400,
   });
 
   @override
@@ -257,7 +316,7 @@ class _Metric extends StatelessWidget {
           const SizedBox(height: 3),
           DefaultTextStyle.merge(
             style: theme.textTheme.titleMedium
-                ?.copyWith(fontWeight: FontWeight.w700)
+                ?.copyWith(fontWeight: valueWeight)
                 .merge(_tabular),
             child: SizedBox(
               height: 38,
