@@ -213,6 +213,8 @@ class AppState extends ChangeNotifier {
   int _windowsVerificationToken = 0;
   Timer? _lanTimer;
   Future<void>? _aetherProvisioning;
+  bool _aetherMasqueIdentityRegistered = false;
+  bool _aetherWgIdentityRegistered = false;
   bool _disposed = false;
 
   bool get isConnected => status == VpnStatus.connected;
@@ -235,12 +237,27 @@ class AppState extends ChangeNotifier {
     ])
       if (switch (m) {
         ConnectionMode.worker => deployments.isNotEmpty,
-        ConnectionMode.warp => profile.warp.account != null || defaultTargetPlatform == TargetPlatform.windows,
-        ConnectionMode.masque => profile.masque.account != null || defaultTargetPlatform == TargetPlatform.windows,
+        ConnectionMode.warp => profile.warp.account != null || _aetherWgIdentityRegistered,
+        ConnectionMode.masque => profile.masque.account != null || _aetherMasqueIdentityRegistered,
         _ => true,
       })
         m,
   ];
+
+  /// Whether this core has its own registered identity for the selected WARP protocol.
+  bool isCoreRegistered(CoreType selectedCore, ConnectionMode selectedMode) {
+    if (selectedMode == ConnectionMode.warp) {
+      return selectedCore == CoreType.bpb
+          ? profile.warp.account != null
+          : _aetherWgIdentityRegistered;
+    }
+    if (selectedMode == ConnectionMode.masque) {
+      return selectedCore == CoreType.bpb
+          ? profile.masque.account != null
+          : _aetherMasqueIdentityRegistered;
+    }
+    return false;
+  }
 
   /// The chosen type, or the first available one when it can't be used (yet).
   CoreType get core =>
@@ -472,6 +489,7 @@ class AppState extends ChangeNotifier {
       unawaited(attempt.catchError((_) {
         if (identical(_aetherProvisioning, attempt)) _aetherProvisioning = null;
       }));
+      unawaited(_refreshAetherIdentityStatus());
     }
     if (_prefs.containsKey('configOverrides')) {
       await _prefs.remove('configOverrides');
@@ -517,6 +535,7 @@ class AppState extends ChangeNotifier {
       try {
         // Share an in-flight attempt, or reuse its successful result.
         await previous;
+        await _refreshAetherIdentityStatus(waitForProvisioning: false);
         return;
       } catch (_) {
         // Startup provisioning may have failed; let the visible Setup step retry it.
@@ -527,11 +546,45 @@ class AppState extends ChangeNotifier {
     _aetherProvisioning = attempt;
     try {
       await attempt;
+      await _refreshAetherIdentityStatus(waitForProvisioning: false);
     } catch (_) {
       if (identical(_aetherProvisioning, attempt)) _aetherProvisioning = null;
+      await _refreshAetherIdentityStatus(waitForProvisioning: false);
       rethrow;
     }
   }
+
+  /// Refreshes the synchronous identity flags used by the connection Type/Core selectors.
+  Future<void> _refreshAetherIdentityStatus({bool waitForProvisioning = true}) async {
+    if (!Platform.isWindows) return;
+    if (waitForProvisioning) {
+      final pending = _aetherProvisioning;
+      if (pending != null) {
+        try {
+          await pending;
+        } catch (_) {
+          // Existing identity files may still be valid after a partial provisioning failure.
+        }
+      }
+    }
+    Future<bool> exists(String name) async {
+      try {
+        final file = File('$_aetherConfigDir${Platform.pathSeparator}$name');
+        return await file.exists() && await file.length() > 0;
+      } catch (_) {
+        return false;
+      }
+    }
+    final masque = await exists('aether-masque.toml');
+    final wg = await exists('aether-wg.toml');
+    if (_aetherMasqueIdentityRegistered == masque && _aetherWgIdentityRegistered == wg) return;
+    _aetherMasqueIdentityRegistered = masque;
+    _aetherWgIdentityRegistered = wg;
+    notifyListeners();
+  }
+
+  bool get aetherMasqueIdentityRegistered => _aetherMasqueIdentityRegistered;
+  bool get aetherWgIdentityRegistered => _aetherWgIdentityRegistered;
 
   static Map<String, dynamic> _decodeMap(String? raw) {
     if (raw == null) return {};
@@ -1233,6 +1286,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     try {
       await VpnChannel.renewAetherMasqueIdentity(_aetherConfigDir);
+      await _refreshAetherIdentityStatus(waitForProvisioning: false);
     } finally {
       renewingAetherMasque = false;
       notifyListeners();
@@ -1262,6 +1316,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     try {
       await VpnChannel.renewAetherWgIdentity(_aetherConfigDir);
+      await _refreshAetherIdentityStatus(waitForProvisioning: false);
     } finally {
       renewingAetherWg = false;
       notifyListeners();
