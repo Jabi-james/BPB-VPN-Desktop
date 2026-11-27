@@ -31,6 +31,7 @@ class AppToast {
   }
 
   static void show(BuildContext context, String message) {
+    if (!context.mounted || message.trim().isEmpty) return;
     hide();
     final overlay = Overlay.of(context, rootOverlay: true);
     late final OverlayEntry entry;
