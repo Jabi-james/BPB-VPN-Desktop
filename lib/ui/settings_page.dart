@@ -30,6 +30,7 @@ import 'ssh_settings_page.dart';
 import 'statistics_page.dart';
 import 'hover_animated_icon.dart';
 import 'chip_menu.dart';
+import 'v2ray_manager_page.dart';
 
 class _BrowserPrivacyTile extends StatelessWidget {
   const _BrowserPrivacyTile();
@@ -847,6 +848,23 @@ class _SettingsPageState extends State<SettingsPage> {
           const SizedBox(height: 12),
           SettingsCard(children: [const _AetherWgAccountTile()]),
           const CoreGroupEnd(),
+
+          const SectionHeader('V2Ray'),
+          SettingsCard(
+            children: [
+              ListTile(
+                leading: const Icon(Symbols.hub_rounded, color: Color(0xFFFFA34D)),
+                title: const Text('Subscriptions'),
+                subtitle: const Text('Add, edit and remove V2Ray subscription links'),
+                trailing: const Icon(Symbols.chevron_right_rounded),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => _CompactSettingsTheme(child: const V2rayManagerPage()),
+                  ),
+                ),
+              ),
+            ],
+          ),
 
           const SectionHeader('SSH'),
           SshSettingsPage(embedded: true, onSaveStateChanged: _onSshSaveStateChanged),
