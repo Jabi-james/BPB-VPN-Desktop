@@ -1307,8 +1307,8 @@ class AppState extends ChangeNotifier {
   Future<void> cancelAetherEndpointScan() =>
       VpnChannel.cancelAetherEndpointScan();
 
-  /// Runs Aether's own protocol verifier and saves up to ten healthy endpoints.
-  Future<List<String>> scanAetherEndpoints(String protocol) async {
+  /// Runs Aether's own protocol verifier and returns measured endpoints.
+  Future<List<AetherScanResult>> scanAetherEndpoints(String protocol) async {
     if (defaultTargetPlatform != TargetPlatform.windows) {
       throw UnsupportedError('Aether endpoint scanning is available on Windows only.');
     }
@@ -1318,14 +1318,29 @@ class AppState extends ChangeNotifier {
     if (protocol != 'masque' && protocol != 'wg') {
       throw ArgumentError.value(protocol, 'protocol');
     }
-    final endpoints = await VpnChannel.scanAetherEndpoints(
+    final results = await VpnChannel.scanAetherEndpoints(
       protocol: protocol,
       configDir: _aetherConfigDir,
       environment: _aetherEnvironmentFor(protocol, includeSavedEndpoint: false),
     );
-    if (endpoints.isEmpty) throw StateError('Aether did not find any healthy endpoints.');
-    write('device.aether.${protocol == 'masque' ? 'masqueEndpoints' : 'wgEndpoints'}', endpoints);
-    return endpoints;
+    if (results.isEmpty) throw StateError('Aether did not find any healthy endpoints.');
+    return results;
+  }
+
+  /// Imports only the selected Aether scan results, preserving existing endpoints.
+  int installAetherScannedEndpoints(String protocol, List<String> endpoints) {
+    if (protocol != 'masque' && protocol != 'wg') {
+      throw ArgumentError.value(protocol, 'protocol');
+    }
+    final path = 'device.aether.${protocol == 'masque' ? 'masqueEndpoints' : 'wgEndpoints'}';
+    final current = readList(path);
+    final added = endpoints
+        .map((endpoint) => endpoint.trim())
+        .where((endpoint) => endpoint.isNotEmpty && !current.contains(endpoint))
+        .toSet()
+        .toList();
+    if (added.isNotEmpty) write(path, [...current, ...added]);
+    return added.length;
   }
 
   Future<void> _start() async {

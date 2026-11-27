@@ -51,6 +51,7 @@ type response struct {
 	Psiphon string `json:"psiphon,omitempty"`
 	Tor     string `json:"tor,omitempty"`
 	AetherEndpoints []string `json:"aetherEndpoints,omitempty"`
+	AetherResults   []aetherScanHit `json:"aetherResults,omitempty"`
 }
 
 func startController(controller *xray.Controller, req request) error {
@@ -74,6 +75,7 @@ var (
 	aetherScanMu sync.Mutex
 	activeAetherScanCancel context.CancelFunc
 	activeAetherScanDone chan struct{}
+	activeAetherScanControl chan string
 )
 
 func cancelAetherScanAndWait() {
@@ -335,25 +337,41 @@ func main() {
 				}
 				ctx, cancel := context.WithCancel(context.Background())
 				done := make(chan struct{})
-				activeAetherScanCancel, activeAetherScanDone = cancel, done
+				control := make(chan string, 8)
+				activeAetherScanCancel, activeAetherScanDone, activeAetherScanControl = cancel, done, control
 				aetherScanMu.Unlock()
 				go func() {
-					endpoints, err := scanAetherWindows(filepath.Dir(executable), req, ctx)
+					results, err := scanAetherWindows(filepath.Dir(executable), req, ctx, control)
 					cancel()
 					if err != nil {
 						writeResponse(response{Error: err.Error()})
 					} else {
-						writeResponse(response{OK: true, AetherEndpoints: endpoints})
+						writeResponse(response{OK: true, AetherResults: results})
 					}
 					aetherScanMu.Lock()
 					if activeAetherScanDone == done {
-						activeAetherScanCancel, activeAetherScanDone = nil, nil
+						activeAetherScanCancel, activeAetherScanDone, activeAetherScanControl = nil, nil, nil
 					}
 					close(done)
 					aetherScanMu.Unlock()
 				}()
 				continue
 			}
+		case "pauseAetherScan", "resumeAetherScan":
+			aetherScanMu.Lock()
+			control := activeAetherScanControl
+			aetherScanMu.Unlock()
+			if control != nil {
+				action := "pause"
+				if req.Command == "resumeAetherScan" {
+					action = "resume"
+				}
+				select {
+				case control <- action:
+				default:
+				}
+			}
+			continue
 		case "cancelAetherScan":
 			aetherScanMu.Lock()
 			cancel := activeAetherScanCancel

@@ -1107,9 +1107,11 @@ class AetherScannerPage extends StatefulWidget {
 class _AetherScannerPageState extends State<AetherScannerPage> {
   bool _loading = false;
   bool _stopping = false;
+  bool _paused = false;
   bool _hasScanned = false;
   String? _error;
-  List<String> _endpoints = const [];
+  List<AetherScanResult> _results = const [];
+  final Set<String> _selectedEndpoints = {};
 
   Future<void> _scan() async {
     if (!mounted || _loading) return;
@@ -1117,15 +1119,21 @@ class _AetherScannerPageState extends State<AetherScannerPage> {
       _loading = true;
       _hasScanned = true;
       _error = null;
-      _endpoints = const [];
+      _results = const [];
+      _selectedEndpoints.clear();
+      _paused = false;
     });
     try {
-      final endpoints = await AppScope.of(context).scanAetherEndpoints(widget.protocol);
+      final results = await AppScope.of(context).scanAetherEndpoints(widget.protocol);
       if (!mounted) return;
       setState(() {
-        _endpoints = endpoints;
+        _results = results;
+        _selectedEndpoints
+          ..clear()
+          ..addAll(results.map((result) => result.endpoint));
         _loading = false;
         _stopping = false;
+        _paused = false;
       });
     } catch (error) {
       if (!mounted) return;
@@ -1133,12 +1141,47 @@ class _AetherScannerPageState extends State<AetherScannerPage> {
         _error = '$error';
         _loading = false;
         _stopping = false;
+        _paused = false;
       });
     }
   }
 
+  Future<void> _togglePause() async {
+    final wasPaused = _paused;
+    try {
+      if (wasPaused) {
+        await VpnChannel.resumeAetherEndpointScan();
+      } else {
+        await VpnChannel.pauseAetherEndpointScan();
+      }
+      if (mounted) setState(() => _paused = !wasPaused);
+    } catch (error) {
+      if (mounted) setState(() => _error = '$error');
+    }
+  }
+
+  void _importSelected(AppState state) {
+    final selected = _results
+        .where((result) => _selectedEndpoints.contains(result.endpoint))
+        .map((result) => result.endpoint)
+        .toList();
+    if (selected.isEmpty) {
+      setState(() => _error = 'Select at least one endpoint to import.');
+      return;
+    }
+    final added = state.installAetherScannedEndpoints(widget.protocol, selected);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(
+        added == 0
+            ? 'These endpoints are already installed'
+            : 'Imported $added endpoint(s)',
+      )),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final state = AppScope.of(context);
     final protocolName = widget.protocol == 'masque' ? 'MASQUE' : 'WireGuard';
     final theme = Theme.of(context);
     return Scaffold(
@@ -1178,6 +1221,12 @@ class _AetherScannerPageState extends State<AetherScannerPage> {
               ),
               if (_loading)
                 OutlinedButton.icon(
+                  onPressed: _stopping ? null : _togglePause,
+                  icon: Icon(_paused ? Icons.play_arrow_rounded : Icons.pause_rounded),
+                  label: Text(_paused ? 'Resume' : 'Pause'),
+                ),
+              if (_loading)
+                OutlinedButton.icon(
                   onPressed: _stopping
                       ? null
                       : () async {
@@ -1208,19 +1257,43 @@ class _AetherScannerPageState extends State<AetherScannerPage> {
             Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
           ] else if (_hasScanned) ...[
             const SizedBox(height: 18),
-            Text('${_endpoints.length} healthy endpoint(s) saved', style: theme.textTheme.titleMedium),
+            Text('${_results.length} healthy endpoint(s) found', style: theme.textTheme.titleMedium),
+          ],
+          if (_results.isNotEmpty) ...[
             const SizedBox(height: 8),
-            for (final (index, endpoint) in _endpoints.indexed)
-              ListTile(
-                leading: CircleAvatar(radius: 14, child: Text('${index + 1}', style: const TextStyle(fontSize: 12))),
-                title: Text(endpoint),
-                subtitle: Text(index == 0 ? 'Fastest · selected for connection' : 'Verified endpoint'),
-                trailing: IconButton(
+            Text('${_selectedEndpoints.length} selected', style: theme.textTheme.bodySmall),
+            for (final (index, result) in _results.indexed)
+              CheckboxListTile(
+                value: _selectedEndpoints.contains(result.endpoint),
+                onChanged: (value) => setState(() {
+                  if (value == true) {
+                    _selectedEndpoints.add(result.endpoint);
+                  } else {
+                    _selectedEndpoints.remove(result.endpoint);
+                  }
+                }),
+                secondary: IconButton(
                   tooltip: 'Copy endpoint',
                   icon: const Icon(Icons.copy_rounded),
-                  onPressed: () => Clipboard.setData(ClipboardData(text: endpoint)),
+                  onPressed: () => Clipboard.setData(
+                    ClipboardData(text: result.endpoint),
+                  ),
                 ),
+                title: Text(
+                  result.endpoint,
+                  style: const TextStyle(fontFamily: 'monospace'),
+                ),
+                subtitle: Text(
+                  'Ping: ${result.pingMs.toStringAsFixed(2)} ms'
+                  '${index == 0 ? ' · Fastest' : ''}',
+                ),
+                controlAffinity: ListTileControlAffinity.leading,
               ),
+            FilledButton.icon(
+              onPressed: () => _importSelected(state),
+              icon: const Icon(Icons.file_download_done_rounded),
+              label: const Text('Import selected endpoints'),
+            ),
           ],
         ],
       ),

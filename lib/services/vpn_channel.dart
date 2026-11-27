@@ -24,6 +24,19 @@ class VpnStateEvent {
   const VpnStateEvent(this.status, this.error, this.connectedAt, this.detail);
 }
 
+class AetherScanResult {
+  final String endpoint;
+  final double pingMs;
+
+  const AetherScanResult({required this.endpoint, required this.pingMs});
+
+  factory AetherScanResult.fromJson(Map<String, dynamic> json) =>
+      AetherScanResult(
+        endpoint: json['endpoint'] as String,
+        pingMs: (json['pingMs'] as num).toDouble(),
+      );
+}
+
 class InstalledApp {
   final String packageName;
   final String label;
@@ -212,6 +225,20 @@ class VpnChannel {
   }
 
   /// Sends cancellation out-of-band while the scan command is still awaiting its response.
+  static Future<void> _sendAetherScanControl(String command) async {
+    if (!Platform.isWindows) return;
+    final process = _windowsProcess;
+    if (process == null) throw StateError('BPB core process is not running.');
+    process.stdin.writeln(jsonEncode({'command': command}));
+    await process.stdin.flush();
+  }
+
+  static Future<void> pauseAetherEndpointScan() =>
+      _sendAetherScanControl('pauseAetherScan');
+
+  static Future<void> resumeAetherEndpointScan() =>
+      _sendAetherScanControl('resumeAetherScan');
+
   static Future<void> cancelAetherEndpointScan() async {
     if (!Platform.isWindows) return;
     final process = _windowsProcess;
@@ -233,7 +260,7 @@ class VpnChannel {
     }
   }
 
-  static Future<List<String>> scanAetherEndpoints({
+  static Future<List<AetherScanResult>> scanAetherEndpoints({
     required String protocol,
     required String configDir,
     required Map<String, String> environment,
@@ -250,8 +277,11 @@ class VpnChannel {
     if (result['ok'] != true) {
       throw StateError(result['error'] as String? ?? 'Aether endpoint scan failed.');
     }
-    return (result['aetherEndpoints'] as List? ?? const [])
-        .whereType<String>()
+    return (result['aetherResults'] as List? ?? const [])
+        .whereType<Map>()
+        .map((item) => AetherScanResult.fromJson(
+              Map<String, dynamic>.from(item),
+            ))
         .toList();
   }
 

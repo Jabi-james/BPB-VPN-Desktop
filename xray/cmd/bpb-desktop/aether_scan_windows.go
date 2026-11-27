@@ -15,18 +15,48 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"golang.org/x/sys/windows"
 )
 
 var aetherCandidateLine = regexp.MustCompile(`(?:wg )?candidate ok\s+(\S+)\s+rtt=(\S+)`)
 
 type aetherScanHit struct {
-	endpoint string
-	rttMs    float64
+	Endpoint string  `json:"endpoint"`
+	PingMs   float64 `json:"pingMs"`
+}
+
+const processSuspendResumeAccess = 0x0800
+
+var (
+	aetherNTDLL          = windows.NewLazySystemDLL("ntdll.dll")
+	aetherNtSuspendProc  = aetherNTDLL.NewProc("NtSuspendProcess")
+	aetherNtResumeProc   = aetherNTDLL.NewProc("NtResumeProcess")
+)
+
+func setAetherProcessPaused(pid int, paused bool) error {
+	handle, err := windows.OpenProcess(processSuspendResumeAccess, false, uint32(pid))
+	if err != nil {
+		return fmt.Errorf("open Aether scanner process: %w", err)
+	}
+	defer windows.CloseHandle(handle)
+
+	proc := aetherNtResumeProc
+	action := "resume"
+	if paused {
+		proc = aetherNtSuspendProc
+		action = "pause"
+	}
+	status, _, _ := proc.Call(uintptr(handle))
+	if status != 0 {
+		return fmt.Errorf("could not %s Aether scanner (NTSTATUS 0x%08x)", action, uint32(status))
+	}
+	return nil
 }
 
 // scanAetherWindows asks the official Aether core to verify endpoints with its own
 // MASQUE / WireGuard data-plane probes, then keeps the ten fastest successful results.
-func scanAetherWindows(root string, req request, parent context.Context) ([]string, error) {
+func scanAetherWindows(root string, req request, parent context.Context, controls <-chan string) ([]aetherScanHit, error) {
 	protocol := strings.ToLower(strings.TrimSpace(req.AetherProtocol))
 	if protocol != "masque" && protocol != "wg" {
 		return nil, fmt.Errorf("unsupported Aether scan protocol %q", protocol)
@@ -115,14 +145,40 @@ func scanAetherWindows(root string, req request, parent context.Context) ([]stri
 		if host, _, err := net.SplitHostPort(endpoint); err == nil {
 			key = host // keep only the fastest verified port for each distinct IP
 		}
-		if previous, exists := found[key]; !exists || rtt < previous.rttMs {
-			found[key] = aetherScanHit{endpoint: endpoint, rttMs: rtt}
+		if previous, exists := found[key]; !exists || rtt < previous.PingMs {
+			found[key] = aetherScanHit{Endpoint: endpoint, PingMs: rtt}
 		}
 	}
 	var waitErr error
 	finished := false
+	paused := false
 	for !finished && len(found) < 10 {
 		select {
+		case action := <-controls:
+			switch action {
+			case "pause":
+				if !paused && cmd.Process != nil {
+					if err := setAetherProcessPaused(cmd.Process.Pid, true); err != nil {
+						_ = cmd.Process.Kill()
+						waitErr = <-wait
+						finished = true
+						waitErr = fmt.Errorf("pause Aether scan: %w", err)
+					} else {
+						paused = true
+					}
+				}
+			case "resume":
+				if paused && cmd.Process != nil {
+					if err := setAetherProcessPaused(cmd.Process.Pid, false); err != nil {
+						_ = cmd.Process.Kill()
+						waitErr = <-wait
+						finished = true
+						waitErr = fmt.Errorf("resume Aether scan: %w", err)
+					} else {
+						paused = false
+					}
+				}
+			}
 		case line, ok := <-lines:
 			if !ok {
 				lines = nil
@@ -161,7 +217,7 @@ func scanAetherWindows(root string, req request, parent context.Context) ([]stri
 	for _, hit := range found {
 		hits = append(hits, hit)
 	}
-	sort.Slice(hits, func(i, j int) bool { return hits[i].rttMs < hits[j].rttMs })
+	sort.Slice(hits, func(i, j int) bool { return hits[i].PingMs < hits[j].PingMs })
 
 	if len(hits) == 0 {
 		if waitErr != nil {
@@ -172,11 +228,7 @@ func scanAetherWindows(root string, req request, parent context.Context) ([]stri
 	if len(hits) > 10 {
 		hits = hits[:10]
 	}
-	endpoints := make([]string, len(hits))
-	for i, hit := range hits {
-		endpoints[i] = hit.endpoint
-	}
-	return endpoints, nil
+	return hits, nil
 }
 
 func parseAetherRttMs(value string) (float64, bool) {
