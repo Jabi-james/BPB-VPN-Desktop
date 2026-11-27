@@ -10,26 +10,32 @@ class GeoAssetsException implements Exception {
   String toString() => message;
 }
 
-/// Downloads Xray's routing data, geoip.dat and geosite.dat, from the latest
-/// Chocolate4U/Iran-v2ray-rules release: the files the app ships with (scripts/fetch_geo.sh).
-/// Each comes with its release's SHA-256 (`<file>.sha256sum`), which the app checks before
-/// replacing the current files (VpnChannel.saveGeoAssets).
+/// Downloads a matched geoip.dat / geosite.dat pair for the selected country.
+/// Every source publishes SHA-256 sidecars; the app verifies both files before replacing assets.
 class GeoAssetsDownloader {
-  static const _base = 'https://github.com/Chocolate4U/Iran-v2ray-rules/releases/latest/download';
   static const files = ['geoip.dat', 'geosite.dat'];
+
+  static const sources = <String, String>{
+    'iran': 'https://github.com/Chocolate4U/Iran-v2ray-rules/releases/latest/download',
+    'china': 'https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download',
+    'russia': 'https://github.com/runetfreedom/russia-v2ray-rules-dat/releases/latest/download',
+  };
 
   final http.Client client;
   const GeoAssetsDownloader(this.client);
 
   /// Each file's content and its SHA-256 (hex), by name.
   Future<Map<String, ({Uint8List data, String sha256})>> download({
+    required String country,
     void Function(String file, int received, int? total)? onProgress,
   }) async {
+    final base = sources[country];
+    if (base == null) throw GeoAssetsException('Unsupported Geo country: $country');
     final downloaded = <String, ({Uint8List data, String sha256})>{};
     for (final name in files) {
-      final sha256 = _hash(await _get('$_base/$name.sha256sum'), name);
+      final sha256 = _hash(await _get('$base/$name.sha256sum'), name);
       downloaded[name] = (
-        data: await _getFile('$_base/$name', name, onProgress),
+        data: await _getFile('$base/$name', name, onProgress),
         sha256: sha256,
       );
     }
