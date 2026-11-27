@@ -23,6 +23,9 @@ class ChipMenu<T> extends StatelessWidget {
   final ValueChanged<T> onSelected;
   final bool enabled;
 
+  /// Disables individual menu options without disabling the whole selector.
+  final bool Function(T)? isValueEnabled;
+
   const ChipMenu({
     super.key,
     required this.values,
@@ -35,6 +38,7 @@ class ChipMenu<T> extends StatelessWidget {
     this.subtitleBadges,
     required this.onSelected,
     this.enabled = true,
+    this.isValueEnabled,
   });
 
   /// One tag (a protocol, TCP / UDP…), as the chips show it; also used by ChoicePref.
@@ -84,6 +88,8 @@ class ChipMenu<T> extends StatelessWidget {
       menuChildren: [
         for (final v in values)
           MenuItemButton(
+            // Registration-dependent choices remain visible but cannot be selected.
+            onPressed: (isValueEnabled?.call(v) ?? true) ? () => onSelected(v) : null,
             // The selected item gets a tinted background and bold text.
             style: ButtonStyle(
               mouseCursor: WidgetStateMouseCursor.clickable,
@@ -99,7 +105,6 @@ class ChipMenu<T> extends StatelessWidget {
                     )
                   : null,
             ),
-            onPressed: () => onSelected(v),
             // Same width on every row; the name takes the free space, so tags line up on the right.
             child: SizedBox(
               width: width,
