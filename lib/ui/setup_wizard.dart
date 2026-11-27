@@ -460,6 +460,9 @@ class _Row {
 
   /// It failed to reach the server (Tor may help), rather than being refused.
   bool network = false;
+
+  /// Aether identities are already saved even if the subsequent endpoint scan failed.
+  bool registrationDone = false;
 }
 
 /// The Tor bridges the build embedded for "Retry with Tor" (assets/tor/bridges.json, written by
@@ -557,19 +560,33 @@ class _InstallStepState extends State<_InstallStep> {
         case _Item.masque:
           await state.renewMasqueAccount();
         case _Item.aether:
-          // Finish all Aether preparation before Setup reports it as ready:
-          // register both identities, then scan and persist healthy endpoints
-          // for both protocols so the user can select either one immediately.
+          // Registration is the prerequisite for scanning. Keep it successful even if
+          // one or both independent endpoint scans fail.
           await state.provisionAetherForSetup();
-          await state.scanAetherEndpoints('masque');
-          await state.scanAetherEndpoints('wg');
+          row.registrationDone = true;
+          final scanErrors = <String>[];
+          for (final protocol in const ['masque', 'wg']) {
+            try {
+              await state.scanAetherEndpoints(protocol);
+            } catch (e) {
+              scanErrors.add('$protocol: ${e is StateError ? e.message : e}');
+            }
+          }
+          if (scanErrors.isNotEmpty) {
+            throw StateError('Endpoint scan failed (${scanErrors.join('; ')}).');
+          }
       }
       row.status = _Status.done;
     } catch (e) {
+      final network = isNetworkError(e);
       row
         ..status = _Status.failed
-        ..network = isNetworkError(e)
-        ..message = isNetworkError(e) ? "Can't reach the server" : (e is StateError ? e.message : '$e');
+        ..network = network
+        ..message = item == _Item.aether && row.registrationDone
+            ? 'Aether identities are registered and saved. ${e is StateError ? e.message : e}'
+            : network
+                ? 'Registration route is blocked or unreachable. Activate another VPN/proxy and retry.'
+                : (e is StateError ? e.message : '$e');
     }
     if (mounted) setState(() {});
   }
@@ -583,7 +600,16 @@ class _InstallStepState extends State<_InstallStep> {
       if (!widget.addingAccount) AppScope.read(context).setSetupInProgress(true);
     }
     setState(() => _busy = true);
-    await Future.wait([for (final item in items.toList()) _install(item)]);
+    final requested = items.toList();
+    // Worker deployments can run in parallel. WARP registrations are deliberately
+    // sequential: a failure in one core must not prevent trying the next core.
+    final deployments = requested.where((item) =>
+        item == _Item.workers || item == _Item.pages).toList();
+    await Future.wait([for (final item in deployments) _install(item)]);
+    for (final item in requested) {
+      if (item == _Item.workers || item == _Item.pages) continue;
+      await _install(item);
+    }
     if (!mounted) return;
     // The account is added only with both its workers deployed.
     if (!_saved && _deployed.length == WorkerType.values.length) {
@@ -734,7 +760,7 @@ class _InstallStepState extends State<_InstallStep> {
               Center(
                 child: TextButton(
                   onPressed: _skip,
-                  child: const Text('Skip for now'),
+                  child: const Text('Finish setup anyway'),
                 ),
               ),
               const SizedBox(height: 8),
@@ -804,8 +830,9 @@ class _InstallStepState extends State<_InstallStep> {
         if (!_busy && failed.any((i) => _rows[i]!.network)) ...[
           const SizedBox(height: 12),
           Text(
-            "Some steps couldn't reach the server. Connect through another VPN or proxy and retry"
-            '${offerTor ? ', retry through Tor' : ''}, or skip them and finish later from Settings.',
+            'A WARP registration route may be blocked. Activate another VPN/proxy and Retry, '
+            'or finish setup and register the missing core later from Settings. '
+            'VLESS remains available when its Worker deployment succeeded.',
             style: theme.textTheme.bodySmall,
           ),
         ],
@@ -861,7 +888,16 @@ class _DoneStep extends StatelessWidget {
                     ? const Icon(Symbols.check_circle_rounded, color: Colors.green, fill: 1)
                     : Icon(Symbols.do_not_disturb_on_rounded, color: theme.colorScheme.outline),
                 const SizedBox(width: 16),
-                Expanded(child: Text(row.status == _Status.done ? item.label : '${item.label} (skipped)')),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(row.status == _Status.done ? item.label : '${item.label} (not completed)'),
+                      if (row.message != null)
+                        Text(row.message!, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error)),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -870,9 +906,12 @@ class _DoneStep extends StatelessWidget {
           const Text("These protocols will be available once you finish setting them up:"),
           if (deploySkipped) const Text('• Worker: add a Cloudflare account in Settings → VLESS → Cloudflare accounts.'),
           if (registerSkipped) const Text(
-            '• WARP / MASQUE / AETHER: register them again from their respective Settings pages.',
+            '• Any successfully registered identity is kept. Retry failed registration or endpoint scans later from the corresponding Settings page; a scan failure does not erase its key.',
           ),
-          if (!addingAccount) const Text('Psiphon, Tor and Serverless work without them.'),
+          if (!addingAccount && rows[_Item.workers]?.status == _Status.done &&
+              rows[_Item.pages]?.status == _Status.done)
+            const Text('VLESS is ready to use even if WARP registration was skipped.'),
+          if (!addingAccount) const Text('Psiphon, Tor and Serverless work without WARP registration.'),
         ],
       ],
     );
