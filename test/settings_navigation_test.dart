@@ -105,12 +105,12 @@ void main() {
       expect(find.text(title), findsOneWidget, reason: '$title did not return home');
     }
 
-    // BPB Core has its own VLESS, MASQUE and WARP cards.
+    // BPB Core has its own Worker VLESS, MASQUE and WARP cards.
     await _tapText(tester, 'BPB Core');
-    for (final title in ['VLESS', 'MASQUE', 'WARP']) {
+    for (final title in ['Worker VLESS', 'MASQUE', 'WARP']) {
       expect(find.text(title), findsOneWidget);
     }
-    await _tapText(tester, 'VLESS');
+    await _tapText(tester, 'Worker VLESS');
     expect(find.byTooltip('Back'), findsOneWidget);
 
     // Selecting the root Connection tab from a nested page resets to its home.
