@@ -237,8 +237,8 @@ class AppState extends ChangeNotifier {
     ])
       if (switch (m) {
         ConnectionMode.worker => deployments.isNotEmpty,
-        ConnectionMode.warp => profile.warp.account != null || _aetherWgIdentityRegistered,
-        ConnectionMode.masque => profile.masque.account != null || _aetherMasqueIdentityRegistered,
+        ConnectionMode.warp => profile.warp.account != null || defaultTargetPlatform == TargetPlatform.windows,
+        ConnectionMode.masque => profile.masque.account != null || defaultTargetPlatform == TargetPlatform.windows,
         _ => true,
       })
         m,
@@ -259,7 +259,22 @@ class AppState extends ChangeNotifier {
     return false;
   }
 
-  /// The chosen type, or the first available one when it can't be used (yet).
+  /// Whether at least one core has a registered identity for this connection type.
+  bool isModeSelectable(ConnectionMode selectedMode) => switch (selectedMode) {
+    ConnectionMode.warp =>
+      isCoreRegistered(CoreType.bpb, selectedMode) ||
+      isCoreRegistered(CoreType.aether, selectedMode),
+    ConnectionMode.masque =>
+      isCoreRegistered(CoreType.bpb, selectedMode) ||
+      isCoreRegistered(CoreType.aether, selectedMode),
+    _ => true,
+  };
+
+  /// Modes shown in the selector; WARP modes stay visible on Windows but may be disabled.
+  List<ConnectionMode> get selectableModes =>
+      availableModes.where(isModeSelectable).toList();
+
+  /// The chosen type, or the first registered/available one when it can't be used yet.
   CoreType get core =>
       defaultTargetPlatform == TargetPlatform.windows &&
           (mode == ConnectionMode.masque || mode == ConnectionMode.warp)
@@ -270,12 +285,15 @@ class AppState extends ChangeNotifier {
       defaultTargetPlatform == TargetPlatform.windows &&
       (mode == ConnectionMode.masque || mode == ConnectionMode.warp);
 
-  void setCore(CoreType value) => write('device.connection.core', value.name);
+  void setCore(CoreType value) {
+    if (!isCoreRegistered(value, mode)) return;
+    write('device.connection.core', value.name);
+  }
 
   ConnectionMode get mode {
     final savedType = device.connectionType == 'aether' ? 'masque' : device.connectionType;
     final chosen = ConnectionMode.values.asNameMap()[savedType] ?? ConnectionMode.worker;
-    final available = availableModes;
+    final available = selectableModes;
     return available.contains(chosen) ? chosen : available.first;
   }
 
