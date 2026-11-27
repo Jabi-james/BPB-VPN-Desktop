@@ -3,7 +3,9 @@ name: Desktop smoke build
 
 on:
   push:
-    branches: [desktop/**]
+    branches:
+      - 'desktop/**'
+      - 'feature/v2ray-manager-ui-shell'
   pull_request:
     branches: [main, 'desktop/**']
   workflow_dispatch:
