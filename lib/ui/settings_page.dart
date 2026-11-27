@@ -2106,7 +2106,7 @@ class _RulesTile extends StatelessWidget {
             : '${RoutingPage.geoCountries[routing.geoCountry] ?? 'Country'} Geo Rules'
         : null;
     final presetSummary = [
-      if (countrySummary != null) countrySummary,
+      ?countrySummary,
       if (enabled.isNotEmpty) enabled.join(', '),
     ];
     final custom =
