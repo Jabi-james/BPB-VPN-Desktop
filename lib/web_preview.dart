@@ -141,21 +141,25 @@ class _PreviewHomeState extends State<_PreviewHome> {
                   const SizedBox(width: 4),
                   SizedBox(width: 64, child: _backendTab('V2Ray', _backend == 'V2Ray', () {
                     setState(() => _backend = 'V2Ray');
-                    widget.onOpenV2Ray(context);
                   })),
                 ]),
               ),
             ),
             const SizedBox(height: 8),
-            _selectorRow(Symbols.category_rounded, const Color(0xFF4F9BFF), 'Type', _type,
-              ['VLESS', 'WARP', 'MASQUE', 'Aether', 'SSH', 'Tor', 'Psiphon', 'Serverless'],
-              (v) => setState(() => _type = v)),
-            _selectorRow(Symbols.memory_rounded, const Color(0xFF9B7CFF), 'Core', _core,
-              ['BPB Core', 'Aether'], (v) => setState(() => _core = v)),
-            _selectorRow(Symbols.tune_rounded, const Color(0xFF26BFA5), 'Mode', _mode,
-              ['Default', 'Global', 'Direct'], (v) => setState(() => _mode = v)),
-            _selectorRow(Symbols.exit_to_app_rounded, const Color(0xFFFFA34D), 'Exit Node', _exit,
-              ['Default', 'Chain proxy', 'Psiphon', 'Tor'], (v) => setState(() => _exit = v)),
+            if (_backend == 'BPB') ...[
+              _selectorRow(Symbols.category_rounded, const Color(0xFF4F9BFF), 'Type', _type,
+                ['VLESS', 'WARP', 'MASQUE', 'Aether', 'SSH', 'Tor', 'Psiphon', 'Serverless'],
+                (v) => setState(() => _type = v)),
+              _selectorRow(Symbols.memory_rounded, const Color(0xFF9B7CFF), 'Core', _core,
+                ['BPB Core', 'Aether'], (v) => setState(() => _core = v)),
+              _selectorRow(Symbols.tune_rounded, const Color(0xFF26BFA5), 'Mode', _mode,
+                ['Default', 'Global', 'Direct'], (v) => setState(() => _mode = v)),
+              _selectorRow(Symbols.exit_to_app_rounded, const Color(0xFFFFA34D), 'Exit Node', _exit,
+                ['Default', 'Chain proxy', 'Psiphon', 'Tor'], (v) => setState(() => _exit = v)),
+            ] else ...[
+              const SizedBox(height: 10),
+              const V2rayConnectionPanel(),
+            ],
           ]),
         ),
       ]),
@@ -293,13 +297,14 @@ class _PreviewSettings extends StatelessWidget {
           ])),
         ])),
         const SizedBox(height: 12),
-        Card(child: ListTile(
-          leading: const Icon(Symbols.hub_rounded, color: Color(0xFFFFA34D)),
-          title: const Text('V2Ray'),
-          subtitle: const Text('Manage V2Ray subscriptions and profiles'),
-          trailing: Icon(Icons.chevron_right_rounded, color: scheme.onSurfaceVariant),
-          onTap: () => onOpenV2Ray(context),
-        )),
+        Card(child: Column(children: [
+          const ListTile(leading: Icon(Symbols.hub_rounded, color: Color(0xFF9B7CFF)), title: Text('Aether'), subtitle: Text('Aether connection settings')),
+          const Divider(height: 1),
+          ListTile(leading: const Icon(Symbols.hub_rounded, color: Color(0xFFFFA34D)), title: const Text('V2Ray'),
+            subtitle: const Text('Subscriptions, configurations and DNS settings'),
+            trailing: Icon(Icons.chevron_right_rounded, color: scheme.onSurfaceVariant),
+            onTap: () => onOpenV2Ray(context)),
+        ])),
       ]),
     );
   }
