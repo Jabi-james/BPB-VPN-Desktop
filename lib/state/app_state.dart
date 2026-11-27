@@ -879,8 +879,25 @@ class AppState extends ChangeNotifier {
       if (mode == ConnectionMode.ssh) {
         VpnChannel.appendLog('[SSH] Tunnel started; checking the exit IP through the local proxy.');
       }
-      final ips = await fetchMyIps(proxyPort: LocalProxy.port)
+      var ips = await fetchMyIps(proxyPort: LocalProxy.port)
           .timeout(const Duration(seconds: 24));
+      // Aether can expose the exit IP a moment before the country lookup is ready.
+      // Retry only when a flag is missing; keep the first valid IP/country if the retry
+      // provider is still unavailable.
+      if (core == CoreType.aether &&
+          ((ips.other?.country?.isNotEmpty ?? false) == false ||
+              (ips.cloudflare?.country?.isNotEmpty ?? false) == false)) {
+        await Future<void>.delayed(const Duration(milliseconds: 900));
+        if (token != _windowsVerificationToken) return;
+        final retry = await fetchMyIps(proxyPort: LocalProxy.port)
+            .timeout(const Duration(seconds: 24));
+        IpInfo? preferCountry(IpInfo? first, IpInfo? second) =>
+            second?.country?.isNotEmpty == true ? second : first ?? second;
+        ips = MyIps(
+          cloudflare: preferCountry(ips.cloudflare, retry.cloudflare),
+          other: preferCountry(ips.other, retry.other),
+        );
+      }
       if (mode == ConnectionMode.ssh) {
         VpnChannel.appendLog(
           '[SSH] Exit IP lookup result: Cloudflare=${ips.cloudflare != null}, alternate=${ips.other != null}.',
