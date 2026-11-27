@@ -1405,7 +1405,7 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  /// Replaces Xray's geo files with the latest Iran-v2ray-rules release's, through the tunnel
+  /// Replaces Xray's GeoIP/GeoSite pair with the selected country's sources, through the tunnel
   /// when connected (like [checkForUpdate]). A running connection uses them once it reconnects.
   Future<void> updateGeoAssets({
     void Function(String file, int received, int? total)? onProgress,
