@@ -42,6 +42,7 @@ class AppState extends ChangeNotifier {
   static const _kGeoAssetsFingerprint = 'geoAssetsFingerprint';
 
   late SharedPreferences _prefs;
+  // ignore: prefer_final_fields
   bool _prefsReady = false;
   late String _portableNamespace;
   String get _aetherConfigDir {
