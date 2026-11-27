@@ -18,7 +18,7 @@ class GeoAssetsDownloader {
   static const sources = <String, String>{
     'iran': 'https://github.com/Chocolate4U/Iran-v2ray-rules/releases/latest/download',
     'china': 'https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download',
-    'russia': 'https://github.com/runetfreedom/russia-v2ray-rules-dat/releases/latest/download',
+    'russia': 'https://raw.githubusercontent.com/runetfreedom/russia-v2ray-rules-dat/release',
   };
 
   final http.Client client;
