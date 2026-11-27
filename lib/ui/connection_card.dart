@@ -259,8 +259,10 @@ class _TypeSelector extends StatelessWidget {
       // Only what's installed (see AppState.availableModes).
       values: state.availableModes,
       selected: state.mode,
-      label: (m) => m == ConnectionMode.worker ? 'VLESS' : m.label,
-      badges: (m) => [_protocol(m)],
+      label: (m) => m.label,
+      badges: (m) => m == ConnectionMode.worker
+          ? const ['VLESS', 'HTTPS']
+          : [_protocol(m)],
       onSelected: state.setMode,
       enabled: !state.isBusy,
     );
