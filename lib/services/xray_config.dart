@@ -790,7 +790,6 @@ class XrayConfigBuilder {
     final config = _v23 = jsonDecode(domainFrontingV23) as Map<String, dynamic>;
 
     final routing = profile.routing;
-    final geoFilesReady = routing.geoFilesCountry == routing.geoCountry;
     final geo = _geoAssets();
     final List<String> bypassDomain = [];
     final List<String> bypassGeosite = [];
@@ -1297,7 +1296,6 @@ class XrayConfigBuilder {
     }
 
     final routing = profile.routing;
-    final geoFilesReady = routing.geoFilesCountry == routing.geoCountry;
     final geo = _geoAssets();
 
     for (final g in geo.where((g) => g.isBlock)) {
@@ -1521,8 +1519,9 @@ class XrayConfigBuilder {
       add(protocol: ['bittorrent'], outbound: 'direct');
     }
 
-    final geo = _geoAssets();
     final routing = profile.routing;
+    final geoFilesReady = routing.geoFilesCountry == routing.geoCountry;
+    final geo = _geoAssets();
 
     final blockDomains = [
       ...geo.where((g) => g.isBlock).map((g) => g.geosite),
