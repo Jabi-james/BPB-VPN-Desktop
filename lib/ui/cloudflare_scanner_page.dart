@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'app_toast.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../services/scanner_channel.dart';
@@ -383,7 +384,7 @@ class _CloudflareScannerPageState extends State<CloudflareScannerPage> {
       port: _resultPort!,
     );
     final skipped = ips.length - added;
-    ScaffoldMessenger.of(context).showSnackBar(
+    AppToast.showSnackBar(context, 
       SnackBar(
         content: Text(
           added == 0
