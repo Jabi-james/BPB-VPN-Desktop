@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
-import 'theme.dart';
-
 /// V2Ray's independent server-management workspace.
 /// Subscription data, parsing and latency testing are intentionally added in later steps.
 class V2rayManagerPage extends StatefulWidget {
