@@ -38,6 +38,7 @@ class AppState extends ChangeNotifier {
   static const _kDevice = 'device';
   static const _kSecretAccounts = 'cloudflareAccounts';
   static const _kGeoAssetsUpdatedAt = 'geoAssetsUpdatedAt';
+  static const _kGeoAssetsCountry = 'geoAssetsCountry';
 
   late SharedPreferences _prefs;
   late String _portableNamespace;
@@ -53,7 +54,9 @@ class AppState extends ChangeNotifier {
   Profile? _profile;
 
   /// How configs are built: the stored profile with the selected deployment's VLESS settings.
-  Profile get profile => _profile ??= _stored.updated('vless', vless.toJson());
+  Profile get profile => _profile ??= _stored
+      .updated('routing.geoFilesCountry', _prefs.getString(_kGeoAssetsCountry) ?? 'iran')
+      .updated('vless', vless.toJson());
 
   DeviceSettings device = const DeviceSettings();
 
@@ -1419,7 +1422,10 @@ class AppState extends ChangeNotifier {
       await VpnChannel.saveGeoAssets(files);
       // Mark the pair as belonging to this country only after both files pass checksum
       // validation and have been saved successfully. Until then Xray must not use the old pair.
-      write('routing.geoFilesCountry', country);
+      await _prefs.setString(_kGeoAssetsCountry, country);
+      _profile = null;
+      _markChangedWhileConnected();
+      notifyListeners();
       await _prefs.setString(_kGeoAssetsUpdatedAt, DateTime.now().toUtc().toIso8601String());
     } on GeoAssetsException catch (e) {
       throw StateError(e.message);
