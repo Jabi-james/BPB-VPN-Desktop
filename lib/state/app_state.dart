@@ -1465,9 +1465,15 @@ class AppState extends ChangeNotifier {
         client,
       ).download(country: country, onProgress: onProgress);
       await VpnChannel.saveGeoAssets(files);
-      // Mark the pair as belonging to this country only after both files pass checksum
-      // validation and have been saved successfully. Until then Xray must not use the old pair.
+      // Persist the country marker and fingerprint only after the verified Geo pair is saved.
+      // This prevents init() from mistaking our own download for an external asset replacement.
+      final fingerprint = await VpnChannel.geoAssetsFingerprint();
+      if (fingerprint == null) {
+        throw StateError("Couldn't verify the saved geo assets.");
+      }
+      await VpnChannel.saveGeoAssetsCountryMarker(country);
       await _prefs.setString(_kGeoAssetsCountry, country);
+      await _prefs.setString(_kGeoAssetsFingerprint, fingerprint);
       _profile = null;
       _markChangedWhileConnected();
       notifyListeners();
