@@ -3114,10 +3114,17 @@ class _GeoAssetsTileState extends State<_GeoAssetsTile>
     final appState = AppScope.of(context);
     final routing = appState.profile.routing;
     final updatedAt = appState.geoAssetsUpdatedAt;
+    final sourceLabel = switch (routing.geoCountry) {
+      'iran' => 'Chocolate4U',
+      'china' => 'Loyalsoldier',
+      'russia' => 'Loyalsoldier + RunetFreedom',
+      _ => 'Geo source',
+    };
+    final countryLabel = RoutingPage.geoCountries[routing.geoCountry] ?? 'Iran';
     final updatedLabel = routing.geoFilesCountry != routing.geoCountry
         ? 'Please Update Geo Files'
         : updatedAt == null
-        ? 'Iran · Chocolate4U'
+        ? '$countryLabel · $sourceLabel'
         : 'Last updated: ${updatedAt.year.toString().padLeft(4, '0')}-'
               '${updatedAt.month.toString().padLeft(2, '0')}-'
               '${updatedAt.day.toString().padLeft(2, '0')} '
