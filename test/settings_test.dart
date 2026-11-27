@@ -334,11 +334,8 @@ void main() {
     ); // not a preset → default
     expect(p.fragments.single.lengths, const [Range(100, 200)]);
     expect(p.routing.bypass.presets, {
-      'iran': true,
-      'china': false,
-      'russia': false,
       'bittorrent': false,
-    }); // unknown preset dropped
+    }); // removed country toggles are ignored; BitTorrent remains independent
   });
 
   test('noise payload field follows the type', () {
