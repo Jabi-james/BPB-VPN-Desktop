@@ -506,13 +506,10 @@ class AppState extends ChangeNotifier {
     }
     final previous = _aetherProvisioning;
     if (previous != null) {
-      try {
-        await previous;
-        return;
-      } catch (_) {
-        // A failed attempt must not prevent the user from retrying in Setup.
-        if (identical(_aetherProvisioning, previous)) _aetherProvisioning = null;
-      }
+      // Share an in-flight attempt, or reuse its successful result.
+      // A failed attempt is cleared by its original caller so the next user retry can run.
+      await previous;
+      return;
     }
     final attempt = VpnChannel.provisionAetherIdentities(_aetherConfigDir);
     _aetherProvisioning = attempt;
