@@ -505,8 +505,9 @@ class AppState extends ChangeNotifier {
       _prefs,
     );
     device = DeviceSettings.fromJson(_decodeMap(_prefs.getString(_kDevice)));
-    if (Platform.isWindows) {
-      // Keep existing installs working; the Setup row awaits this same operation and reports its result.
+    if (Platform.isWindows && device.setupDone) {
+      // Preserve background provisioning for existing installs. First-run Setup performs
+      // BPB registration first, then Aether, so the two registration routes stay independent.
       final attempt = VpnChannel.provisionAetherIdentities(_aetherConfigDir);
       _aetherProvisioning = attempt;
       unawaited(attempt.catchError((_) {
