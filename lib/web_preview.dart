@@ -7,6 +7,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'models/theme_color.dart';
 import 'ui/theme.dart';
 import 'ui/v2ray_manager_page.dart';
+import 'ui/v2ray_store.dart';
 
 void main() => runApp(const PreviewApp());
 
@@ -318,75 +319,115 @@ class V2rayConnectionPanel extends StatefulWidget {
   State<V2rayConnectionPanel> createState() => _V2rayConnectionPanelState();
 }
 class _V2rayConnectionPanelState extends State<V2rayConnectionPanel> {
-  final List<String> _configs = [];
+  List<V2rayProfile> _configs = [];
+  List<V2raySubscription> _subs = [];
+  bool _loading = true;
+
+  @override
+  void initState() { super.initState(); _load(); }
+  Future<void> _load() async {
+    final values = await Future.wait([V2rayStore.profiles(), V2rayStore.subscriptions()]);
+    if (!mounted) return;
+    setState(() { _configs = values[0] as List<V2rayProfile>; _subs = values[1] as List<V2raySubscription>; _loading = false; });
+  }
+  void _notice(String value) {
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(value)));
+  }
   Future<void> _importClipboard() async {
-    final data = await Clipboard.getData(Clipboard.kTextPlain);
-    final raw = data?.text?.trim() ?? '';
-    final links = raw.split('\n').map((s) => s.trim()).where((s) =>
-      s.startsWith('vless://') || s.startsWith('vmess://') || s.startsWith('trojan://') || s.startsWith('ss://')).toList();
-    if (links.isEmpty) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No supported V2Ray link found in clipboard.')));
+    final raw = (await Clipboard.getData(Clipboard.kTextPlain))?.text?.trim() ?? '';
+    final links = V2rayStore.parseLinks(raw);
+    if (links.isNotEmpty) {
+      final current = await V2rayStore.profiles();
+      final merged = [...current, ...links];
+      await V2rayStore.saveProfiles(merged);
+      if (mounted) setState(() => _configs = merged);
+      _notice('${links.length} configuration(s) imported.');
       return;
     }
-    setState(() => _configs.addAll(links.where((s) => !_configs.contains(s))));
+    final uri = Uri.tryParse(raw);
+    if (uri != null && (uri.scheme == 'https' || uri.scheme == 'http') && uri.host.isNotEmpty) {
+      final subs = await V2rayStore.subscriptions();
+      if (subs.any((s) => s.url == raw)) { _notice('This subscription is already saved. Update it from Settings → Connection → V2Ray.'); return; }
+      final item = V2raySubscription(id: DateTime.now().microsecondsSinceEpoch.toString(), name: uri.host, url: raw);
+      subs.add(item);
+      await V2rayStore.saveSubscriptions(subs);
+      if (mounted) setState(() => _subs = subs);
+      _notice('Subscription added. Open Settings → Connection → V2Ray to update it.');
+      return;
+    }
+    _notice('Clipboard does not contain a supported V2Ray link or subscription URL.');
   }
   Future<void> _addManually() async {
     final ctl = TextEditingController();
     final value = await showDialog<String>(context: context, builder: (ctx) => AlertDialog(
-      title: const Text('Add configuration'),
-      content: TextField(controller: ctl, minLines: 2, maxLines: 4, decoration: const InputDecoration(labelText: 'V2Ray link')),
+      title: const Text('Add V2Ray link or subscription'),
+      content: TextField(controller: ctl, minLines: 2, maxLines: 4, decoration: const InputDecoration(labelText: 'V2Ray link or subscription URL')),
       actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
         FilledButton(onPressed: () => Navigator.pop(ctx, ctl.text.trim()), child: const Text('Add'))],
     ));
     ctl.dispose();
-    if (value != null && value.isNotEmpty) setState(() => _configs.add(value));
+    if (value == null || value.isEmpty) return;
+    final parsed = V2rayStore.parseLinks(value);
+    if (parsed.isNotEmpty) {
+      final current = await V2rayStore.profiles(); current.addAll(parsed);
+      await V2rayStore.saveProfiles(current);
+      if (mounted) setState(() => _configs = current);
+      _notice('${parsed.length} configuration(s) imported.');
+      return;
+    }
+    final uri = Uri.tryParse(value);
+    if (uri != null && (uri.scheme == 'https' || uri.scheme == 'http') && uri.host.isNotEmpty) {
+      final subs = await V2rayStore.subscriptions();
+      final item = V2raySubscription(id: DateTime.now().microsecondsSinceEpoch.toString(), name: uri.host, url: value);
+      subs.add(item); await V2rayStore.saveSubscriptions(subs);
+      if (mounted) setState(() => _subs = subs);
+      _notice('Subscription saved. Update it in Settings → Connection → V2Ray.');
+    } else { _notice('Unsupported link format.'); }
+  }
+  Future<void> _delete(V2rayProfile profile) async {
+    final ok = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
+      title: const Text('Delete configuration?'), content: Text('Delete "${profile.name}"?'),
+      actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete'))],
+    ));
+    if (ok != true) return;
+    final all = await V2rayStore.profiles()..removeWhere((p) => p.id == profile.id);
+    await V2rayStore.saveProfiles(all);
+    if (mounted) setState(() => _configs = all);
   }
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final visible = _configs;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Row(children: [
         Text('V2Ray Configs', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
         const Spacer(),
-        PopupMenuButton<String>(
-          tooltip: 'Add configuration',
-          onSelected: (v) {
-            if (v == 'clipboard') _importClipboard();
-            if (v == 'manual') _addManually();
-            if (v == 'qr') ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Screen QR scanning requires browser screen-sharing permission and is not available in this preview yet.')));
-          },
-          itemBuilder: (_) => const [
-            PopupMenuItem(value: 'clipboard', child: Text('Import from clipboard')),
-            PopupMenuItem(value: 'qr', child: Text('Scan QR Code From Screen')),
-            PopupMenuItem(value: 'manual', child: Text('Add link manually')),
-          ],
-          child: Icon(Icons.add_circle, color: scheme.primary, size: 28),
-        ),
+        PopupMenuButton<String>(tooltip: 'Add configuration', onSelected: (v) {
+          if (v == 'clipboard') _importClipboard();
+          if (v == 'manual') _addManually();
+          if (v == 'qr') _notice('Screen QR scanning is not implemented in the browser preview: it requires screen-capture permission and a QR decoder. No fake scan will be shown.');
+        }, itemBuilder: (_) => const [
+          PopupMenuItem(value: 'clipboard', child: Text('Import from clipboard')),
+          PopupMenuItem(value: 'qr', child: Text('Scan QR Code From Screen')),
+          PopupMenuItem(value: 'manual', child: Text('Add link manually')),
+        ], child: Icon(Icons.add_circle, color: scheme.primary, size: 28)),
       ]),
       const SizedBox(height: 6),
-      Container(
-        constraints: const BoxConstraints(minHeight: 250, maxHeight: 310),
+      Container(constraints: const BoxConstraints(minHeight: 250, maxHeight: 310),
         decoration: BoxDecoration(border: Border.all(color: scheme.outlineVariant.withValues(alpha: .6)), borderRadius: BorderRadius.circular(12)),
-        child: _configs.isEmpty
+        child: _loading ? const Center(child: CircularProgressIndicator()) : visible.isEmpty
           ? Center(child: Text('No V2Ray configurations yet', style: TextStyle(color: scheme.onSurfaceVariant)))
-          : ListView.separated(
-              shrinkWrap: true, itemCount: _configs.length,
-              separatorBuilder: (_, _) => Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: .5)),
-              itemBuilder: (context, index) => ListTile(dense: true,
-                title: Text('V2Ray config ${index + 1}'),
-                subtitle: Text(_configs[index], maxLines: 1, overflow: TextOverflow.ellipsis),
-                trailing: IconButton(icon: const Icon(Icons.delete_outline, color: Color(0xFFD94B4B)),
-                  onPressed: () async {
-                    final ok = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
-                      title: const Text('Delete configuration?'),
-                      actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-                        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete'))],
-                    ));
-                    if (ok == true) setState(() => _configs.removeAt(index));
-                  }),
-              ),
-          ),
-      ),
+          : ListView.separated(shrinkWrap: true, itemCount: visible.length,
+            separatorBuilder: (_, _) => Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: .5)),
+            itemBuilder: (context, index) {
+              final item = visible[index];
+              return ListTile(dense: true, title: Text(item.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                subtitle: Text('${item.protocol} · ${item.address}', maxLines: 1, overflow: TextOverflow.ellipsis),
+                trailing: IconButton(icon: const Icon(Icons.delete_outline, color: Color(0xFFD94B4B)), onPressed: () => _delete(item)));
+            })),
+      if (_subs.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Align(alignment: Alignment.centerLeft,
+        child: Text('${_subs.length} subscription(s) · manage in V2Ray Settings', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)))),
     ]);
   }
 }
