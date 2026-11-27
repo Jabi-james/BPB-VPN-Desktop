@@ -307,7 +307,7 @@ void main() {
     expect(wrap.spacing, 12);
     expect(wrap.runSpacing, 12);
     final padding = tester.widget<Padding>(
-      find.descendant(of: card, matching: find.byType(Padding)).first,
+      find.ancestor(of: layout, matching: find.byType(Padding)).first,
     );
     expect(padding.padding, const EdgeInsets.all(16));
     expect(
