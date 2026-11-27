@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_toast.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../models/settings.dart';
@@ -80,7 +81,7 @@ class _SshSettingsPageState extends State<SshSettingsPage> {
       setState(() => _dirty = false);
       widget.onSaveStateChanged?.call(_save, false);
       if (widget.embedded) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        AppToast.showSnackBar(context, 
           const SnackBar(content: Text('SSH settings saved')),
         );
       }
