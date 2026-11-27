@@ -39,6 +39,7 @@ class AppState extends ChangeNotifier {
   static const _kSecretAccounts = 'cloudflareAccounts';
   static const _kGeoAssetsUpdatedAt = 'geoAssetsUpdatedAt';
   static const _kGeoAssetsCountry = 'geoAssetsCountry';
+  static const _kGeoAssetsFingerprint = 'geoAssetsFingerprint';
 
   late SharedPreferences _prefs;
   late String _portableNamespace;
@@ -461,6 +462,27 @@ class AppState extends ChangeNotifier {
       // Clean start leaves the on-disk Geo files untouched, so do not assume they are Iran.
       await _prefs.setString(_kGeoAssetsCountry, 'unknown');
       await _secrets.delete(key: _secretAccountsKey);
+    }
+    if (Platform.isWindows) {
+      final fingerprint = await VpnChannel.geoAssetsFingerprint();
+      final previousFingerprint = _prefs.getString(_kGeoAssetsFingerprint);
+      if (fingerprint == null) {
+        await _prefs.setString(_kGeoAssetsCountry, 'unknown');
+        await _prefs.remove(_kGeoAssetsFingerprint);
+        await _prefs.remove(_kGeoAssetsUpdatedAt);
+      } else if (previousFingerprint == null) {
+        // First launch with the bundled Iran pair; a clean start already marks it unknown.
+        if (!_prefs.containsKey(_kGeoAssetsCountry)) {
+          await _prefs.setString(_kGeoAssetsCountry, 'iran');
+        }
+        await _prefs.setString(_kGeoAssetsFingerprint, fingerprint);
+      } else if (previousFingerprint != fingerprint) {
+        // The installer or a portable-folder replacement changed the files. Their country
+        // is unknown until the user runs Update Geo again.
+        await _prefs.setString(_kGeoAssetsCountry, 'unknown');
+        await _prefs.setString(_kGeoAssetsFingerprint, fingerprint);
+        await _prefs.remove(_kGeoAssetsUpdatedAt);
+      }
     }
     _stored = Profile.fromJson(_decodeMap(_prefs.getString(_kProfile)))
         .updated('vless', null);
