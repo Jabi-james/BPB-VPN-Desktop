@@ -465,11 +465,6 @@ class AppState extends ChangeNotifier {
       _prefs,
     );
     device = DeviceSettings.fromJson(_decodeMap(_prefs.getString(_kDevice)));
-    if (Platform.isWindows) {
-      // Register both Aether identities in the background on first launch; existing files are kept.
-      _aetherProvisioning = VpnChannel.provisionAetherIdentities(_aetherConfigDir);
-      unawaited(_aetherProvisioning!.catchError((_) {}));
-    }
     if (_prefs.containsKey('configOverrides')) {
       await _prefs.remove('configOverrides');
     }
@@ -500,6 +495,32 @@ class AppState extends ChangeNotifier {
         const Duration(seconds: 5),
         (_) => refreshLanIp(),
       );
+    }
+  }
+
+  /// Registers Aether's MASQUE and WireGuard identities from the first-run setup.
+  /// A successful attempt is shared with any concurrent caller; failures can be retried.
+  Future<void> provisionAetherForSetup() async {
+    if (!Platform.isWindows) {
+      throw UnsupportedError('Aether identity registration is available on Windows only.');
+    }
+    final previous = _aetherProvisioning;
+    if (previous != null) {
+      try {
+        await previous;
+        return;
+      } catch (_) {
+        // A failed attempt must not prevent the user from retrying in Setup.
+        if (identical(_aetherProvisioning, previous)) _aetherProvisioning = null;
+      }
+    }
+    final attempt = VpnChannel.provisionAetherIdentities(_aetherConfigDir);
+    _aetherProvisioning = attempt;
+    try {
+      await attempt;
+    } catch (_) {
+      if (identical(_aetherProvisioning, attempt)) _aetherProvisioning = null;
+      rethrow;
     }
   }
 
