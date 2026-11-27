@@ -1,6 +1,7 @@
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import 'models/theme_color.dart';
@@ -307,6 +308,85 @@ class _PreviewSettings extends StatelessWidget {
         ])),
       ]),
     );
+  }
+}
+
+
+class V2rayConnectionPanel extends StatefulWidget {
+  const V2rayConnectionPanel({super.key});
+  @override
+  State<V2rayConnectionPanel> createState() => _V2rayConnectionPanelState();
+}
+class _V2rayConnectionPanelState extends State<V2rayConnectionPanel> {
+  final List<String> _configs = [];
+  Future<void> _importClipboard() async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    final raw = data?.text?.trim() ?? '';
+    final links = raw.split('\n').map((s) => s.trim()).where((s) =>
+      s.startsWith('vless://') || s.startsWith('vmess://') || s.startsWith('trojan://') || s.startsWith('ss://')).toList();
+    if (links.isEmpty) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No supported V2Ray link found in clipboard.')));
+      return;
+    }
+    setState(() => _configs.addAll(links.where((s) => !_configs.contains(s))));
+  }
+  Future<void> _addManually() async {
+    final ctl = TextEditingController();
+    final value = await showDialog<String>(context: context, builder: (ctx) => AlertDialog(
+      title: const Text('Add configuration'),
+      content: TextField(controller: ctl, minLines: 2, maxLines: 4, decoration: const InputDecoration(labelText: 'V2Ray link')),
+      actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+        FilledButton(onPressed: () => Navigator.pop(ctx, ctl.text.trim()), child: const Text('Add'))],
+    ));
+    ctl.dispose();
+    if (value != null && value.isNotEmpty) setState(() => _configs.add(value));
+  }
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Row(children: [
+        Text('V2Ray Configs', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+        const Spacer(),
+        PopupMenuButton<String>(
+          tooltip: 'Add configuration',
+          onSelected: (v) {
+            if (v == 'clipboard') _importClipboard();
+            if (v == 'manual') _addManually();
+            if (v == 'qr') ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Screen QR scanning requires browser screen-sharing permission and is not available in this preview yet.')));
+          },
+          itemBuilder: (_) => const [
+            PopupMenuItem(value: 'clipboard', child: Text('Import from clipboard')),
+            PopupMenuItem(value: 'qr', child: Text('Scan QR Code From Screen')),
+            PopupMenuItem(value: 'manual', child: Text('Add link manually')),
+          ],
+          child: Icon(Icons.add_circle, color: scheme.primary, size: 28),
+        ),
+      ]),
+      const SizedBox(height: 6),
+      Container(
+        constraints: const BoxConstraints(minHeight: 250, maxHeight: 310),
+        decoration: BoxDecoration(border: Border.all(color: scheme.outlineVariant.withValues(alpha: .6)), borderRadius: BorderRadius.circular(12)),
+        child: _configs.isEmpty
+          ? Center(child: Text('No V2Ray configurations yet', style: TextStyle(color: scheme.onSurfaceVariant)))
+          : ListView.separated(
+              shrinkWrap: true, itemCount: _configs.length,
+              separatorBuilder: (_, _) => Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: .5)),
+              itemBuilder: (context, index) => ListTile(dense: true,
+                title: Text('V2Ray config ${index + 1}'),
+                subtitle: Text(_configs[index], maxLines: 1, overflow: TextOverflow.ellipsis),
+                trailing: IconButton(icon: const Icon(Icons.delete_outline, color: Color(0xFFD94B4B)),
+                  onPressed: () async {
+                    final ok = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
+                      title: const Text('Delete configuration?'),
+                      actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete'))],
+                    ));
+                    if (ok == true) setState(() => _configs.removeAt(index));
+                  }),
+              ),
+      ),
+    ]);
   }
 }
 
