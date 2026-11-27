@@ -43,8 +43,11 @@ void main() {
       const assets = 'android/app/src/main/assets';
       final geositeFile = File('$assets/geosite.dat');
       final geoipFile = File('$assets/geoip.dat');
+      final countryMarker = File('$assets/geo-country.txt');
       expect(geositeFile.existsSync(), isTrue, reason: 'Run scripts/fetch_geo.sh first');
       expect(geoipFile.existsSync(), isTrue, reason: 'Run scripts/fetch_geo.sh first');
+      expect(countryMarker.existsSync(), isTrue, reason: 'Run scripts/fetch_geo.sh first');
+      expect((await countryMarker.readAsString()).trim(), 'iran');
       expect(await geositeFile.length(), greaterThan(0));
       expect(await geoipFile.length(), greaterThan(0));
 
