@@ -463,6 +463,10 @@ class _Row {
 
   /// Aether identities are already saved even if the subsequent endpoint scan failed.
   bool registrationDone = false;
+
+  /// Keep successful protocol scans across Retry; only failed scans should run again.
+  bool masqueScanDone = false;
+  bool wgScanDone = false;
 }
 
 /// The Tor bridges the build embedded for "Retry with Tor" (assets/tor/bridges.json, written by
@@ -566,8 +570,17 @@ class _InstallStepState extends State<_InstallStep> {
           row.registrationDone = true;
           final scanErrors = <String>[];
           for (final protocol in const ['masque', 'wg']) {
+            final alreadyDone = protocol == 'masque'
+                ? row.masqueScanDone
+                : row.wgScanDone;
+            if (alreadyDone) continue;
             try {
               await state.scanAetherEndpoints(protocol);
+              if (protocol == 'masque') {
+                row.masqueScanDone = true;
+              } else {
+                row.wgScanDone = true;
+              }
             } catch (e) {
               scanErrors.add('$protocol: ${e is StateError ? e.message : e}');
             }
