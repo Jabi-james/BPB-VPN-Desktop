@@ -1647,9 +1647,8 @@ class XrayConfigBuilder {
     // user-entered domains/IPs and the independent BitTorrent rule still work.
     if (r.geoFilesCountry != r.geoCountry) return const [];
     return [
-      if (r.block.presets.isNotEmpty)
-        for (final e in _blockAssets.entries)
-          if (r.block.isOn(e.key)) e.value,
+      for (final e in _blockAssets.entries)
+        if (r.block.isOn(e.key)) e.value,
       if (_bypassAssets.containsKey(r.geoCountry))
         _bypassAssets[r.geoCountry]!,
       for (final e in _sanctionAssets.entries)
