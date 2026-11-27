@@ -9,6 +9,27 @@ class AppToast {
   static OverlayEntry? _entry;
   static Timer? _timer;
 
+  static void showSnackBar(BuildContext context, SnackBar snackBar) {
+    final message = _plainText(snackBar.content);
+    if (message.isNotEmpty) show(context, message);
+  }
+
+  static String _plainText(Widget widget) {
+    if (widget is Text) {
+      return widget.data ?? widget.textSpan?.toPlainText() ?? '';
+    }
+    if (widget is Padding) return _plainText(widget.child);
+    if (widget is Center) return _plainText(widget.child);
+    if (widget is Align) return _plainText(widget.child);
+    if (widget is Row) {
+      return widget.children.map(_plainText).where((s) => s.isNotEmpty).join(' ');
+    }
+    if (widget is Column) {
+      return widget.children.map(_plainText).where((s) => s.isNotEmpty).join(' ');
+    }
+    return '';
+  }
+
   static void show(BuildContext context, String message) {
     hide();
     final overlay = Overlay.of(context, rootOverlay: true);
