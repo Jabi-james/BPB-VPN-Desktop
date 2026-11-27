@@ -21,6 +21,10 @@ void main() {
       'routing': {'country': 'unknown'},
     });
     expect(unsupported.routing.geoCountry, 'iran');
+    final unknownFiles = Profile.fromJson({
+      'routing': {'geoFilesCountry': 'unknown'},
+    });
+    expect(unknownFiles.routing.geoFilesCountry, 'unknown');
   });
 
   const vless = ChainProxy(
