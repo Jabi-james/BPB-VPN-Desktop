@@ -93,7 +93,10 @@ class CloudflareClient extends http.BaseClient {
         if (client == null) continue;
         return await client.send(copy());
       } catch (e, st) {
-        if (!_isTransportError(e)) rethrow;
+        if (!_isTransportError(e)) {
+          if (first == null) rethrow;
+          break;
+        }
         if (first == null) {
           first = e;
           firstStack = st;
@@ -117,7 +120,10 @@ class CloudflareClient extends http.BaseClient {
           try {
             return await client.send(copy());
           } catch (e, st) {
-            if (!_isTransportError(e)) rethrow;
+            if (!_isTransportError(e)) {
+              if (first == null) rethrow;
+              break;
+            }
             if (first == null) {
               first = e;
               firstStack = st;
@@ -125,8 +131,9 @@ class CloudflareClient extends http.BaseClient {
           }
         }
       } catch (e, st) {
-        if (!_isTransportError(e)) rethrow;
-        if (first == null) {
+        if (!_isTransportError(e)) {
+          if (first == null) rethrow;
+        } else if (first == null) {
           first = e;
           firstStack = st;
         }
