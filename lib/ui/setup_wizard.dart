@@ -445,7 +445,8 @@ enum _Item {
   workers('Workers deployment'),
   pages('Pages deployment'),
   warp('WARP registration'),
-  masque('MASQUE registration');
+  masque('MASQUE registration'),
+  aether('Registering AETHER');
 
   final String label;
   const _Item(this.label);
@@ -508,7 +509,8 @@ class _InstallStepState extends State<_InstallStep> {
   /// Adding an account only deploys; WARP and MASQUE belong to the device.
   late final _rows = {
     for (final i in _Item.values)
-      if (!widget.addingAccount || i == _Item.workers || i == _Item.pages) i: _Row(),
+      if ((!widget.addingAccount || i == _Item.workers || i == _Item.pages) &&
+          (i != _Item.aether || defaultTargetPlatform == TargetPlatform.windows)) i: _Row(),
   };
   bool _started = false;
   bool _busy = false;
@@ -554,6 +556,8 @@ class _InstallStepState extends State<_InstallStep> {
           await state.renewWarpAccount();
         case _Item.masque:
           await state.renewMasqueAccount();
+        case _Item.aether:
+          await state.provisionAetherForSetup();
       }
       row.status = _Status.done;
     } catch (e) {
@@ -765,7 +769,8 @@ class _InstallStepState extends State<_InstallStep> {
           widget.addingAccount
               ? 'Your proxy will be deployed to Cloudflare as a Worker and a Pages project.'
               : 'Your proxy will be deployed to Cloudflare as a Worker and a Pages project, '
-                    'then WARP and MASQUE accounts are registered.',
+                    'then WARP and MASQUE accounts are registered'
+                    '${defaultTargetPlatform == TargetPlatform.windows ? ', along with AETHER identities' : ''}.',
         ),
         const SizedBox(height: 16),
         if (accounts.length > 1 && !_started) ...[
@@ -829,7 +834,8 @@ class _DoneStep extends StatelessWidget {
         if (e.value.status == _Status.skipped) e.key,
     ];
     final deploySkipped = skipped.any((i) => i == _Item.workers || i == _Item.pages);
-    final registerSkipped = skipped.any((i) => i == _Item.warp || i == _Item.masque);
+    final registerSkipped = skipped.any((i) =>
+        i == _Item.warp || i == _Item.masque || i == _Item.aether);
     return _StepLayout(
       icon: Symbols.check_circle_rounded,
       title: skipped.isEmpty ? "You're all set" : 'Almost done',
@@ -858,7 +864,9 @@ class _DoneStep extends StatelessWidget {
           const SizedBox(height: 16),
           const Text("These protocols will be available once you finish setting them up:"),
           if (deploySkipped) const Text('• Worker: add a Cloudflare account in Settings → VLESS → Cloudflare accounts.'),
-          if (registerSkipped) const Text('• WARP / MASQUE: Settings → Warp or Masque → Register.'),
+          if (registerSkipped) const Text(
+            '• WARP / MASQUE / AETHER: register them again from their respective Settings pages.',
+          ),
           if (!addingAccount) const Text('Psiphon, Tor and Serverless work without them.'),
         ],
       ],
