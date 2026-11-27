@@ -234,11 +234,11 @@ class _Metrics extends StatelessWidget {
     return Column(
       children: [
         Row(textDirection: TextDirection.ltr, children: [
-          Expanded(child: _Metric(icon: Symbols.location_on_rounded, label: 'My IP', value: myIpValue, onTap: refreshIps)),
+          Expanded(child: _Metric(icon: Symbols.location_on_rounded, iconColor: const Color(0xFFFFA34D), label: 'Public IP', value: myIpValue, onTap: refreshIps)),
           const SizedBox(width: 8),
-          Expanded(child: _Metric(icon: Symbols.speed_rounded, label: 'Ping', value: const _PingButton(), valueWeight: FontWeight.w700)),
+          Expanded(child: _Metric(icon: Symbols.speed_rounded, iconColor: _green, label: 'Ping', value: const _PingButton(), valueWeight: FontWeight.w700)),
           const SizedBox(width: 8),
-          Expanded(child: _Metric(icon: Symbols.timer_rounded, label: 'Duration',
+          Expanded(child: _Metric(icon: Symbols.timer_rounded, iconColor: _red, label: 'Duration',
             value: Text(state.isConnected && since != null
               ? formatDuration(DateTime.now().difference(since)) : '—', textAlign: TextAlign.center))),
         ]),
@@ -304,6 +304,7 @@ class _Metric extends StatelessWidget {
   final IconData icon;
   final String label;
   final Widget value;
+  final Color? iconColor;
 
   /// Tap action to refresh the displayed exit IP.
   final VoidCallback? onTap;
@@ -313,6 +314,7 @@ class _Metric extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
+    this.iconColor,
     this.onTap,
     this.valueWeight = FontWeight.w400,
   });
@@ -340,7 +342,7 @@ class _Metric extends StatelessWidget {
               Icon(
                 icon,
                 size: 14,
-                color: theme.colorScheme.onSurfaceVariant,
+                color: iconColor ?? theme.colorScheme.onSurfaceVariant,
                 weight: 500,
               ),
               const SizedBox(width: 4),
@@ -619,26 +621,27 @@ class _PowerHaloState extends State<_PowerHalo>
       alignment: Alignment.center,
       minWidth: widget.size + 16,
       minHeight: widget.size + 16,
-      maxWidth: widget.size * 1.4,
-      maxHeight: widget.size * 1.4,
+      // Let the animated ring travel out to twice the button's diameter.
+      maxWidth: widget.size * 2.0,
+      maxHeight: widget.size * 2.0,
       child: AnimatedBuilder(
         animation: _pulse,
         builder: (context, _) {
           final t = Curves.easeInOut.transform(_pulse.value);
           return Container(
-            width: widget.size * (0.96 + 0.42 * t),
-            height: widget.size * (0.96 + 0.42 * t),
+            width: widget.size * (1.08 + 0.92 * t),
+            height: widget.size * (1.08 + 0.92 * t),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
-                color: widget.color.withValues(alpha: 0.36 + 0.42 * (1 - t)),
-                width: 6,
+                color: widget.color.withValues(alpha: 0.48 + 0.40 * (1 - t)),
+                width: 7,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: widget.color.withValues(alpha: 0.24 + 0.36 * (1 - t)),
-                  blurRadius: 36 + 54 * t,
-                  spreadRadius: 3 + 9 * t,
+                  color: widget.color.withValues(alpha: 0.30 + 0.42 * (1 - t)),
+                  blurRadius: 44 + 56 * t,
+                  spreadRadius: 4 + 14 * t,
                 ),
               ],
             ),
