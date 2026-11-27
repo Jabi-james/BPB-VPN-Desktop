@@ -461,6 +461,11 @@ class AppState extends ChangeNotifier {
       await _prefs.clear();
       // Clean start leaves the on-disk Geo files untouched, so do not assume they are Iran.
       await _prefs.setString(_kGeoAssetsCountry, 'unknown');
+      try {
+        await VpnChannel.saveGeoAssetsCountryMarker('unknown');
+      } catch (_) {
+        // Preferences still block Geo use if the install directory is not writable.
+      }
       await _secrets.delete(key: _secretAccountsKey);
     }
     if (Platform.isWindows) {
@@ -468,7 +473,9 @@ class AppState extends ChangeNotifier {
       final previousFingerprint = _prefs.getString(_kGeoAssetsFingerprint);
       if (fingerprint == null) {
         await _prefs.setString(_kGeoAssetsCountry, 'unknown');
-        await VpnChannel.saveGeoAssetsCountryMarker('unknown');
+        try {
+          await VpnChannel.saveGeoAssetsCountryMarker('unknown');
+        } catch (_) {}
         await _prefs.remove(_kGeoAssetsFingerprint);
         await _prefs.remove(_kGeoAssetsUpdatedAt);
       } else if (previousFingerprint == null) {
@@ -482,7 +489,9 @@ class AppState extends ChangeNotifier {
         // The installer or a portable-folder replacement changed the files. Their country
         // is unknown until the user runs Update Geo again.
         await _prefs.setString(_kGeoAssetsCountry, 'unknown');
-        await VpnChannel.saveGeoAssetsCountryMarker('unknown');
+        try {
+          await VpnChannel.saveGeoAssetsCountryMarker('unknown');
+        } catch (_) {}
         await _prefs.setString(_kGeoAssetsFingerprint, fingerprint);
         await _prefs.remove(_kGeoAssetsUpdatedAt);
       }
