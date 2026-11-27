@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:material_symbols_icons/symbols.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 
 import '../models/settings.dart';
 import '../services/chain_proxy.dart';
@@ -13,13 +13,136 @@ import 'theme.dart';
 /// The connection's settings, above the status card: its type and mode, and where traffic
 /// leaves for the internet (the connection itself, the chain proxy, or Psiphon / Tor in a
 /// chosen region).
-class ConnectionCard extends StatelessWidget {
+class ConnectionCard extends StatefulWidget {
   const ConnectionCard({super.key});
 
-  static const _rowAnimation = Duration(milliseconds: 250);
+  @override
+  State<ConnectionCard> createState() => ConnectionCardState();
+}
 
-  /// What the exit carries: the worker relays only TCP, Tor too; WARP, MASQUE and Psiphon also
-  /// UDP; the chain proxy depends on its protocol ([ChainInfo.carries]).
+class ConnectionCardState extends State<ConnectionCard> {
+  final LayerLink _link = LayerLink();
+  OverlayEntry? _panelEntry;
+
+  void collapse() {
+    final entry = _panelEntry;
+    if (entry == null) return;
+    _panelEntry = null;
+    entry.remove();
+    if (mounted) setState(() {});
+  }
+
+  void _togglePanel() {
+    if (_panelEntry != null) {
+      collapse();
+      return;
+    }
+    _panelEntry = OverlayEntry(builder: (overlayContext) {
+      final media = MediaQuery.of(overlayContext);
+      final state = AppScope.of(overlayContext);
+      final theme = Theme.of(overlayContext);
+      final scheme = theme.colorScheme;
+      final exit = state.exitNode;
+      final isServerlessDns = state.mode == ConnectionMode.serverless &&
+          state.serverlessMode == ServerlessMode.dns;
+      final hasExitNode = state.mode != ConnectionMode.psiphon &&
+          state.mode != ConnectionMode.tor &&
+          state.mode != ConnectionMode.aether &&
+          !isServerlessDns;
+      final nodes = switch (state.mode) {
+        ConnectionMode.serverless => state.serverlessMode == ServerlessMode.domainFronting
+            ? [ExitNode.worker, ExitNode.psiphon]
+            : [ExitNode.worker, ExitNode.psiphon, ExitNode.tor],
+        _ => [
+            for (final n in ExitNode.values)
+              if (n != ExitNode.chain || state.usableChains.isNotEmpty) n,
+          ],
+      };
+      final chain = state.exitChain;
+      return Stack(
+        children: [
+          CompositedTransformFollower(
+            link: _link,
+            showWhenUnlinked: false,
+            offset: const Offset(12, 68),
+            child: Material(
+              elevation: 18,
+              color: Color.lerp(scheme.surfaceContainer, Colors.black, 0.18)!,
+              shape: roundedShape(kHeroRadius,
+                side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.9), width: 0.9)),
+              clipBehavior: Clip.antiAlias,
+              child: SizedBox(
+                width: media.size.width - 24,
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    defaultTargetPlatform == TargetPlatform.windows ? 16 : 20,
+                    10,
+                    defaultTargetPlatform == TargetPlatform.windows ? 16 : 20,
+                    12,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _Row(icon: Symbols.category_rounded, color: const Color(0xFF4F9BFF), label: 'Type',
+                        selector: const _TypeSelector()),
+                      if (state.showCoreSelector)
+                        _Row(icon: Symbols.memory_rounded, color: const Color(0xFF9B7CFF), label: 'Core',
+                          selector: ChipMenu(
+                            values: CoreType.values, selected: state.core,
+                            label: (core) => core.label, onSelected: state.setCore,
+                            enabled: !state.isBusy)),
+                      if (state.hasModeOption)
+                        const _Row(icon: Symbols.tune_rounded, color: Color(0xFF26BFA5), label: 'Mode',
+                          selector: _ModeSelector()),
+                      if (hasExitNode)
+                        _Row(icon: Symbols.exit_to_app_rounded, color: const Color(0xFFFFA34D), label: 'Exit Node',
+                          selector: ChipMenu(
+                            values: nodes, selected: exit,
+                            label: (n) => switch (n) {
+                              ExitNode.worker => 'Default',
+                              ExitNode.chain => 'Chain proxy',
+                              ExitNode.psiphon => 'Psiphon',
+                              ExitNode.tor => 'Tor',
+                            },
+                            badges: (n) => ConnectionCardState._transports(n, state.mode, chain: chain),
+                            onSelected: state.setExitNode,
+                            enabled: !state.isBusy && nodes.length > 1)),
+                      if (!isServerlessDns && (exit == ExitNode.psiphon || exit == ExitNode.tor))
+                        _Row(icon: Symbols.location_on_rounded, color: const Color(0xFF62B878), label: 'Region',
+                          selector: ChipMenu(
+                            values: ['', ...exitRegions.keys],
+                            selected: state.device.exitRegion,
+                            label: ConnectionCardState._regionLabel,
+                            onSelected: state.setExitRegion,
+                            enabled: !state.isBusy)),
+                      if (exit == ExitNode.chain && chain != null)
+                        _Row(icon: Symbols.link_rounded, color: const Color(0xFF36B7D8), label: 'Chain',
+                          selector: ChipMenu(
+                            values: state.usableChains, selected: chain,
+                            label: (c) => c.name,
+                            subtitleBadges: (c) => ChainInfo.of(c.link)?.tags ?? const [],
+                            onSelected: state.setExitChain,
+                            enabled: !state.isBusy && state.usableChains.length > 1)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    });
+    Overlay.of(context, rootOverlay: true).insert(_panelEntry!);
+    setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _panelEntry?.remove();
+    _panelEntry = null;
+    super.dispose();
+  }
+
   static List<String> _transports(
     ExitNode node,
     ConnectionMode mode, {
@@ -30,11 +153,8 @@ class ConnectionCard extends StatelessWidget {
       ConnectionMode.warp || ConnectionMode.masque => const ['TCP', 'UDP'],
       _ => const [],
     },
-    ExitNode.chain =>
-      chain == null ? const [] : ChainInfo.of(chain.link)?.carries ?? const [],
-    ExitNode.psiphon => mode == ConnectionMode.ssh
-        ? const ['TCP']
-        : const ['TCP', 'UDP'],
+    ExitNode.chain => chain == null ? const [] : ChainInfo.of(chain.link)?.carries ?? const [],
+    ExitNode.psiphon => mode == ConnectionMode.ssh ? const ['TCP'] : const ['TCP', 'UDP'],
     ExitNode.tor => const ['TCP'],
   };
 
@@ -44,178 +164,73 @@ class ConnectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final state = AppScope.of(context);
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final exit = state.exitNode;
-    final isServerlessDns =
-        state.mode == ConnectionMode.serverless &&
-        state.serverlessMode == ServerlessMode.dns;
-    // The Psiphon and Tor types have no exit node to choose: only the region can change.
-    final hasExitNode =
-        state.mode != ConnectionMode.psiphon &&
-        state.mode != ConnectionMode.tor &&
-        state.mode != ConnectionMode.aether &&
-        !isServerlessDns;
-    final nodes = switch (state.mode) {
-      ConnectionMode.serverless => state.serverlessMode ==
-              ServerlessMode.domainFronting
-          ? [ExitNode.worker, ExitNode.psiphon]
-          : [ExitNode.worker, ExitNode.psiphon, ExitNode.tor],
-      // The chain proxy is an exit node once there's one the type can carry (Settings → Chain proxies).
-      _ => [
-        for (final n in ExitNode.values)
-          if (n != ExitNode.chain || state.usableChains.isNotEmpty) n,
-      ],
-    };
-    final chain = state.exitChain;
-
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12),
-      shape: roundedShape(
-        kHeroRadius,
-        side: BorderSide(
-          color: scheme.outlineVariant.withValues(alpha: 0.75),
-          width: 0.75,
-        ),
-      ),
-      color: scheme.surfaceContainer.withValues(alpha: 0.80),
-      elevation: 0,
-      child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: defaultTargetPlatform == TargetPlatform.windows ? 16 : 24,
-          vertical: defaultTargetPlatform == TargetPlatform.windows ? 8 : 20,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const _Row(
-              icon: Symbols.category_rounded,
-              label: 'Connection',
-              selector: _TypeSelector(),
-            ),
-            if (state.showCoreSelector)
-              _Row(
-                icon: Symbols.memory_rounded,
-                label: 'Core',
-                selector: ChipMenu(
-                  values: CoreType.values,
-                  selected: state.core,
-                  label: (core) => core.label,
-                  onSelected: state.setCore,
-                  enabled: !state.isBusy,
+    return CompositedTransformTarget(
+      link: _link,
+      child: Card(
+        margin: const EdgeInsets.symmetric(horizontal: 12),
+        shape: roundedShape(kHeroRadius,
+          side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.75), width: 0.75)),
+        color: scheme.surfaceContainer.withValues(alpha: 0.72),
+        elevation: 0,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          mouseCursor: WidgetStateMouseCursor.clickable,
+          onTap: _togglePanel,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 36, height: 36,
+                  decoration: BoxDecoration(color: scheme.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12)),
+                  child: Icon(Symbols.wifi_tethering_rounded, color: scheme.primary, size: 21),
                 ),
-              ),
-            // The variant (Worker, WARP, MASQUE), Serverless's mode or Tor's bridges.
-            AnimatedSize(
-              duration: _rowAnimation,
-              curve: Curves.easeInOut,
-              alignment: Alignment.topCenter,
-              child: state.hasModeOption
-                  ? const _Row(
-                      icon: Symbols.tune_rounded,
-                      label: 'Mode',
-                      selector: _ModeSelector(),
-                    )
-                  : const SizedBox(width: double.infinity),
+                const SizedBox(width: 12),
+                Expanded(child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('Connections',
+                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+                    Text('Configure How to Connect and Routing Options',
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+                  ],
+                )),
+                const SizedBox(width: 8),
+                Icon(_panelEntry == null ? Icons.keyboard_arrow_down_rounded : Icons.keyboard_arrow_up_rounded,
+                  color: scheme.onSurfaceVariant),
+              ],
             ),
-            AnimatedSize(
-              duration: _rowAnimation,
-              curve: Curves.easeInOut,
-              alignment: Alignment.topCenter,
-              child: hasExitNode
-                  ? _Row(
-                      icon: Symbols.exit_to_app_rounded,
-                      label: 'Exit Node',
-                      selector: ChipMenu(
-                        values: nodes,
-                        selected: exit,
-                        label: (n) => switch (n) {
-                          ExitNode.worker => 'Default',
-                          ExitNode.chain => 'Chain proxy',
-                          ExitNode.psiphon => 'Psiphon',
-                          ExitNode.tor => 'Tor',
-                        },
-                        badges: (n) => _transports(n, state.mode, chain: chain),
-                        onSelected: state.setExitNode,
-                        enabled: !state.isBusy && nodes.length > 1,
-                      ),
-                    )
-                  : const SizedBox(width: double.infinity),
-            ),
-            AnimatedSize(
-              duration: _rowAnimation,
-              curve: Curves.easeInOut,
-              alignment: Alignment.topCenter,
-              child: !isServerlessDns &&
-                      (exit == ExitNode.psiphon || exit == ExitNode.tor)
-                  ? _Row(
-                      icon: Symbols.location_on_rounded,
-                      label: 'Region',
-                      selector: ChipMenu(
-                        values: ['', ...exitRegions.keys],
-                        selected: state.device.exitRegion,
-                        label: _regionLabel,
-                        onSelected: state.setExitRegion,
-                        enabled: !state.isBusy,
-                      ),
-                    )
-                  : const SizedBox(width: double.infinity),
-            ),
-            // The chain proxy this type exits through: names, with their tags in the open menu.
-            AnimatedSize(
-              duration: _rowAnimation,
-              curve: Curves.easeInOut,
-              alignment: Alignment.topCenter,
-              child: exit == ExitNode.chain && chain != null
-                  ? _Row(
-                      icon: Symbols.link_rounded,
-                      label: 'Chain',
-                      selector: ChipMenu(
-                        values: state.usableChains,
-                        selected: chain,
-                        label: (c) => c.name,
-                        subtitleBadges: (c) =>
-                            ChainInfo.of(c.link)?.tags ?? const [],
-                        onSelected: state.setExitChain,
-                        enabled: !state.isBusy && state.usableChains.length > 1,
-                      ),
-                    )
-                  : const SizedBox(width: double.infinity),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
-/// "Label ········ [chip ▾]".
 class _Row extends StatelessWidget {
   final IconData icon;
   final String label;
   final Widget selector;
-  const _Row({required this.icon, required this.label, required this.selector});
-
+  final Color color;
+  const _Row({required this.icon, required this.label, required this.selector, this.color = Colors.white});
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return SizedBox(
-      height: defaultTargetPlatform == TargetPlatform.windows ? 36 : 44,
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: theme.colorScheme.onSurfaceVariant),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const Spacer(),
-          selector,
-        ],
-      ),
+      height: defaultTargetPlatform == TargetPlatform.windows ? 42 : 48,
+      child: Row(children: [
+        Icon(icon, size: 20, color: color),
+        const SizedBox(width: 8),
+        Expanded(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant))),
+        const SizedBox(width: 8),
+        selector,
+      ]),
     );
   }
 }

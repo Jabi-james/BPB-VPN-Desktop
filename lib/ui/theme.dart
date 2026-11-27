@@ -51,12 +51,12 @@ const kRangeDashGap = 12.0;
 // endregion
 
 /// The app theme for [brightness], with the palette seeded from [color] (picked in Settings).
-ThemeData buildTheme(Brightness brightness, ThemeColor color) {
+ThemeData buildTheme(Brightness brightness, ThemeColor color, {String fontFamily = 'ClashGrotesk'}) {
   final scheme = ColorScheme.fromSeed(
     seedColor: color.seed,
     brightness: brightness,
   );
-  final theme = _buildTheme(scheme);
+  final theme = _buildTheme(scheme, fontFamily);
   // No letter spacing: Material's (up to 0.5) is tuned for Roboto. It's applied to the finished
   // theme's text styles, which already carry the colors and font; to turn it off, return
   // `theme` instead.
@@ -64,7 +64,7 @@ ThemeData buildTheme(Brightness brightness, ThemeColor color) {
   return theme;
 }
 
-ThemeData _buildTheme(ColorScheme scheme) {
+ThemeData _buildTheme(ColorScheme scheme, String fontFamily) {
   final inputDecoration = InputDecorationTheme(
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(kInputRadius),
@@ -78,7 +78,7 @@ ThemeData _buildTheme(ColorScheme scheme) {
       scheme.brightness == Brightness.dark ? 0.065 : 0.025,
     ),
     useMaterial3: true,
-    fontFamily: 'OpenSans',
+    fontFamily: fontFamily,
     listTileTheme: const ListTileThemeData(
       contentPadding: EdgeInsets.symmetric(horizontal: 20),
       mouseCursor: WidgetStateMouseCursor.clickable,

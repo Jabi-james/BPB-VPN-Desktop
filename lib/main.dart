@@ -34,7 +34,7 @@ class BpbApp extends StatelessWidget {
       state: state,
       // Rebuilds when the theme or global text scale changes in Settings.
       child: ListenableBuilder(
-        listenable: Listenable.merge([state.themeColor, state.themeMode, state.fontScale]),
+        listenable: Listenable.merge([state.themeColor, state.themeMode, state.fontScale, state.fontFamily]),
         builder: (context, _) => MaterialApp(
           navigatorKey: _navigatorKey,
           title: 'BPB VPN (NotDev)',
@@ -50,8 +50,8 @@ class BpbApp extends StatelessWidget {
               child: child ?? const SizedBox.shrink(),
             ),
           ),
-          theme: buildTheme(Brightness.light, state.themeColor.value),
-          darkTheme: buildTheme(Brightness.dark, state.themeColor.value),
+          theme: buildTheme(Brightness.light, state.themeColor.value, fontFamily: state.fontFamily.value),
+          darkTheme: buildTheme(Brightness.dark, state.themeColor.value, fontFamily: state.fontFamily.value),
           themeMode: state.themeMode.value,
           home: const _Root(),
         ),

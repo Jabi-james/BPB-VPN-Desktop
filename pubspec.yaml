@@ -41,6 +41,7 @@ flutter:
     - images/icon/bg.jpg
     - images/icon/bgs.jpg
     - images/icon/Connected.png
+    - images/icon/Connecting.png
     - images/icon/Disconnected.png
     - images/icon/Serverless.png
     - images/icon/Warning.png
@@ -54,12 +55,15 @@ flutter:
     - assets/scanner/
     - assets/dns/
   fonts:
-    - family: OpenSans
+    # Clash Grotesk by Indian Type Foundry · Fontshare Free Font License.
+    # Source: https://fontshare.com/fonts/clash-grotesk
+    - family: ClashGrotesk
       fonts:
-        - asset: assets/fonts/OpenSans-Regular.ttf
-        - asset: assets/fonts/OpenSans-Medium.ttf
+        - asset: assets/fonts/ClashGrotesk-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/ClashGrotesk-Medium.ttf
           weight: 500
-        - asset: assets/fonts/OpenSans-SemiBold.ttf
+        - asset: assets/fonts/ClashGrotesk-Semibold.ttf
           weight: 600
-        - asset: assets/fonts/OpenSans-Bold.ttf
+        - asset: assets/fonts/ClashGrotesk-Bold.ttf
           weight: 700

@@ -25,6 +25,7 @@ import '../services/net_errors.dart';
 import '../services/tor_bridges.dart';
 import '../services/updates.dart';
 import '../services/vpn_channel.dart';
+import '../services/user_fonts.dart';
 import '../services/warp.dart';
 import '../services/webrtc_leak_protection.dart';
 import '../services/xray_config.dart';
@@ -139,6 +140,8 @@ class AppState extends ChangeNotifier {
   final themeColor = ValueNotifier(ThemeColor.blue);
   final themeMode = ValueNotifier(ThemeMode.system);
   final fontScale = ValueNotifier(1.0);
+  final fontFamily = ValueNotifier<String>('ClashGrotesk');
+  List<UserFont> userFonts = [];
 
   VpnStatus status = VpnStatus.disconnected;
   String? error;
@@ -146,6 +149,11 @@ class AppState extends ChangeNotifier {
 
   /// Settings changed while connected; reconnect to apply them.
   bool needsReconnect = false;
+  bool _connectionSelectionDirty = false;
+  bool _otherSettingsNeedReconnect = false;
+  Map<String, dynamic>? _connectedSelectionSnapshot;
+
+  bool get hasPendingConnectionSelectionChanges => _connectionSelectionDirty;
 
   /// What the Psiphon / Tor exit is doing (progress while connecting, or reconnecting).
   String? exitDetail;
@@ -193,6 +201,9 @@ class AppState extends ChangeNotifier {
   ({int total, int worker})? usage;
   bool loadingUsage = false;
   String? usageError;
+  final Map<String, ({int total, int worker})> usageByAccount = {};
+  final Set<String> loadingUsageAccounts = {};
+  final Map<String, String> usageErrorsByAccount = {};
 
   StreamSubscription<VpnStateEvent>? _stateSub;
   Timer? _trafficTimer;
@@ -202,6 +213,7 @@ class AppState extends ChangeNotifier {
   int _windowsVerificationToken = 0;
   Timer? _lanTimer;
   Future<void>? _aetherProvisioning;
+  bool _disposed = false;
 
   bool get isConnected => status == VpnStatus.connected;
   bool get isBusy =>
@@ -363,6 +375,50 @@ class AppState extends ChangeNotifier {
 
   void setFontScale(double value) => write('device.fontScale', value.clamp(0.8, 1.3));
 
+  Future<void> applyFontFamily(String family) async {
+    final custom = userFonts.where((font) => font.family == family).firstOrNull;
+    if (custom != null) {
+      await UserFontService.load(custom);
+    } else if (!const {'ClashGrotesk', 'Segoe UI', 'Arial', 'Tahoma'}.contains(family)) {
+      return;
+    }
+    write('device.theme.fontFamily', family);
+  }
+
+  Future<void> _restoreUserFonts() async {
+    try {
+      await refreshUserFonts(notify: false);
+      if (device.fontFamily.startsWith('BPBUser_')) {
+        final selectedFont = userFonts
+            .where((font) => font.family == device.fontFamily)
+            .firstOrNull;
+        if (selectedFont == null) {
+          device = device.updated('theme.fontFamily', 'ClashGrotesk');
+          _applyDeviceSideEffects();
+        } else {
+          await UserFontService.load(selectedFont);
+        }
+      }
+    } catch (_) {
+      device = device.updated('theme.fontFamily', 'ClashGrotesk');
+      _applyDeviceSideEffects();
+    }
+    if (!_disposed) notifyListeners();
+  }
+
+  Future<void> refreshUserFonts({bool notify = true}) async {
+    if (!Platform.isWindows) return;
+    try {
+      userFonts = await UserFontService.discover();
+    } catch (_) {
+      // A read-only portable install can still use the built-in fonts.
+      userFonts = [];
+    }
+    if (notify) notifyListeners();
+  }
+
+  Future<void> openUserFontsFolder() => UserFontService.openFolder();
+
   // endregion
 
   // region configs
@@ -435,6 +491,7 @@ class AppState extends ChangeNotifier {
     _stateSub = VpnChannel.states.listen(_onVpnState);
     CloudflareClient.tunnelPort = () => isConnected ? LocalProxy.port : null;
     notifyListeners();
+    if (Platform.isWindows) unawaited(_restoreUserFonts());
     _redeployDue();
     unawaited(refreshUsage());
     if (startLanTimer) {
@@ -458,6 +515,7 @@ class AppState extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     _stateSub?.cancel();
     _trafficTimer?.cancel();
     _healthTimer?.cancel();
@@ -491,6 +549,10 @@ class AppState extends ChangeNotifier {
       _setDevice(
         device.updated(path.substring(7), value),
         reconnect: !path.startsWith('device.theme.'),
+        connectionSelection: path == 'device.appMode' ||
+            path.startsWith('device.connection.') ||
+            path.startsWith('device.exit.') ||
+            path == 'device.aether.masqueFragment',
       );
     } else if (path.startsWith('vless.')) {
       _setVless(
@@ -561,12 +623,18 @@ class AppState extends ChangeNotifier {
     if (envChanged) unawaited(redeploy(s.account, s.deployment.type));
   }
 
-  void _setDevice(DeviceSettings value, {bool reconnect = true}) {
+  void _setDevice(
+    DeviceSettings value, {
+    bool reconnect = true,
+    bool connectionSelection = false,
+  }) {
     device = value;
     _profile = null;
     _prefs.setString(_kDevice, jsonEncode(device.toSparseJson()));
     _applyDeviceSideEffects();
-    if (reconnect) _markChangedWhileConnected();
+    if (reconnect) {
+      _markChangedWhileConnected(connectionSelection: connectionSelection);
+    }
     notifyListeners();
   }
 
@@ -577,6 +645,7 @@ class AppState extends ChangeNotifier {
     themeMode.value =
         ThemeMode.values.asNameMap()[device.themeMode] ?? ThemeMode.system;
     fontScale.value = device.fontScale;
+    fontFamily.value = device.fontFamily;
   }
 
   /// Defaults everywhere except the private parts and the configured clean IPs and endpoints.
@@ -591,8 +660,57 @@ class AppState extends ChangeNotifier {
     );
   }
 
-  void _markChangedWhileConnected() {
-    if (status != VpnStatus.disconnected) needsReconnect = true;
+  void _markChangedWhileConnected({bool connectionSelection = false}) {
+    if (status == VpnStatus.disconnected) return;
+    if (connectionSelection) {
+      if (status == VpnStatus.connected && _connectedSelectionSnapshot == null) {
+        _connectedSelectionSnapshot = _selectionSnapshot();
+      }
+      _connectionSelectionDirty = true;
+    } else {
+      _otherSettingsNeedReconnect = true;
+    }
+    needsReconnect = true;
+  }
+
+  Map<String, dynamic> _selectionSnapshot() {
+    final json = device.toJson();
+    return {
+      'appMode': json['appMode'],
+      'connection': json['connection'],
+      'exit': json['exit'],
+      'aetherMasqueFragment': (json['aether'] as Map)['masqueFragment'],
+    };
+  }
+
+  void _captureConnectedSelection() {
+    _connectedSelectionSnapshot = _selectionSnapshot();
+    _connectionSelectionDirty = false;
+    _otherSettingsNeedReconnect = false;
+    needsReconnect = false;
+  }
+
+  void _clearConnectionSelectionTracking() {
+    _connectedSelectionSnapshot = null;
+    _connectionSelectionDirty = false;
+    _otherSettingsNeedReconnect = false;
+    needsReconnect = false;
+  }
+
+  /// Reverts only the connection selectors to the values used by the active session.
+  void cancelConnectionSelectionChanges() {
+    final snapshot = _connectedSelectionSnapshot;
+    if (!_connectionSelectionDirty || snapshot == null) return;
+    final json = device.toJson();
+    json['appMode'] = snapshot['appMode'];
+    json['connection'] = snapshot['connection'];
+    json['exit'] = snapshot['exit'];
+    final aether = Map<String, dynamic>.from(json['aether'] as Map);
+    aether['masqueFragment'] = snapshot['aetherMasqueFragment'];
+    json['aether'] = aether;
+    _connectionSelectionDirty = false;
+    needsReconnect = _otherSettingsNeedReconnect;
+    _setDevice(DeviceSettings.fromJson(json), reconnect: false);
   }
 
   // endregion
@@ -666,7 +784,7 @@ class AppState extends ChangeNotifier {
       _startTrafficTimer();
       _startHealthTimer();
       if (!wasConnected && !sameSession) {
-        needsReconnect = false;
+        _captureConnectedSelection();
         totalUp = totalDown = 0;
         // Fetch exit IPs first, then automatically measure latency through the tunnel.
         unawaited(() async {
@@ -689,7 +807,7 @@ class AppState extends ChangeNotifier {
         pinging = false;
         myIps = null;
         loadingIps = false;
-        needsReconnect = false;
+        _clearConnectionSelectionTracking();
       }
     }
     notifyListeners();
@@ -704,7 +822,7 @@ class AppState extends ChangeNotifier {
         if (token != _windowsVerificationToken) return;
         status = VpnStatus.connected;
         connectedAt = event.connectedAt ?? DateTime.now();
-        needsReconnect = false;
+        _captureConnectedSelection();
         _startTrafficTimer();
         _startHealthTimer();
         unawaited(refreshUsage());
@@ -734,7 +852,7 @@ class AppState extends ChangeNotifier {
       status = VpnStatus.connected;
       error = null;
       connectedAt = event.connectedAt ?? DateTime.now();
-      needsReconnect = false;
+      _captureConnectedSelection();
       totalUp = totalDown = 0;
       _startTrafficTimer();
       _startHealthTimer();
@@ -761,6 +879,7 @@ class AppState extends ChangeNotifier {
       status = VpnStatus.disconnected;
       error = failure;
       connectedAt = null;
+      _clearConnectionSelectionTracking();
       loadingIps = false;
       notifyListeners();
     } finally {
@@ -995,6 +1114,7 @@ class AppState extends ChangeNotifier {
     } catch (e) {
       status = VpnStatus.disconnected;
       error = e is StateError ? e.message : '$e';
+      _clearConnectionSelectionTracking();
       notifyListeners();
     }
   }
@@ -1011,6 +1131,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     if (!await VpnChannel.prepare(vpn: tunMode)) {
       error = 'VPN permission denied';
+      needsReconnect = _connectionSelectionDirty || _otherSettingsNeedReconnect;
       notifyListeners();
       return;
     }
@@ -1019,6 +1140,7 @@ class AppState extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       error = e is StateError ? e.message : '$e';
+      needsReconnect = _connectionSelectionDirty || _otherSettingsNeedReconnect;
       notifyListeners();
     }
   }
@@ -1537,6 +1659,30 @@ class AppState extends ChangeNotifier {
           : 'Could not load usage';
     } finally {
       loadingUsage = false;
+      notifyListeners();
+    }
+  }
+
+  /// Loads usage for a specific saved account without changing the active VPN deployment.
+  Future<void> refreshUsageForAccount(SavedCfAccount account) async {
+    if (loadingUsageAccounts.contains(account.id)) return;
+    final type = selected?.deployment.type ?? WorkerType.workers;
+    final deployment = account.deployment(type) ?? account.deployments.firstOrNull;
+    if (deployment == null) return;
+    loadingUsageAccounts.add(account.id);
+    usageErrorsByAccount.remove(account.id);
+    notifyListeners();
+    try {
+      usageByAccount[account.id] = await _withApi(
+        account.token,
+        (api) => api.workerUsage(account.id, deployment.name),
+      );
+    } catch (e) {
+      usageErrorsByAccount[account.id] = e is CloudflareException
+          ? e.message
+          : 'Could not load usage';
+    } finally {
+      loadingUsageAccounts.remove(account.id);
       notifyListeners();
     }
   }

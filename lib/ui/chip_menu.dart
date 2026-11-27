@@ -9,7 +9,10 @@ import 'flag_text.dart';
 /// Chip showing the selected value; tapping opens a menu with the selected item highlighted.
 class ChipMenu<T> extends StatelessWidget {
   final List<T> values;
-  final T selected;
+  final T? selected;
+  final String? placeholder;
+  final double width;
+  final bool expand;
   final String Function(T) label;
 
   /// Optional tags after the label (e.g. the protocol), each in its own badge.
@@ -24,6 +27,9 @@ class ChipMenu<T> extends StatelessWidget {
     super.key,
     required this.values,
     required this.selected,
+    this.placeholder,
+    this.width = 170,
+    this.expand = false,
     required this.label,
     this.badges,
     this.subtitleBadges,
@@ -68,7 +74,6 @@ class ChipMenu<T> extends StatelessWidget {
       MediaQuery.viewPaddingOf(context).bottom,
       48.0,
     ).toDouble();
-    final selectedBadges = badges?.call(selected) ?? const <String>[];
     return MenuAnchor(
       alignmentOffset: const Offset(0, 6),
       // The app-level SafeArea consumes the body padding, but menu overlays can
@@ -97,7 +102,7 @@ class ChipMenu<T> extends StatelessWidget {
             onPressed: () => onSelected(v),
             // Same width on every row; the name takes the free space, so tags line up on the right.
             child: SizedBox(
-              width: 170,
+              width: width,
               child: Row(
                 children: [
                   Expanded(
@@ -132,20 +137,25 @@ class ChipMenu<T> extends StatelessWidget {
           onTap: enabled ? () => controller.isOpen ? controller.close() : controller.open() : null,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(12, 6, 6, 6),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                FlagText(label(selected), style: theme.textTheme.labelLarge, maxLines: 1, overflow: TextOverflow.ellipsis),
-                for (final (i, tag) in selectedBadges.indexed) ...[
-                  SizedBox(width: i == 0 ? 6 : 4),
-                  badge(context, tag),
+            child: SizedBox(
+              width: expand ? double.infinity : width,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: FlagText(
+                      selected == null ? (placeholder ?? '') : label(selected as T),
+                      style: theme.textTheme.labelLarge,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  AnimatedRotation(
+                    turns: controller.isOpen ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: Icon(Symbols.expand_more_rounded, size: 20, color: scheme.onSurfaceVariant),
+                  ),
                 ],
-                AnimatedRotation(
-                  turns: controller.isOpen ? 0.5 : 0,
-                  duration: const Duration(milliseconds: 200),
-                  child: Icon(Symbols.expand_more_rounded, size: 20, color: scheme.onSurfaceVariant),
-                ),
-              ],
+              ),
             ),
           ),
         ),

@@ -27,7 +27,9 @@ import 'routing_page.dart';
 import 'tor_bridges_page.dart';
 import 'tor_custom_bridges_pref.dart';
 import 'ssh_settings_page.dart';
+import 'statistics_page.dart';
 import 'hover_animated_icon.dart';
+import 'chip_menu.dart';
 
 class _BrowserPrivacyTile extends StatelessWidget {
   const _BrowserPrivacyTile();
@@ -993,6 +995,10 @@ class _SettingsPageState extends State<SettingsPage> {
             ],
           ),
 
+          const SectionHeader('Statistics'),
+          const StatisticsPanel(),
+          const SizedBox(height: 16),
+
           const SectionHeader('Import / Export'),
           const SettingsCard(
             children: [
@@ -1003,7 +1009,6 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
 
           const SectionHeader('Appearance'),
-          const SettingsCard(children: [_ThemeModeTile(), _ThemeColorTile(), _FontScaleTile()]),
 
           const SectionHeader('About'),
           SettingsCard(
@@ -1319,6 +1324,7 @@ class _SettingsSectionsState extends State<_SettingsSections> {
   String _selectedId = 'root::Global';
   String? _connectionGroup;
   String? _connectionSection;
+  String? _appearanceSubsection;
 
   _SettingsNavigation _navigation() {
     final rootSections = <_SettingsSectionEntry>[];
@@ -1415,7 +1421,10 @@ class _SettingsSectionsState extends State<_SettingsSections> {
 
   void _back() {
     setState(() {
-      if (_connectionSection != null && _connectionGroup != null) {
+      if (_appearanceSubsection != null) {
+        _appearanceSubsection = null;
+        _selectedId = 'root::Appearance';
+      } else if (_connectionSection != null && _connectionGroup != null) {
         _selectedId = 'connection::group::$_connectionGroup';
         _connectionSection = null;
         widget.onSectionChanged?.call(false);
@@ -1510,7 +1519,7 @@ class _SettingsSectionsState extends State<_SettingsSections> {
     );
   }
 
-  Widget _pageHeader(String title, VoidCallback onBack, ThemeData theme) {
+  Widget _pageHeader(String title, VoidCallback onBack, ThemeData theme, {IconData? icon}) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
       child: Row(children: [
@@ -1521,6 +1530,10 @@ class _SettingsSectionsState extends State<_SettingsSections> {
           icon: const Icon(Icons.arrow_back_rounded),
         ),
         const SizedBox(width: 4),
+        if (icon != null) ...[
+          Icon(icon, size: 19, color: theme.colorScheme.primary),
+          const SizedBox(width: 9),
+        ],
         Text(title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
       ]),
     );
@@ -1550,7 +1563,7 @@ class _SettingsSectionsState extends State<_SettingsSections> {
     final isConnectionHome = _selectedId == 'connection::home';
     final isGroupHome = _selectedId.startsWith('connection::group::');
     final children = <Widget>[];
-    if (rootSelected != null) {
+    if (rootSelected != null && rootSelected.title != 'Appearance') {
       children.addAll(rootSelected.children);
     } else if (isConnectionHome) {
       children.add(const SizedBox(height: 12));
@@ -1569,6 +1582,26 @@ class _SettingsSectionsState extends State<_SettingsSections> {
         children.add(_choiceCard(context, section.title, _description(section.title),
           () => _openConnectionSection(section, group: selectedGroup.title), theme));
       }
+    } else if (rootSelected?.title == 'Appearance') {
+      if (_appearanceSubsection == null) {
+        children.add(const SizedBox(height: 12));
+        children.add(_choiceCard(context, 'Theme Options', 'Choose the appearance mode and accent color', () {
+          setState(() => _appearanceSubsection = 'theme');
+        }, theme));
+        children.add(_choiceCard(context, 'Font & Typography', 'Select a built-in or custom typeface and adjust text size', () {
+          setState(() => _appearanceSubsection = 'font');
+        }, theme));
+      } else if (_appearanceSubsection == 'theme') {
+        children.add(_pageHeader('Theme Options', _back, theme, icon: Symbols.palette_rounded));
+        children.add(const SettingsCard(children: [_ThemeModeTile()]));
+        children.add(const SizedBox(height: 12));
+        children.add(const SettingsCard(children: [_ThemeColorTile()]));
+      } else {
+        children.add(_pageHeader('Font Selection', _back, theme, icon: Symbols.font_download_rounded));
+        children.add(const SettingsCard(children: [_UserFontTile()]));
+        children.add(const SizedBox(height: 12));
+        children.add(const SettingsCard(children: [_FontScaleTile()]));
+      }
     } else if (selectedConnectionSection != null) {
       children.add(_pageHeader(_connectionGroup ?? 'Connection', _back, theme));
       children.addAll(selectedConnectionSection.children);
@@ -1585,17 +1618,22 @@ class _SettingsSectionsState extends State<_SettingsSections> {
       children: [
         SizedBox(
           width: 204,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerLow,
-              border: Border(right: BorderSide(color: theme.colorScheme.outlineVariant)),
-            ),
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 12),
-              children: [
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 5),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(15),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerLow,
+                  border: Border.all(color: theme.colorScheme.outlineVariant),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 12),
+                  children: [
                 for (final section in navigation.rootSections.where((s) => s.title == 'Global'))
                   _navTile(context, section.title, section.id, section.id == _selectedId, theme, () {
-                    setState(() { _selectedId = section.id; _connectionGroup = null; _connectionSection = null; });
+                    setState(() { _selectedId = section.id; _connectionGroup = null; _connectionSection = null; _appearanceSubsection = null; });
                     widget.onSectionChanged?.call(false);
                   }),
                 _navTile(context, 'Connection', 'connection::home', isConnectionHome || showConnection, theme, _openConnection),
@@ -1609,7 +1647,9 @@ class _SettingsSectionsState extends State<_SettingsSections> {
                     setState(() { _selectedId = section.id; _connectionGroup = null; _connectionSection = null; });
                     widget.onSectionChanged?.call(false);
                   }),
-              ],
+                  ],
+                ),
+              ),
             ),
           ),
         ),
@@ -1665,6 +1705,8 @@ Color _sectionColor(String title) => switch (title) {
   'Routing' => const Color(0xFF0D9488),
   'Import / Export' => const Color(0xFF3B82F6),
   'Appearance' => const Color(0xFF78B7FF),
+  'Theme Options' => const Color(0xFFB084F5),
+  'Font & Typography' => const Color(0xFF38A6B8),
   'About' => const Color(0xFF8B5CF6),
   _ => const Color(0xFF64748B),
 };
@@ -1699,6 +1741,8 @@ IconData _sectionIcon(String title) => switch (title) {
   'Routing' => Icons.alt_route_rounded,
   'Import / Export' => Icons.import_export_rounded,
   'Appearance' => Icons.palette_rounded,
+  'Theme Options' => Icons.palette_rounded,
+  'Font & Typography' => Icons.text_fields_rounded,
   'About' => Icons.info_outline_rounded,
   _ => Icons.settings_rounded,
 };
@@ -1712,23 +1756,208 @@ class _FontScaleTile extends StatelessWidget {
     final state = AppScope.of(context);
     return ValueListenableBuilder<double>(
       valueListenable: state.fontScale,
-      builder: (context, scale, _) => Column(
+      builder: (context, scale, _) {
+        final theme = Theme.of(context);
+        final percent = ((scale - 0.8) / 0.5).clamp(0.0, 1.0);
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                Icon(Symbols.text_fields_rounded, color: theme.colorScheme.primary, size: 20),
+                const SizedBox(width: 10),
+                Text('Font Size', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+              ]),
+              const SizedBox(height: 6),
+              Text('Adjust the text scale throughout the app.', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+              const SizedBox(height: 14),
+              LayoutBuilder(builder: (context, constraints) {
+                final usableWidth = (constraints.maxWidth - 24).clamp(0.0, double.infinity).toDouble();
+                return Column(
+                  children: [
+                    Slider(
+                      value: scale,
+                      min: 0.8,
+                      max: 1.3,
+                      divisions: 10,
+                      label: null,
+                      onChanged: state.setFontScale,
+                    ),
+                    SizedBox(
+                      height: 22,
+                      child: Stack(children: [
+                        Positioned(
+                          left: (12 + usableWidth * percent).clamp(0.0, constraints.maxWidth - 12).toDouble(),
+                          child: Transform.translate(
+                            offset: const Offset(-12, 0),
+                            child: Text(
+                              '${(scale * 100).round()}%',
+                              style: theme.textTheme.labelMedium?.copyWith(
+                                color: theme.colorScheme.primary,
+                                fontWeight: FontWeight.w700,
+                                                              ),
+                            ),
+                          ),
+                        ),
+                      ]),
+                    ),
+                  ],
+                );
+              }),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// User fonts are loaded from the Fonts folder beside the running executable.
+class _UserFontTile extends StatefulWidget {
+  const _UserFontTile();
+
+  @override
+  State<_UserFontTile> createState() => _UserFontTileState();
+}
+
+class _UserFontTileState extends State<_UserFontTile> with WidgetsBindingObserver {
+  String? _selectedFamily;
+
+  static const _builtInFonts = {
+    'ClashGrotesk': 'Clash Grotesk',
+    'Segoe UI': 'Segoe UI',
+    'Arial': 'Arial',
+    'Tahoma': 'Tahoma',
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    final state = AppScope.read(context);
+    _selectedFamily = state.fontFamily.value;
+    state.refreshUserFonts();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      AppScope.read(context).refreshUserFonts();
+    }
+  }
+
+  Future<void> _apply() async {
+    final family = _selectedFamily;
+    if (family == null) return;
+    try {
+      await AppScope.read(context).applyFontFamily(family);
+      if (!mounted) return;
+      final state = AppScope.read(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Font applied: ${_builtInFonts[family] ?? state.userFonts.where((font) => font.family == family).firstOrNull?.name ?? family}')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not load this font: $error')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = AppScope.of(context);
+    final theme = Theme.of(context);
+    final fonts = state.userFonts;
+    final customSelected = fonts.any((font) => font.family == _selectedFamily);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ListTile(
-            leading: const Icon(Symbols.text_fields_rounded),
-            title: const Text('Font size'),
-            subtitle: Text('${(scale * 100).round()}%'),
+          Row(children: [
+            Icon(Symbols.font_download_rounded, color: theme.colorScheme.primary, size: 19),
+            const SizedBox(width: 9),
+            Text('Built-in Fonts', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+          ]),
+          const SizedBox(height: 12),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (final entry in _builtInFonts.entries) ...[
+                  ChoiceChip(
+                    label: Text(entry.value),
+                    selected: _selectedFamily == entry.key,
+                    showCheckmark: false,
+                    visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
+                    labelPadding: const EdgeInsets.symmetric(horizontal: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    onSelected: (_) => setState(() => _selectedFamily = entry.key),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+              ],
+            ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-            child: Slider(
-              value: scale,
-              min: 0.8,
-              max: 1.3,
-              divisions: 10,
-              label: '${(scale * 100).round()}%',
-              onChanged: state.setFontScale,
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: ChipMenu<String>(
+                  values: [for (final font in fonts) font.family],
+                  selected: customSelected ? _selectedFamily : null,
+                  label: (family) => fonts.firstWhere((font) => font.family == family).name,
+                  placeholder: 'Select from Fonts folder',
+                  width: 280,
+                  expand: true,
+                  onSelected: (value) => setState(() => _selectedFamily = value),
+                  enabled: fonts.isNotEmpty,
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton.filledTonal(
+                tooltip: 'Open Fonts folder',
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Symbols.folder_open_rounded),
+                onPressed: () async {
+                  try {
+                    await state.openUserFontsFolder();
+                  } catch (error) {
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Could not open Fonts folder: $error')),
+                    );
+                  }
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 9),
+          Text(
+            'Place .ttf or .otf files in the Fonts folder inside the app directory, then select one here.',
+            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          ),
+          if (fonts.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 5),
+              child: Text('No custom fonts found yet.', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+            ),
+          const SizedBox(height: 16),
+          Align(
+            alignment: Alignment.centerRight,
+            child: FilledButton.icon(
+              onPressed: _selectedFamily == null ? null : _apply,
+              icon: const Icon(Symbols.check_rounded, size: 18),
+              label: const Text('Apply'),
             ),
           ),
         ],
