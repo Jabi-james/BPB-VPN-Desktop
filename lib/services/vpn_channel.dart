@@ -851,6 +851,23 @@ if (\$match) { 'true' } else { 'false' }
   /// whose path it returns.
   static Future<String?> installMitmCa() => _methods.invokeMethod<String>('installMitmCa');
 
+  /// Fingerprint the installed pair so an app/portable update that replaces the assets
+  /// cannot silently leave the stored country marker pointing at the wrong data.
+  static Future<String?> geoAssetsFingerprint() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.windows) return null;
+    final directory = Directory(
+      '${File(Platform.resolvedExecutable).parent.path}\\assets',
+    );
+    final hashes = <String>[];
+    for (final name in const ['geoip.dat', 'geosite.dat']) {
+      final file = File('${directory.path}\\$name');
+      if (!await file.exists()) return null;
+      final digest = SHA256Digest().process(await file.readAsBytes());
+      hashes.add(digest.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join());
+    }
+    return hashes.join(':');
+  }
+
   /// Replaces Xray's geo files (geoip.dat, geosite.dat) with [files], each checked against its
   /// SHA-256 (hex) first: none is replaced unless all match. Xray uses them from its next start.
   static Future<void> saveGeoAssets(
