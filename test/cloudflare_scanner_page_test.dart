@@ -301,14 +301,15 @@ void main() {
       tester.widget<Card>(card).margin,
       const EdgeInsets.symmetric(horizontal: 12),
     );
-    final column = find
-        .descendant(of: card, matching: find.byType(Column))
-        .first;
-    expect(tester.widget<Column>(column).spacing, 16);
+    final layout = find.descendant(of: card, matching: find.byType(Wrap));
+    expect(layout, findsOneWidget);
+    final wrap = tester.widget<Wrap>(layout);
+    expect(wrap.spacing, 12);
+    expect(wrap.runSpacing, 12);
     final padding = tester.widget<Padding>(
-      find.ancestor(of: column, matching: find.byType(Padding)).first,
+      find.descendant(of: card, matching: find.byType(Padding)).first,
     );
-    expect(padding.padding, const EdgeInsets.all(24));
+    expect(padding.padding, const EdgeInsets.all(16));
     expect(
       find.descendant(of: card, matching: find.byType(Divider)),
       findsNothing,
@@ -331,17 +332,24 @@ void main() {
       fields[4],
       fields[5],
     ];
-    for (var i = 1; i < orderedFields.length; i++) {
-      expect(
-        tester.getTopLeft(orderedFields[i]).dy -
-            tester.getBottomLeft(orderedFields[i - 1]).dy,
-        16,
-      );
+    final row1 = [orderedFields[0], orderedFields[1], orderedFields[2]];
+    final row2 = [orderedFields[3], orderedFields[4], orderedFields[5]];
+    final row3 = [orderedFields[6]];
+    for (final row in [row1, row2]) {
+      final tops = row.map((field) => tester.getTopLeft(field).dy);
+      expect(tops.reduce((a, b) => (a - b).abs() > 0.5 ? double.nan : a).isNaN, isFalse);
     }
-
+    expect(
+      tester.getTopLeft(row2.first).dy - tester.getBottomLeft(row1.first).dy,
+      12,
+    );
+    expect(
+      tester.getTopLeft(row3.first).dy - tester.getBottomLeft(row2.first).dy,
+      12,
+    );
     expect(
       tester.getTopLeft(find.text('Custom CIDRs')).dy,
-      greaterThan(tester.getBottomLeft(orderedFields.last).dy),
+      greaterThan(tester.getBottomLeft(row3.last).dy),
     );
   });
 
