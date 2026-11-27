@@ -468,18 +468,21 @@ class AppState extends ChangeNotifier {
       final previousFingerprint = _prefs.getString(_kGeoAssetsFingerprint);
       if (fingerprint == null) {
         await _prefs.setString(_kGeoAssetsCountry, 'unknown');
+        await VpnChannel.saveGeoAssetsCountryMarker('unknown');
         await _prefs.remove(_kGeoAssetsFingerprint);
         await _prefs.remove(_kGeoAssetsUpdatedAt);
       } else if (previousFingerprint == null) {
-        // First launch with the bundled Iran pair; a clean start already marks it unknown.
+        // First launch: recover the country from the marker that travels with portable assets.
         if (!_prefs.containsKey(_kGeoAssetsCountry)) {
-          await _prefs.setString(_kGeoAssetsCountry, 'iran');
+          final marker = await VpnChannel.geoAssetsCountryMarker();
+          await _prefs.setString(_kGeoAssetsCountry, marker ?? 'iran');
         }
         await _prefs.setString(_kGeoAssetsFingerprint, fingerprint);
       } else if (previousFingerprint != fingerprint) {
         // The installer or a portable-folder replacement changed the files. Their country
         // is unknown until the user runs Update Geo again.
         await _prefs.setString(_kGeoAssetsCountry, 'unknown');
+        await VpnChannel.saveGeoAssetsCountryMarker('unknown');
         await _prefs.setString(_kGeoAssetsFingerprint, fingerprint);
         await _prefs.remove(_kGeoAssetsUpdatedAt);
       }
