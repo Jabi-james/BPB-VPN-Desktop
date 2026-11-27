@@ -8,6 +8,7 @@ import '../services/my_ip.dart';
 import '../services/xray_config.dart';
 import '../state/app_state.dart';
 import 'chip_menu.dart';
+import 'v2ray_manager_page.dart';
 import 'theme.dart';
 
 /// The connection's settings, above the status card: its type and mode, and where traffic
@@ -23,6 +24,7 @@ class ConnectionCard extends StatefulWidget {
 class ConnectionCardState extends State<ConnectionCard> {
   final LayerLink _link = LayerLink();
   OverlayEntry? _panelEntry;
+  String _selectedBackend = 'BPB';
 
   void collapse() {
     final entry = _panelEntry;
@@ -83,6 +85,56 @@ class ConnectionCardState extends State<ConnectionCard> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: scheme.surface.withValues(alpha: 0.55),
+                            borderRadius: BorderRadius.circular(13),
+                            border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.65)),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _BackendTab(
+                                  label: 'BPB',
+                                  selected: _selectedBackend == 'BPB',
+                                  onTap: () {
+                                    _selectedBackend = 'BPB';
+                                    _panelEntry?.markNeedsBuild();
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: _BackendTab(
+                                  label: 'V2Ray',
+                                  selected: _selectedBackend == 'V2Ray',
+                                  onTap: () {
+                                    _selectedBackend = 'V2Ray';
+                                    _panelEntry?.markNeedsBuild();
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      if (_selectedBackend == 'V2Ray')
+                        ConstrainedBox(
+                          constraints: BoxConstraints(maxHeight: media.size.height * 0.62),
+                          child: V2rayHomePanel(
+                            onOpenSettings: () {
+                              final navigator = Navigator.of(overlayContext);
+                              collapse();
+                              navigator.push(MaterialPageRoute(
+                                builder: (_) => const V2rayManagerPage(),
+                              ));
+                            },
+                          ),
+                        )
+                      else ...[
                       _Row(icon: Symbols.category_rounded, color: const Color(0xFF4F9BFF), label: 'Type',
                         selector: const _TypeSelector()),
                       if (state.showCoreSelector)
@@ -123,6 +175,7 @@ class ConnectionCardState extends State<ConnectionCard> {
                             subtitleBadges: (c) => ChainInfo.of(c.link)?.tags ?? const [],
                             onSelected: state.setExitChain,
                             enabled: !state.isBusy && state.usableChains.length > 1)),
+                      ],
                     ],
                   ),
                 ),
@@ -204,6 +257,39 @@ class ConnectionCardState extends State<ConnectionCard> {
                 Icon(_panelEntry == null ? Icons.keyboard_arrow_down_rounded : Icons.keyboard_arrow_up_rounded,
                   color: scheme.onSurfaceVariant),
               ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BackendTab extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  const _BackendTab({required this.label, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: selected ? scheme.primary.withValues(alpha: 0.18) : Colors.transparent,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        mouseCursor: WidgetStateMouseCursor.clickable,
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 9),
+          child: Center(
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+                color: selected ? scheme.primary : scheme.onSurfaceVariant,
+              ),
             ),
           ),
         ),
