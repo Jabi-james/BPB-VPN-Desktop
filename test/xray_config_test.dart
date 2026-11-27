@@ -324,8 +324,10 @@ void main() {
       'ech': {'enabled': true},
     },
     'routing': {
+      'country': 'iran',
+      'geoFilesCountry': 'iran',
       'bypass': {
-        'presets': {'iran': true, 'china': true},
+        'presets': {'bittorrent': false},
         'domains': ['example.ir'],
         'ips': ['10.10.0.0/16'],
       },
@@ -1348,7 +1350,7 @@ void main() {
             'outboundTag': 'dns-out-exit',
           },
           {
-            'domain': ['geosite:private'],
+            'domain': ['geosite:private', 'geosite:ir'],
             'outboundTag': 'direct',
           },
           {
@@ -1356,7 +1358,7 @@ void main() {
             'outboundTag': 'block',
           },
           {
-            'ip': ['geoip:private'],
+            'ip': ['geoip:private', 'geoip:ir'],
             'outboundTag': 'direct',
           },
           if (exit == 'tor') {'network': 'udp', 'outboundTag': 'block'},
@@ -1446,6 +1448,10 @@ void main() {
           'rewriteAddress': '127.0.0.1',
           'rewritePort': XrayConfigBuilder.exitDnsPort,
           'rules': [
+            {
+              'action': 'hijack',
+              'domain': ['geosite:ir'],
+            },
             {'action': 'direct'},
           ],
         });
@@ -1602,7 +1608,7 @@ void main() {
       expect(
         bypass['domain'],
         containsAll([
-          'geosite:cn',
+          'geosite:ir',
           'domain:example.ir',
           'geosite:microsoft',
           'domain:sanctioned.example.com',

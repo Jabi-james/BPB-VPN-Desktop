@@ -38,8 +38,12 @@ class AppState extends ChangeNotifier {
   static const _kDevice = 'device';
   static const _kSecretAccounts = 'cloudflareAccounts';
   static const _kGeoAssetsUpdatedAt = 'geoAssetsUpdatedAt';
+  static const _kGeoAssetsCountry = 'geoAssetsCountry';
+  static const _kGeoAssetsFingerprint = 'geoAssetsFingerprint';
 
   late SharedPreferences _prefs;
+  // ignore: prefer_final_fields
+  bool _prefsReady = false;
   late String _portableNamespace;
   String get _aetherConfigDir {
     final base = Platform.environment['LOCALAPPDATA'] ?? Directory.systemTemp.path;
@@ -53,7 +57,12 @@ class AppState extends ChangeNotifier {
   Profile? _profile;
 
   /// How configs are built: the stored profile with the selected deployment's VLESS settings.
-  Profile get profile => _profile ??= _stored.updated('vless', vless.toJson());
+  Profile get profile => _profile ??= _stored
+      .updated(
+        'routing.geoFilesCountry',
+        _prefsReady ? (_prefs.getString(_kGeoAssetsCountry) ?? 'iran') : 'iran',
+      )
+      .updated('vless', vless.toJson());
 
   DeviceSettings device = const DeviceSettings();
 
@@ -455,7 +464,46 @@ class AppState extends ChangeNotifier {
     if (cleanStart) {
       await WebRtcLeakProtection.apply(false, _prefs);
       await _prefs.clear();
+      // Clean start leaves the on-disk Geo files untouched, so do not assume they are Iran.
+      await _prefs.setString(_kGeoAssetsCountry, 'unknown');
+      try {
+        await VpnChannel.saveGeoAssetsCountryMarker('unknown');
+      } catch (_) {
+        // Preferences still block Geo use if the install directory is not writable.
+      }
       await _secrets.delete(key: _secretAccountsKey);
+    }
+    if (Platform.isWindows) {
+      final fingerprint = await VpnChannel.geoAssetsFingerprint();
+      final previousFingerprint = _prefs.getString(_kGeoAssetsFingerprint);
+      if (fingerprint == null) {
+        await _prefs.setString(_kGeoAssetsCountry, 'unknown');
+        try {
+          await VpnChannel.saveGeoAssetsCountryMarker('unknown');
+        } catch (_) {
+          // The device-local preference remains authoritative if the marker cannot be written.
+        }
+        await _prefs.remove(_kGeoAssetsFingerprint);
+        await _prefs.remove(_kGeoAssetsUpdatedAt);
+      } else if (previousFingerprint == null) {
+        // First launch: recover the country from the marker that travels with portable assets.
+        if (!_prefs.containsKey(_kGeoAssetsCountry)) {
+          final marker = await VpnChannel.geoAssetsCountryMarker();
+          await _prefs.setString(_kGeoAssetsCountry, marker ?? 'iran');
+        }
+        await _prefs.setString(_kGeoAssetsFingerprint, fingerprint);
+      } else if (previousFingerprint != fingerprint) {
+        // The installer or a portable-folder replacement changed the files. Their country
+        // is unknown until the user runs Update Geo again.
+        await _prefs.setString(_kGeoAssetsCountry, 'unknown');
+        try {
+          await VpnChannel.saveGeoAssetsCountryMarker('unknown');
+        } catch (_) {
+          // The device-local preference remains authoritative if the marker cannot be written.
+        }
+        await _prefs.setString(_kGeoAssetsFingerprint, fingerprint);
+        await _prefs.remove(_kGeoAssetsUpdatedAt);
+      }
     }
     _stored = Profile.fromJson(_decodeMap(_prefs.getString(_kProfile)))
         .updated('vless', null);
@@ -1405,17 +1453,24 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  /// Replaces Xray's geo files with the latest Iran-v2ray-rules release's, through the tunnel
+  /// Replaces Xray's GeoIP/GeoSite pair with the selected country's sources, through the tunnel
   /// when connected (like [checkForUpdate]). A running connection uses them once it reconnects.
   Future<void> updateGeoAssets({
     void Function(String file, int received, int? total)? onProgress,
   }) async {
+    final country = profile.routing.geoCountry;
     final client = proxiedClient(isConnected ? LocalProxy.port : null);
     try {
       final files = await GeoAssetsDownloader(
         client,
-      ).download(onProgress: onProgress);
+      ).download(country: country, onProgress: onProgress);
       await VpnChannel.saveGeoAssets(files);
+      // Mark the pair as belonging to this country only after both files pass checksum
+      // validation and have been saved successfully. Until then Xray must not use the old pair.
+      await _prefs.setString(_kGeoAssetsCountry, country);
+      _profile = null;
+      _markChangedWhileConnected();
+      notifyListeners();
       await _prefs.setString(_kGeoAssetsUpdatedAt, DateTime.now().toUtc().toIso8601String());
     } on GeoAssetsException catch (e) {
       throw StateError(e.message);

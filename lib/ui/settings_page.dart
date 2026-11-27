@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -24,6 +26,7 @@ import 'noises_page.dart';
 import 'per_app_page.dart';
 import 'prefs.dart';
 import 'routing_page.dart';
+import 'app_toast.dart';
 import 'tor_bridges_page.dart';
 import 'tor_custom_bridges_pref.dart';
 import 'ssh_settings_page.dart';
@@ -128,10 +131,9 @@ class _WebRtcProtectionPref extends StatelessWidget {
       subtitle: const Text('Chrome and Edge · Restart the browser to apply policy changes'),
       value: enabled,
       onChanged: (value) async {
-        final messenger = ScaffoldMessenger.of(context);
         final verified = await state.setWebRtcLeakProtection(value);
         if (!context.mounted) return;
-        messenger.showSnackBar(SnackBar(
+        AppToast.showSnackBar(context, SnackBar(
           content: Text(!verified
               ? 'WebRTC Leak Protection could not be verified. Check Windows browser policies.'
               : value
@@ -1860,12 +1862,12 @@ class _UserFontTileState extends State<_UserFontTile> with WidgetsBindingObserve
       await AppScope.read(context).applyFontFamily(family);
       if (!mounted) return;
       final state = AppScope.read(context);
-      ScaffoldMessenger.of(context).showSnackBar(
+      AppToast.showSnackBar(context, 
         SnackBar(content: Text('Font applied: ${_builtInFonts[family] ?? state.userFonts.where((font) => font.family == family).firstOrNull?.name ?? family}')),
       );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      AppToast.showSnackBar(context, 
         SnackBar(content: Text('Could not load this font: $error')),
       );
     }
@@ -1933,7 +1935,7 @@ class _UserFontTileState extends State<_UserFontTile> with WidgetsBindingObserve
                     await state.openUserFontsFolder();
                   } catch (error) {
                     if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    AppToast.showSnackBar(context, 
                       SnackBar(content: Text('Could not open Fonts folder: $error')),
                     );
                   }
@@ -2140,15 +2142,14 @@ class _CustomDomainTileState extends State<_CustomDomainTile> {
   bool _busy = false;
 
   Future<void> _run(Future<void> Function() action, String success) async {
-    final messenger = ScaffoldMessenger.of(context);
     setState(() => _busy = true);
     try {
       await action();
-      messenger.showSnackBar(SnackBar(content: Text(success)));
+      AppToast.showSnackBar(context, SnackBar(content: Text(success)));
     } on StateError catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+      AppToast.showSnackBar(context, SnackBar(content: Text(e.message)));
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('$e')));
+      AppToast.showSnackBar(context, SnackBar(content: Text('$e')));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -2280,12 +2281,12 @@ class _WindowsMitmCaTileState extends State<_WindowsMitmCaTile> {
     try {
       await AppScope.read(context).createMitmCa();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      AppToast.showSnackBar(context, 
         const SnackBar(content: Text('Certificate created successfully.')),
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      AppToast.showSnackBar(context, 
         SnackBar(content: Text('Could not create the certificate: $e')),
       );
     } finally {
@@ -2298,7 +2299,6 @@ class _WindowsMitmCaTileState extends State<_WindowsMitmCaTile> {
 
   Future<void> _install() async {
     final state = AppScope.read(context);
-    final messenger = ScaffoldMessenger.of(context);
     var installStarted = false;
     await showDialog<void>(
       context: context,
@@ -2348,7 +2348,7 @@ class _WindowsMitmCaTileState extends State<_WindowsMitmCaTile> {
                       } catch (e) {
                         if (dialogContext.mounted) {
                           setDialogState(() => installStarted = false);
-                          messenger.showSnackBar(
+                          AppToast.showSnackBar(context, 
                             SnackBar(content: Text('Could not open the certificate: $e')),
                           );
                         }
@@ -2421,7 +2421,6 @@ class _MitmCaTileState extends State<_MitmCaTile> {
 
   Future<void> _install() async {
     final state = AppScope.read(context);
-    final messenger = ScaffoldMessenger.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -2450,10 +2449,10 @@ class _MitmCaTileState extends State<_MitmCaTile> {
     try {
       final saved = await state.installMitmCa();
       if (saved != null) {
-        messenger.showSnackBar(SnackBar(content: Text('Saved to $saved')));
+        AppToast.showSnackBar(context, SnackBar(content: Text('Saved to $saved')));
       }
     } catch (e) {
-      messenger.showSnackBar(
+      AppToast.showSnackBar(context, 
         SnackBar(content: Text('Could not install the certificate: $e')),
       );
     } finally {
@@ -2515,7 +2514,6 @@ class _WarpAccountTile extends StatelessWidget {
               icon: const Icon(Symbols.autorenew_rounded, size: 18),
               label: Text(registered ? 'Renew' : 'Register'),
               onPressed: () async {
-                final messenger = ScaffoldMessenger.of(context);
                 if (registered) {
                   final ok = await showDialog<bool>(
                     context: context,
@@ -2540,11 +2538,11 @@ class _WarpAccountTile extends StatelessWidget {
                 }
                 try {
                   await state.renewWarpAccount();
-                  messenger.showSnackBar(
+                  AppToast.showSnackBar(context, 
                     const SnackBar(content: Text('WARP account updated')),
                   );
                 } on StateError catch (e) {
-                  messenger.showSnackBar(SnackBar(content: Text(e.message)));
+                  AppToast.showSnackBar(context, SnackBar(content: Text(e.message)));
                 }
               },
             ),
@@ -2579,7 +2577,6 @@ class _AetherMasqueAccountTile extends StatelessWidget {
                           state.isConnected || state.isBusy
                       ? null
                       : () async {
-                          final messenger = ScaffoldMessenger.of(context);
                           if (registered) {
                             final ok = await showDialog<bool>(
                               context: context,
@@ -2604,11 +2601,11 @@ class _AetherMasqueAccountTile extends StatelessWidget {
                           }
                           try {
                             await state.renewAetherMasqueIdentity();
-                            messenger.showSnackBar(
+                            AppToast.showSnackBar(context, 
                               const SnackBar(content: Text('Aether MASQUE identity updated')),
                             );
                           } catch (e) {
-                            messenger.showSnackBar(SnackBar(content: Text('$e')));
+                            AppToast.showSnackBar(context, SnackBar(content: Text('$e')));
                           }
                         },
                 ),
@@ -2645,7 +2642,6 @@ class _AetherWgAccountTile extends StatelessWidget {
                           state.isConnected || state.isBusy
                       ? null
                       : () async {
-                          final messenger = ScaffoldMessenger.of(context);
                           if (registered) {
                             final ok = await showDialog<bool>(
                               context: context,
@@ -2670,11 +2666,11 @@ class _AetherWgAccountTile extends StatelessWidget {
                           }
                           try {
                             await state.renewAetherWgIdentity();
-                            messenger.showSnackBar(
+                            AppToast.showSnackBar(context, 
                               const SnackBar(content: Text('Aether WARP identity updated')),
                             );
                           } catch (e) {
-                            messenger.showSnackBar(SnackBar(content: Text('$e')));
+                            AppToast.showSnackBar(context, SnackBar(content: Text('$e')));
                           }
                         },
                 ),
@@ -2706,7 +2702,6 @@ class _MasqueAccountTile extends StatelessWidget {
               icon: const Icon(Symbols.autorenew_rounded, size: 18),
               label: Text(registered ? 'Renew' : 'Register'),
               onPressed: () async {
-                final messenger = ScaffoldMessenger.of(context);
                 if (registered) {
                   final ok = await showDialog<bool>(
                     context: context,
@@ -2731,11 +2726,11 @@ class _MasqueAccountTile extends StatelessWidget {
                 }
                 try {
                   await state.renewMasqueAccount();
-                  messenger.showSnackBar(
+                  AppToast.showSnackBar(context, 
                     const SnackBar(content: Text('MASQUE account updated')),
                   );
                 } on StateError catch (e) {
-                  messenger.showSnackBar(SnackBar(content: Text(e.message)));
+                  AppToast.showSnackBar(context, SnackBar(content: Text(e.message)));
                 }
               },
             ),
@@ -2966,20 +2961,19 @@ class _UpdateTileState extends State<_UpdateTile> {
 
   Future<void> _check() async {
     final state = AppScope.read(context);
-    final messenger = ScaffoldMessenger.of(context);
     setState(() => _checking = true);
     try {
       final update = await state.checkForUpdate();
       if (!mounted) return;
       if (update == null) {
-        messenger.showSnackBar(
+        AppToast.showSnackBar(context, 
           const SnackBar(content: Text('BPB is up to date')),
         );
       } else {
         await _offer(update);
       }
     } on StateError catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+      AppToast.showSnackBar(context, SnackBar(content: Text(e.message)));
     } finally {
       if (mounted) setState(() => _checking = false);
     }
@@ -3025,10 +3019,9 @@ class _UpdateTileState extends State<_UpdateTile> {
     final url = action == _UpdateAction.repository
         ? update.pageUrl
         : update.apkUrl ?? update.pageUrl;
-    final messenger = ScaffoldMessenger.of(context);
     if (!await VpnChannel.openUrl(url) && action == _UpdateAction.download) {
       await Clipboard.setData(ClipboardData(text: url));
-      messenger.showSnackBar(
+      AppToast.showSnackBar(context, 
         const SnackBar(content: Text('Link copied. Open it in your browser.')),
       );
     }
@@ -3073,7 +3066,6 @@ class _GeoAssetsTileState extends State<_GeoAssetsTile>
 
   Future<void> _update() async {
     final state = AppScope.read(context);
-    final messenger = ScaffoldMessenger.of(context);
     setState(() {
       _updating = true;
       _downloadingFile = null;
@@ -3092,21 +3084,16 @@ class _GeoAssetsTileState extends State<_GeoAssetsTile>
           });
         },
       );
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            state.isConnected
-                ? 'Geo assets updated. Reconnect to use them.'
-                : 'Geo assets updated successfully',
-          ),
-        ),
+      AppToast.show(
+        context,
+        state.isConnected
+            ? 'Geo files updated. Reconnect to use them.'
+            : 'Geo files updated successfully',
       );
     } on StateError catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+      AppToast.show(context, e.message);
     } catch (e) {
-      messenger.showSnackBar(
-        SnackBar(content: Text('Geo assets update failed: $e')),
-      );
+      AppToast.show(context, 'Geo assets update failed: $e');
     } finally {
       if (mounted) {
         setState(() {
@@ -3126,9 +3113,20 @@ class _GeoAssetsTileState extends State<_GeoAssetsTile>
         ? 'Preparing download...'
         : 'Downloading $_downloadingFile'
               '${_progress == null ? '' : ' · ${(_progress! * 100).round()}%'}';
-    final updatedAt = AppScope.of(context).geoAssetsUpdatedAt;
-    final updatedLabel = updatedAt == null
-        ? 'Latest Chocolate4U assets'
+    final appState = AppScope.of(context);
+    final routing = appState.profile.routing;
+    final updatedAt = appState.geoAssetsUpdatedAt;
+    final sourceLabel = switch (routing.geoCountry) {
+      'iran' => 'Chocolate4U',
+      'china' => 'Loyalsoldier',
+      'russia' => 'Loyalsoldier + RunetFreedom',
+      _ => 'Geo source',
+    };
+    final countryLabel = RoutingPage.geoCountries[routing.geoCountry] ?? 'Iran';
+    final updatedLabel = routing.geoFilesCountry != routing.geoCountry
+        ? 'Please Update Geo Files'
+        : updatedAt == null
+        ? '$countryLabel · $sourceLabel'
         : 'Last updated: ${updatedAt.year.toString().padLeft(4, '0')}-'
               '${updatedAt.month.toString().padLeft(2, '0')}-'
               '${updatedAt.day.toString().padLeft(2, '0')} '
@@ -3175,7 +3173,6 @@ class _ExportSettingsTile extends StatelessWidget {
 
   Future<void> _export(BuildContext context) async {
     final state = AppScope.read(context);
-    final messenger = ScaffoldMessenger.of(context);
     final name =
         'bpb-settings-${DateTime.now().toIso8601String().substring(0, 10)}.json';
     final content = state.exportSettingsFile();
@@ -3183,7 +3180,7 @@ class _ExportSettingsTile extends StatelessWidget {
       if (download) {
         final where = await VpnChannel.saveFile(name: name, content: content);
         if (where != null) {
-          messenger.showSnackBar(SnackBar(content: Text('Saved to $where')));
+          AppToast.showSnackBar(context, SnackBar(content: Text('Saved to $where')));
         }
       } else {
         await VpnChannel.shareFile(
@@ -3193,7 +3190,7 @@ class _ExportSettingsTile extends StatelessWidget {
         );
       }
     } on PlatformException catch (e) {
-      messenger.showSnackBar(
+      AppToast.showSnackBar(context, 
         SnackBar(content: Text("Couldn't export: ${e.message}")),
       );
     }
@@ -3218,12 +3215,11 @@ class _ImportSettingsTile extends StatelessWidget {
 
   Future<void> _import(BuildContext context) async {
     final state = AppScope.read(context);
-    final messenger = ScaffoldMessenger.of(context);
     final String? text;
     try {
       text = (await VpnChannel.pickFile())?.content;
     } on PlatformException catch (e) {
-      messenger.showSnackBar(
+      AppToast.showSnackBar(context, 
         SnackBar(content: Text("Couldn't read the file: ${e.message}")),
       );
       return;
@@ -3253,11 +3249,11 @@ class _ImportSettingsTile extends StatelessWidget {
     if (ok != true) return;
     try {
       state.importSettingsFile(text);
-      messenger.showSnackBar(
+      AppToast.showSnackBar(context, 
         const SnackBar(content: Text('Settings imported')),
       );
     } on FormatException catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+      AppToast.showSnackBar(context, SnackBar(content: Text(e.message)));
     }
   }
 

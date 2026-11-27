@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../state/app_state.dart';
+import 'app_toast.dart';
 import 'prefs.dart';
 
 /// One routing group: its built-in presets (`routing.<group>.presets.<name>`), then its custom
@@ -33,10 +35,13 @@ class RoutingPage extends StatelessWidget {
 
   /// Direct connection, resolved with the local DNS.
   static const bypassLabels = {
+    'bittorrent': 'BitTorrent',
+  };
+
+  static const geoCountries = {
     'iran': 'Iran',
     'china': 'China',
     'russia': 'Russia',
-    'bittorrent': 'BitTorrent',
   };
 
   /// Direct connection, resolved with the anti-sanction DNS.
@@ -81,7 +86,38 @@ class RoutingPage extends StatelessWidget {
                 style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               ),
             ),
-          const SectionHeader('Presets'),
+          if (group == 'bypass') ...[
+            const SectionHeader('Country'),
+            Builder(builder: (context) {
+              final selected = AppScope.of(context).profile.routing.geoCountry;
+              return SettingsCard(
+                children: [
+                  RadioGroup<String>(
+                    groupValue: selected,
+                    onChanged: (value) {
+                      if (value == null || value == selected) return;
+                      AppScope.read(context).write('routing.country', value);
+                      AppToast.show(context, 'Please Update Geo Files');
+                    },
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        for (final entry in geoCountries.entries)
+                          RadioListTile<String>(
+                            value: entry.key,
+                            title: Text(entry.value),
+                            dense: true,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            }),
+            const SectionHeader('Other rules'),
+          ] else
+            const SectionHeader('Presets'),
           SettingsCard(
             children: [
               for (final e in labels.entries)

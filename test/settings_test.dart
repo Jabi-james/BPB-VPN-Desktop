@@ -3,6 +3,30 @@ import 'package:bpb/services/xray_config.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('Geo routing defaults to Iran and tracks the installed country separately', () {
+    final defaults = Profile.fromJson({});
+    expect(defaults.routing.geoCountry, 'iran');
+    expect(defaults.routing.geoFilesCountry, 'iran');
+    expect(RoutingPresets.bypass.keys.toList(), ['bittorrent']);
+
+    final selectedChina = defaults.updated('routing.country', 'china');
+    expect(selectedChina.routing.geoCountry, 'china');
+    expect(selectedChina.routing.geoFilesCountry, 'iran');
+
+    final downloadedChina = selectedChina.updated('routing.geoFilesCountry', 'china');
+    expect(downloadedChina.routing.geoCountry, 'china');
+    expect(downloadedChina.routing.geoFilesCountry, 'china');
+
+    final unsupported = Profile.fromJson({
+      'routing': {'country': 'unknown'},
+    });
+    expect(unsupported.routing.geoCountry, 'iran');
+    final unknownFiles = Profile.fromJson({
+      'routing': {'geoFilesCountry': 'unknown'},
+    });
+    expect(unknownFiles.routing.geoFilesCountry, 'unknown');
+  });
+
   const vless = ChainProxy(
     id: 'a1',
     name: 'VLESS',
@@ -310,11 +334,8 @@ void main() {
     ); // not a preset → default
     expect(p.fragments.single.lengths, const [Range(100, 200)]);
     expect(p.routing.bypass.presets, {
-      'iran': true,
-      'china': false,
-      'russia': false,
       'bittorrent': false,
-    }); // unknown preset dropped
+    }); // removed country toggles are ignored; BitTorrent remains independent
   });
 
   test('noise payload field follows the type', () {

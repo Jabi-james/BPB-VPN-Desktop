@@ -1,6 +1,9 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'app_toast.dart';
 import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
@@ -81,10 +84,9 @@ class _LogPageState extends State<LogPage> {
   }
 
   Future<void> _copy() async {
-    final messenger = ScaffoldMessenger.of(context);
     final filtered = _lines.where((l) => _searchQuery.isEmpty || l.toLowerCase().contains(_searchQuery)).toList();
     await Clipboard.setData(ClipboardData(text: filtered.join('\n')));
-    messenger.showSnackBar(const SnackBar(content: Text('Log copied')));
+    AppToast.showSnackBar(context, const SnackBar(content: Text('Log copied')));
   }
 
   Future<void> _clear() async {

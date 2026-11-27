@@ -789,8 +789,9 @@ class XrayConfigBuilder {
   Future<XrayBuild> _buildDomainFronting() async {
     final config = _v23 = jsonDecode(domainFrontingV23) as Map<String, dynamic>;
 
-    final geo = _geoAssets();
     final routing = profile.routing;
+    final geoFilesReady = routing.geoFilesCountry == routing.geoCountry;
+    final geo = _geoAssets();
     final List<String> bypassDomain = [];
     final List<String> bypassGeosite = [];
     final List<String> bypassIp = [];
@@ -883,7 +884,7 @@ class XrayConfigBuilder {
 
         case 'bypass-domain':
           if (!_chainedExit) {
-            rule['domain'] = ['geosite:private', ...totalBypass];
+            rule['domain'] = [if (geoFilesReady) 'geosite:private', ...totalBypass];
           } else {
             routingRules.remove(rule);
           }
@@ -897,7 +898,7 @@ class XrayConfigBuilder {
 
         case 'bypass-ip':
           if (!_chainedExit) {
-            rule['ip'] = ['geoip:private', ...bypassIp];
+            rule['ip'] = [if (geoFilesReady) 'geoip:private', ...bypassIp];
           } else {
             routingRules.remove(rule);
           }
@@ -1295,8 +1296,8 @@ class XrayConfigBuilder {
       }
     }
 
-    final geo = _geoAssets();
     final routing = profile.routing;
+    final geo = _geoAssets();
 
     for (final g in geo.where((g) => g.isBlock)) {
       hosts[g.geosite] = '#3';
@@ -1519,8 +1520,9 @@ class XrayConfigBuilder {
       add(protocol: ['bittorrent'], outbound: 'direct');
     }
 
-    final geo = _geoAssets();
     final routing = profile.routing;
+    final geoFilesReady = routing.geoFilesCountry == routing.geoCountry;
+    final geo = _geoAssets();
 
     final blockDomains = [
       ...geo.where((g) => g.isBlock).map((g) => g.geosite),
@@ -1529,7 +1531,7 @@ class XrayConfigBuilder {
     if (blockDomains.isNotEmpty) add(domain: blockDomains, outbound: 'block');
 
     final bypassDomains = [
-      'geosite:private',
+      if (geoFilesReady) 'geosite:private',
       ...geo
           .where((g) => !g.isBlock && g.dns != _GeoDns.antiSanction)
           .map((g) => g.geosite),
@@ -1552,7 +1554,7 @@ class XrayConfigBuilder {
     add(ip: blockIps, outbound: 'block');
 
     final bypassIps = [
-      'geoip:private',
+      if (geoFilesReady) 'geoip:private',
       ...geo.where((g) => !g.isBlock && g.geoip != null).map((g) => g.geoip!),
       ...routing.bypass.ips,
     ];
@@ -1641,14 +1643,17 @@ class XrayConfigBuilder {
 
   List<_GeoAsset> _geoAssets() {
     final r = profile.routing;
-    List<_GeoAsset> on(RuleGroup group, Map<String, _GeoAsset> assets) => [
-      for (final e in assets.entries)
-        if (group.isOn(e.key)) e.value,
-    ];
+    // Never mix rules from the previous country with the newly selected country.
+    // Until the matching pair is downloaded, all Geo-backed presets are held back;
+    // user-entered domains/IPs and the independent BitTorrent rule still work.
+    if (r.geoFilesCountry != r.geoCountry) return const [];
     return [
-      ...on(r.block, _blockAssets),
-      ...on(r.bypass, _bypassAssets),
-      ...on(r.sanctionBypass, _sanctionAssets),
+      for (final e in _blockAssets.entries)
+        if (r.block.isOn(e.key)) e.value,
+      if (_bypassAssets.containsKey(r.geoCountry))
+        _bypassAssets[r.geoCountry]!,
+      for (final e in _sanctionAssets.entries)
+        if (r.sanctionBypass.isOn(e.key)) e.value,
     ];
   }
 

@@ -1,4 +1,5 @@
 import 'package:bpb/state/app_state.dart';
+import 'package:bpb/ui/app_toast.dart';
 import 'package:bpb/ui/noises_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -27,6 +28,9 @@ class _TestState extends AppState {
 }
 
 void main() {
+  // Saving shows a five-second toast; dismiss it so its timer cannot leak between tests.
+  tearDown(AppToast.hide);
+
   testWidgets('expression packet presets select, edit, generate and restore', (
     tester,
   ) async {
@@ -63,6 +67,7 @@ void main() {
       await tester.pump();
       await tester.tap(find.text('Save'));
       await tester.pumpAndSettle();
+      AppToast.hide();
     }
 
     await select('Mode', 'Expression');
@@ -146,6 +151,7 @@ void main() {
       await tester.pump();
       await tester.tap(find.text('Save'));
       await tester.pumpAndSettle();
+      AppToast.hide();
     }
 
     await tester.enterText(field('Delay min'), '0');

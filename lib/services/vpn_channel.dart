@@ -851,6 +851,49 @@ if (\$match) { 'true' } else { 'false' }
   /// whose path it returns.
   static Future<String?> installMitmCa() => _methods.invokeMethod<String>('installMitmCa');
 
+  static const _geoCountryMarkerName = 'geo-country.txt';
+
+  /// Read the country marker bundled beside the Geo files (also travels with portable copies).
+  static Future<String?> geoAssetsCountryMarker() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.windows) return null;
+    final file = File(
+      '${File(Platform.resolvedExecutable).parent.path}\\assets\\$_geoCountryMarkerName',
+    );
+    if (!await file.exists()) return null;
+    final value = (await file.readAsString()).trim().toLowerCase();
+    return const {'iran', 'china', 'russia', 'unknown'}.contains(value) ? value : null;
+  }
+
+  /// Update the marker only after the Geo pair has been saved and verified.
+  static Future<void> saveGeoAssetsCountryMarker(String country) async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.windows) return;
+    if (!const {'iran', 'china', 'russia', 'unknown'}.contains(country)) {
+      throw ArgumentError.value(country, 'country');
+    }
+    final file = File(
+      '${File(Platform.resolvedExecutable).parent.path}\\assets\\$_geoCountryMarkerName',
+    );
+    await file.parent.create(recursive: true);
+    await file.writeAsString('$country\n', flush: true);
+  }
+
+  /// Fingerprint the installed pair so an app/portable update that replaces the assets
+  /// cannot silently leave the stored country marker pointing at the wrong data.
+  static Future<String?> geoAssetsFingerprint() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.windows) return null;
+    final directory = Directory(
+      '${File(Platform.resolvedExecutable).parent.path}\\assets',
+    );
+    final hashes = <String>[];
+    for (final name in const ['geoip.dat', 'geosite.dat']) {
+      final file = File('${directory.path}\\$name');
+      if (!await file.exists()) return null;
+      final digest = SHA256Digest().process(await file.readAsBytes());
+      hashes.add(digest.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join());
+    }
+    return hashes.join(':');
+  }
+
   /// Replaces Xray's geo files (geoip.dat, geosite.dat) with [files], each checked against its
   /// SHA-256 (hex) first: none is replaced unless all match. Xray uses them from its next start.
   static Future<void> saveGeoAssets(

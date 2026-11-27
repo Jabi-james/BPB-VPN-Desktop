@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'app_toast.dart';
 import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
@@ -95,7 +96,7 @@ class _DnsPageState extends State<DnsPage> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        AppToast.showSnackBar(context, 
           SnackBar(content: Text('Failed to load DNS servers: $e')),
         );
       }
