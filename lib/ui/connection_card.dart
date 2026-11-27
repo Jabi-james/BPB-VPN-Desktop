@@ -263,6 +263,7 @@ class _TypeSelector extends StatelessWidget {
       label: (m) => m == ConnectionMode.worker ? 'VLESS' : m.label,
       badges: (m) => [_protocol(m)],
       onSelected: state.setMode,
+      isValueEnabled: state.isModeSelectable,
       enabled: !state.isBusy,
     );
   }
