@@ -385,6 +385,7 @@ class _V2rayConnectionPanelState extends State<V2rayConnectionPanel> {
                     if (ok == true) setState(() => _configs.removeAt(index));
                   }),
               ),
+          ),
       ),
     ]);
   }
