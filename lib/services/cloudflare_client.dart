@@ -112,7 +112,8 @@ class CloudflareClient extends http.BaseClient {
           if (_fallbackDial[host] case final fallback?) fallback,
         };
         for (final ip in candidates) {
-          final client = _own(EchClient(dial: {host: '$ip:443'}));
+          final dialAddress = ip.contains(':') ? '[$ip]:443' : '$ip:443';
+          final client = _own(EchClient(dial: {host: dialAddress}));
           try {
             return await client.send(copy());
           } catch (e, st) {
