@@ -42,6 +42,7 @@ class AppState extends ChangeNotifier {
   static const _kGeoAssetsFingerprint = 'geoAssetsFingerprint';
 
   late SharedPreferences _prefs;
+  bool _prefsReady = false;
   late String _portableNamespace;
   String get _aetherConfigDir {
     final base = Platform.environment['LOCALAPPDATA'] ?? Directory.systemTemp.path;
@@ -56,7 +57,10 @@ class AppState extends ChangeNotifier {
 
   /// How configs are built: the stored profile with the selected deployment's VLESS settings.
   Profile get profile => _profile ??= _stored
-      .updated('routing.geoFilesCountry', _prefs.getString(_kGeoAssetsCountry) ?? 'iran')
+      .updated(
+        'routing.geoFilesCountry',
+        _prefsReady ? (_prefs.getString(_kGeoAssetsCountry) ?? 'iran') : 'iran',
+      )
       .updated('vless', vless.toJson());
 
   DeviceSettings device = const DeviceSettings();
