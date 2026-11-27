@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_toast.dart';
 import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
@@ -83,7 +84,6 @@ class _AccountTileState extends State<_AccountTile> {
   /// the app. If Cloudflare can't be cleaned up, offers to remove it from the app anyway.
   Future<void> _remove() async {
     final state = AppScope.read(context);
-    final messenger = ScaffoldMessenger.of(context);
     if (!await _confirm(
       'Remove account?',
       'Custom domains and workers will be removed from the Cloudflare account ${account.label}, '
@@ -95,7 +95,7 @@ class _AccountTileState extends State<_AccountTile> {
     setState(() => _removing = true);
     try {
       await state.removeCfAccount(account);
-      messenger.showSnackBar(const SnackBar(content: Text('Account removed')));
+      AppToast.showSnackBar(context, const SnackBar(content: Text('Account removed')));
     } catch (e) {
       if (!mounted) return;
       setState(() => _removing = false);
@@ -172,10 +172,9 @@ class _AccountTileState extends State<_AccountTile> {
 /// Opens Cloudflare's token page with the needed permissions pre-filled.
 Future<void> openTokenPage(BuildContext context) async {
   final url = CloudflareApi.tokenCreationUrl();
-  final messenger = ScaffoldMessenger.of(context);
   if (!await VpnChannel.openUrl(url)) {
     await Clipboard.setData(ClipboardData(text: url));
-    messenger.showSnackBar(
+    AppToast.showSnackBar(context, 
       const SnackBar(content: Text('Link copied. Open it in your browser.')),
     );
   }
