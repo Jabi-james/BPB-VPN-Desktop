@@ -3,6 +3,26 @@ import 'package:bpb/services/xray_config.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('Geo routing defaults to Iran and tracks the installed country separately', () {
+    final defaults = Profile.fromJson({});
+    expect(defaults.routing.geoCountry, 'iran');
+    expect(defaults.routing.geoFilesCountry, 'iran');
+    expect(RoutingPresets.bypass.keys, ['bittorrent']);
+
+    final selectedChina = defaults.updated('routing.country', 'china');
+    expect(selectedChina.routing.geoCountry, 'china');
+    expect(selectedChina.routing.geoFilesCountry, 'iran');
+
+    final downloadedChina = selectedChina.updated('routing.geoFilesCountry', 'china');
+    expect(downloadedChina.routing.geoCountry, 'china');
+    expect(downloadedChina.routing.geoFilesCountry, 'china');
+
+    final unsupported = Profile.fromJson({
+      'routing': {'country': 'unknown'},
+    });
+    expect(unsupported.routing.geoCountry, 'iran');
+  });
+
   const vless = ChainProxy(
     id: 'a1',
     name: 'VLESS',
