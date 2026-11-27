@@ -872,9 +872,6 @@ class TorSettings {
 class RoutingPresets {
   /// Direct, resolved with the local DNS, matched by domain and IP; BitTorrent by protocol.
   static const bypass = {
-    'iran': false,
-    'china': false,
-    'russia': false,
     'bittorrent': false,
   };
 
@@ -919,12 +916,18 @@ enum RoutingDomainStrategy {
 
 class RoutingSettings {
   final RoutingDomainStrategy domainStrategy;
+  /// The single country whose GeoIP/GeoSite rules are active.
+  final String geoCountry;
+  /// Country represented by the currently installed geoip.dat / geosite.dat pair.
+  final String geoFilesCountry;
   final RuleGroup bypass;
   final RuleGroup sanctionBypass;
   final RuleGroup block;
 
   const RoutingSettings({
     this.domainStrategy = RoutingDomainStrategy.asIs,
+    this.geoCountry = 'iran',
+    this.geoFilesCountry = 'iran',
     this.bypass = const RuleGroup(RoutingPresets.bypass),
     this.sanctionBypass = const RuleGroup(RoutingPresets.sanctionBypass),
     this.block = const RuleGroup(RoutingPresets.block),
@@ -935,6 +938,12 @@ class RoutingSettings {
     const d = RoutingSettings();
     return RoutingSettings(
       domainStrategy: RoutingDomainStrategy.parse(j['domainStrategy']),
+      geoCountry: const {'iran', 'china', 'russia'}.contains(j['country'])
+          ? j['country'] as String
+          : d.geoCountry,
+      geoFilesCountry: const {'iran', 'china', 'russia'}.contains(j['geoFilesCountry'])
+          ? j['geoFilesCountry'] as String
+          : d.geoFilesCountry,
       bypass: RuleGroup.parse(j['bypass'], d.bypass),
       sanctionBypass: RuleGroup.parse(j['sanctionBypass'], d.sanctionBypass),
       block: RuleGroup.parse(j['block'], d.block),
@@ -943,6 +952,8 @@ class RoutingSettings {
 
   Map<String, dynamic> toJson() => {
     'domainStrategy': domainStrategy.xray,
+    'country': geoCountry,
+    'geoFilesCountry': geoFilesCountry,
     'bypass': bypass.toJson(),
     'sanctionBypass': sanctionBypass.toJson(),
     'block': block.toJson(),
