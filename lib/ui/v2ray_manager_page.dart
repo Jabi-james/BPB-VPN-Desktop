@@ -126,7 +126,15 @@ class _V2rayManagerPageState extends State<V2rayManagerPage> {
           Row(children: [
             Text('Subscriptions', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
             const Spacer(),
-            IconButton.filledTonal(tooltip: 'Test server delay', onPressed: null, icon: const Icon(Symbols.bolt_rounded)),
+            IconButton.filledTonal(
+              tooltip: 'Test server delay (preview only)',
+              onPressed: _loading || selected == null
+                  ? null
+                  : () => ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Preview only · No server request was sent.')),
+                    ),
+              icon: const Icon(Symbols.bolt_rounded),
+            ),
             const SizedBox(width: 4),
             IconButton.filledTonal(tooltip: 'Edit selected subscription', onPressed: selected == null ? null : () => _edit(item: selected), icon: const Icon(Symbols.edit_rounded)),
             const SizedBox(width: 4),
