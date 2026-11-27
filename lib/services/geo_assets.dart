@@ -15,10 +15,21 @@ class GeoAssetsException implements Exception {
 class GeoAssetsDownloader {
   static const files = ['geoip.dat', 'geosite.dat'];
 
-  static const sources = <String, String>{
-    'iran': 'https://github.com/Chocolate4U/Iran-v2ray-rules/releases/latest/download',
-    'china': 'https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download',
-    'russia': 'https://raw.githubusercontent.com/runetfreedom/russia-v2ray-rules-dat/release',
+  static const sources = <String, Map<String, String>>{
+    'iran': {
+      'geoip.dat': 'https://github.com/Chocolate4U/Iran-v2ray-rules/releases/latest/download',
+      'geosite.dat': 'https://github.com/Chocolate4U/Iran-v2ray-rules/releases/latest/download',
+    },
+    'china': {
+      'geoip.dat': 'https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download',
+      'geosite.dat': 'https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download',
+    },
+    'russia': {
+      // Loyalsoldier supplies the full country geoip:ru tag; RunetFreedom supplies
+      // the Russia-specific category-ru domain list.
+      'geoip.dat': 'https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download',
+      'geosite.dat': 'https://raw.githubusercontent.com/runetfreedom/russia-v2ray-rules-dat/release',
+    },
   };
 
   final http.Client client;
@@ -29,10 +40,14 @@ class GeoAssetsDownloader {
     required String country,
     void Function(String file, int received, int? total)? onProgress,
   }) async {
-    final base = sources[country];
-    if (base == null) throw GeoAssetsException('Unsupported Geo country: $country');
+    final countrySources = sources[country];
+    if (countrySources == null) {
+      throw GeoAssetsException('Unsupported Geo country: $country');
+    }
     final downloaded = <String, ({Uint8List data, String sha256})>{};
     for (final name in files) {
+      final base = countrySources[name];
+      if (base == null) throw GeoAssetsException('No source configured for $country/$name');
       final sha256 = _hash(await _get('$base/$name.sha256sum'), name);
       downloaded[name] = (
         data: await _getFile('$base/$name', name, onProgress),
