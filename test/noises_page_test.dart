@@ -67,6 +67,7 @@ void main() {
       await tester.pump();
       await tester.tap(find.text('Save'));
       await tester.pumpAndSettle();
+      AppToast.hide();
     }
 
     await select('Mode', 'Expression');
@@ -150,6 +151,7 @@ void main() {
       await tester.pump();
       await tester.tap(find.text('Save'));
       await tester.pumpAndSettle();
+      AppToast.hide();
     }
 
     await tester.enterText(field('Delay min'), '0');
