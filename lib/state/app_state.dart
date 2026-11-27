@@ -213,6 +213,8 @@ class AppState extends ChangeNotifier {
   int _windowsVerificationToken = 0;
   Timer? _lanTimer;
   Future<void>? _aetherProvisioning;
+  bool _aetherMasqueIdentityRegistered = false;
+  bool _aetherWgIdentityRegistered = false;
   bool _disposed = false;
 
   bool get isConnected => status == VpnStatus.connected;
@@ -242,23 +244,61 @@ class AppState extends ChangeNotifier {
         m,
   ];
 
-  /// The chosen type, or the first available one when it can't be used (yet).
-  CoreType get core =>
-      defaultTargetPlatform == TargetPlatform.windows &&
-          (mode == ConnectionMode.masque || mode == ConnectionMode.warp)
-      ? CoreType.values.asNameMap()[device.connectionCore] ?? CoreType.bpb
-      : CoreType.bpb;
+  /// Whether this core has its own registered identity for the selected WARP protocol.
+  bool isCoreRegistered(CoreType selectedCore, ConnectionMode selectedMode) {
+    if (selectedMode == ConnectionMode.warp) {
+      return selectedCore == CoreType.bpb
+          ? profile.warp.account != null
+          : _aetherWgIdentityRegistered;
+    }
+    if (selectedMode == ConnectionMode.masque) {
+      return selectedCore == CoreType.bpb
+          ? profile.masque.account != null
+          : _aetherMasqueIdentityRegistered;
+    }
+    return false;
+  }
+
+  /// Whether at least one core has a registered identity for this connection type.
+  bool isModeSelectable(ConnectionMode selectedMode) => switch (selectedMode) {
+    ConnectionMode.warp =>
+      isCoreRegistered(CoreType.bpb, selectedMode) ||
+      isCoreRegistered(CoreType.aether, selectedMode),
+    ConnectionMode.masque =>
+      isCoreRegistered(CoreType.bpb, selectedMode) ||
+      isCoreRegistered(CoreType.aether, selectedMode),
+    _ => true,
+  };
+
+  /// Modes shown in the selector; WARP modes stay visible on Windows but may be disabled.
+  List<ConnectionMode> get selectableModes =>
+      availableModes.where(isModeSelectable).toList();
+
+  /// The chosen type, or the first registered/available one when it can't be used yet.
+  CoreType get core {
+    if (defaultTargetPlatform != TargetPlatform.windows ||
+        (mode != ConnectionMode.masque && mode != ConnectionMode.warp)) {
+      return CoreType.bpb;
+    }
+    final saved = CoreType.values.asNameMap()[device.connectionCore] ?? CoreType.bpb;
+    if (isCoreRegistered(saved, mode)) return saved;
+    final alternative = saved == CoreType.bpb ? CoreType.aether : CoreType.bpb;
+    return isCoreRegistered(alternative, mode) ? alternative : saved;
+  }
 
   bool get showCoreSelector =>
       defaultTargetPlatform == TargetPlatform.windows &&
       (mode == ConnectionMode.masque || mode == ConnectionMode.warp);
 
-  void setCore(CoreType value) => write('device.connection.core', value.name);
+  void setCore(CoreType value) {
+    if (!isCoreRegistered(value, mode)) return;
+    write('device.connection.core', value.name);
+  }
 
   ConnectionMode get mode {
     final savedType = device.connectionType == 'aether' ? 'masque' : device.connectionType;
     final chosen = ConnectionMode.values.asNameMap()[savedType] ?? ConnectionMode.worker;
-    final available = availableModes;
+    final available = selectableModes;
     return available.contains(chosen) ? chosen : available.first;
   }
 
@@ -465,10 +505,15 @@ class AppState extends ChangeNotifier {
       _prefs,
     );
     device = DeviceSettings.fromJson(_decodeMap(_prefs.getString(_kDevice)));
-    if (Platform.isWindows) {
-      // Register both Aether identities in the background on first launch; existing files are kept.
-      _aetherProvisioning = VpnChannel.provisionAetherIdentities(_aetherConfigDir);
-      unawaited(_aetherProvisioning!.catchError((_) {}));
+    if (Platform.isWindows && device.setupDone) {
+      // Preserve background provisioning for existing installs. First-run Setup performs
+      // BPB registration first, then Aether, so the two registration routes stay independent.
+      final attempt = VpnChannel.provisionAetherIdentities(_aetherConfigDir);
+      _aetherProvisioning = attempt;
+      unawaited(attempt.catchError((_) {
+        if (identical(_aetherProvisioning, attempt)) _aetherProvisioning = null;
+      }));
+      unawaited(_refreshAetherIdentityStatus());
     }
     if (_prefs.containsKey('configOverrides')) {
       await _prefs.remove('configOverrides');
@@ -502,6 +547,68 @@ class AppState extends ChangeNotifier {
       );
     }
   }
+
+  /// Registers Aether's MASQUE and WireGuard identities from the first-run setup.
+  /// A successful attempt is shared with any concurrent caller; failures can be retried.
+  Future<void> provisionAetherForSetup() async {
+    if (!Platform.isWindows) {
+      throw UnsupportedError('Aether identity registration is available on Windows only.');
+    }
+    final previous = _aetherProvisioning;
+    if (previous != null) {
+      try {
+        // Share an in-flight attempt, or reuse its successful result.
+        await previous;
+        await _refreshAetherIdentityStatus(waitForProvisioning: false);
+        return;
+      } catch (_) {
+        // Startup provisioning may have failed; let the visible Setup step retry it.
+        if (identical(_aetherProvisioning, previous)) _aetherProvisioning = null;
+      }
+    }
+    final attempt = VpnChannel.provisionAetherIdentities(_aetherConfigDir);
+    _aetherProvisioning = attempt;
+    try {
+      await attempt;
+      await _refreshAetherIdentityStatus(waitForProvisioning: false);
+    } catch (_) {
+      if (identical(_aetherProvisioning, attempt)) _aetherProvisioning = null;
+      await _refreshAetherIdentityStatus(waitForProvisioning: false);
+      rethrow;
+    }
+  }
+
+  /// Refreshes the synchronous identity flags used by the connection Type/Core selectors.
+  Future<void> _refreshAetherIdentityStatus({bool waitForProvisioning = true}) async {
+    if (!Platform.isWindows) return;
+    if (waitForProvisioning) {
+      final pending = _aetherProvisioning;
+      if (pending != null) {
+        try {
+          await pending;
+        } catch (_) {
+          // Existing identity files may still be valid after a partial provisioning failure.
+        }
+      }
+    }
+    Future<bool> exists(String name) async {
+      try {
+        final file = File('$_aetherConfigDir${Platform.pathSeparator}$name');
+        return await file.exists() && await file.length() > 0;
+      } catch (_) {
+        return false;
+      }
+    }
+    final masque = await exists('aether-masque.toml');
+    final wg = await exists('aether-wg.toml');
+    if (_aetherMasqueIdentityRegistered == masque && _aetherWgIdentityRegistered == wg) return;
+    _aetherMasqueIdentityRegistered = masque;
+    _aetherWgIdentityRegistered = wg;
+    notifyListeners();
+  }
+
+  bool get aetherMasqueIdentityRegistered => _aetherMasqueIdentityRegistered;
+  bool get aetherWgIdentityRegistered => _aetherWgIdentityRegistered;
 
   static Map<String, dynamic> _decodeMap(String? raw) {
     if (raw == null) return {};
@@ -1203,6 +1310,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     try {
       await VpnChannel.renewAetherMasqueIdentity(_aetherConfigDir);
+      await _refreshAetherIdentityStatus(waitForProvisioning: false);
     } finally {
       renewingAetherMasque = false;
       notifyListeners();
@@ -1232,6 +1340,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     try {
       await VpnChannel.renewAetherWgIdentity(_aetherConfigDir);
+      await _refreshAetherIdentityStatus(waitForProvisioning: false);
     } finally {
       renewingAetherWg = false;
       notifyListeners();
