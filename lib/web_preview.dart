@@ -16,11 +16,13 @@ class PreviewApp extends StatefulWidget {
 }
 
 class _PreviewAppState extends State<PreviewApp> {
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   ThemeMode _themeMode = ThemeMode.dark;
   ThemeColor _themeColor = ThemeColor.blue;
 
   @override
   Widget build(BuildContext context) => MaterialApp(
+    navigatorKey: _navigatorKey,
     title: 'BPB VPN (NotDev)',
     debugShowCheckedModeBanner: false,
     theme: buildTheme(Brightness.light, _themeColor),
@@ -28,7 +30,7 @@ class _PreviewAppState extends State<PreviewApp> {
     themeMode: _themeMode,
     home: _PreviewHome(
       onOpenV2Ray: _openV2Ray,
-      onOpenSettings: () => Navigator.of(context).push(MaterialPageRoute(
+      onOpenSettings: () => _navigatorKey.currentState?.push(MaterialPageRoute(
         builder: (_) => _PreviewSettings(
           themeMode: _themeMode,
           themeColor: _themeColor,
@@ -41,7 +43,7 @@ class _PreviewAppState extends State<PreviewApp> {
   );
 
   void _openV2Ray() {
-    Navigator.of(context).push(MaterialPageRoute(
+    _navigatorKey.currentState?.push(MaterialPageRoute(
       builder: (_) => const V2rayManagerPage(),
     ));
   }
@@ -132,17 +134,19 @@ class _PreviewHomeState extends State<_PreviewHome> {
         if (_panelOpen) Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
           child: Column(children: [
-            Container(padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(color: scheme.surface.withValues(alpha: .55), borderRadius: BorderRadius.circular(13),
-                border: Border.all(color: scheme.outlineVariant.withValues(alpha: .65))),
-              child: Row(children: [
-                Expanded(child: _backendTab('BPB', _backend == 'BPB', () => setState(() => _backend = 'BPB'))),
-                const SizedBox(width: 4),
-                Expanded(child: _backendTab('V2Ray', _backend == 'V2Ray', () {
-                  setState(() => _backend = 'V2Ray');
-                  widget.onOpenV2Ray();
-                })),
-              ]),
+            Align(alignment: Alignment.centerLeft,
+              child: Container(padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(color: scheme.surface.withValues(alpha: .55), borderRadius: BorderRadius.circular(13),
+                  border: Border.all(color: scheme.outlineVariant.withValues(alpha: .65))),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  SizedBox(width: 72, child: _backendTab('BPB', _backend == 'BPB', () => setState(() => _backend = 'BPB'))),
+                  const SizedBox(width: 4),
+                  SizedBox(width: 72, child: _backendTab('V2Ray', _backend == 'V2Ray', () {
+                    setState(() => _backend = 'V2Ray');
+                    widget.onOpenV2Ray();
+                  })),
+                ]),
+              ),
             ),
             const SizedBox(height: 8),
             _selectorRow(Symbols.category_rounded, const Color(0xFF4F9BFF), 'Type', _type,
