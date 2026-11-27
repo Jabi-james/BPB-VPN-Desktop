@@ -34,4 +34,5 @@ mv -f "$ASSETS/.geosite.dat.tmp" "$ASSETS/geosite.dat"
 
 test -s "$ASSETS/geoip.dat"
 test -s "$ASSETS/geosite.dat"
-ls -lh "$ASSETS/geoip.dat" "$ASSETS/geosite.dat"
+printf 'iran\\n' > "$ASSETS/geo-country.txt"
+ls -lh "$ASSETS/geoip.dat" "$ASSETS/geosite.dat" "$ASSETS/geo-country.txt"
