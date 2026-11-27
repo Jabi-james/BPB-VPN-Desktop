@@ -18,9 +18,9 @@ class AppToast {
     if (widget is Text) {
       return widget.data ?? widget.textSpan?.toPlainText() ?? '';
     }
-    if (widget is Padding) return _plainText(widget.child);
-    if (widget is Center) return _plainText(widget.child);
-    if (widget is Align) return _plainText(widget.child);
+    if (widget is Padding && widget.child != null) return _plainText(widget.child!);
+    if (widget is Center && widget.child != null) return _plainText(widget.child!);
+    if (widget is Align && widget.child != null) return _plainText(widget.child!);
     if (widget is Row) {
       return widget.children.map(_plainText).where((s) => s.isNotEmpty).join(' ');
     }
