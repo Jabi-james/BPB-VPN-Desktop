@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_toast.dart';
 import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -72,8 +73,7 @@ class _DonationTile extends StatelessWidget {
   Future<void> _copy(BuildContext context, String address) async {
     await Clipboard.setData(ClipboardData(text: address));
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text('Tether - $network address copied')));
+    AppToast.showSnackBar(context, SnackBar(content: Text('Tether - $network address copied')));
   }
 
   void _showQr(BuildContext context, String address) {

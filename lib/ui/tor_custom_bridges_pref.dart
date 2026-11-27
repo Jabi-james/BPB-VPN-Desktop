@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_toast.dart';
 import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
@@ -40,7 +41,7 @@ class _TorBridgeRowState extends State<_TorBridgeRow> {
     } catch (error) {
       if (mounted) {
         setState(() => _passed = false);
-        ScaffoldMessenger.of(context).showSnackBar(
+        AppToast.showSnackBar(context, 
           SnackBar(content: Text('Bridge test failed: $error')),
         );
       }
@@ -52,7 +53,7 @@ class _TorBridgeRowState extends State<_TorBridgeRow> {
   Future<void> _copy() async {
     await Clipboard.setData(ClipboardData(text: widget.bridge));
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
+    AppToast.showSnackBar(context, 
       const SnackBar(content: Text('Bridge address copied')),
     );
   }

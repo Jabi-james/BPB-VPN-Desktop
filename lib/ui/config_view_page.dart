@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'app_toast.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_highlight/flutter_highlight.dart';
 import 'package:flutter_highlight/themes/tomorrow-night-bright.dart';
@@ -47,13 +48,13 @@ class _ConfigViewPageState extends State<ConfigViewPage> {
                 );
                 if (!context.mounted) return;
                 if (where != null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  AppToast.showSnackBar(context, 
                     SnackBar(content: Text('Saved to $where')),
                   );
                 }
               } on PlatformException catch (e) {
                 if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
+                AppToast.showSnackBar(context, 
                   SnackBar(content: Text("Couldn't download: ${e.message}")),
                 );
               }
@@ -67,8 +68,7 @@ class _ConfigViewPageState extends State<ConfigViewPage> {
               if (text == null || !context.mounted) return;
               await Clipboard.setData(ClipboardData(text: text));
               if (!context.mounted) return;
-              ScaffoldMessenger.of(context)
-                  .showSnackBar(const SnackBar(content: Text('Config copied')));
+              AppToast.showSnackBar(context, const SnackBar(content: Text('Config copied')));
             },
           ),
         ],
