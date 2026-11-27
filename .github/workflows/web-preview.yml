@@ -27,9 +27,9 @@ jobs:
           flutter-version: 3.47.7
           channel: stable
           cache: true
-      - name: Generate the Flutter web runner
-        run: flutter create --platforms=web --project-name=bpb .
-      - name: Resolve dependencies
+      - name: Use isolated web-preview dependencies
+        run: cp pubspec.web-preview.yaml pubspec.yaml
+      - name: Resolve preview dependencies
         run: flutter pub get
       - name: Analyze preview entry point
         run: dart analyze lib/web_preview.dart
@@ -45,7 +45,7 @@ jobs:
   deploy:
     environment:
       name: github-pages
-      url: \${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     needs: build
     steps:
