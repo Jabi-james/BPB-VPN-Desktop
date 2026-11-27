@@ -1,6 +1,11 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
+
 import 'models/theme_color.dart';
 import 'ui/theme.dart';
+import 'ui/v2ray_manager_page.dart';
 
 void main() => runApp(const PreviewApp());
 
@@ -11,228 +16,311 @@ class PreviewApp extends StatefulWidget {
 }
 
 class _PreviewAppState extends State<PreviewApp> {
-  ThemeMode mode = ThemeMode.dark;
-  ThemeColor accent = ThemeColor.blue;
+  ThemeMode _themeMode = ThemeMode.dark;
+  ThemeColor _themeColor = ThemeColor.blue;
+
   @override
   Widget build(BuildContext context) => MaterialApp(
-    title: 'BPB VPN (NotDev) · Web Preview',
+    title: 'BPB VPN (NotDev)',
     debugShowCheckedModeBanner: false,
-    theme: buildTheme(Brightness.light, accent),
-    darkTheme: buildTheme(Brightness.dark, accent),
-    themeMode: mode,
-    home: PreviewHome(mode: mode, accent: accent,
-      onMode: (v) => setState(() => mode = v),
-      onAccent: (v) => setState(() => accent = v)),
-  );
-}
-
-class PreviewHome extends StatefulWidget {
-  final ThemeMode mode;
-  final ThemeColor accent;
-  final ValueChanged<ThemeMode> onMode;
-  final ValueChanged<ThemeColor> onAccent;
-  const PreviewHome({super.key, required this.mode, required this.accent, required this.onMode, required this.onAccent});
-  @override
-  State<PreviewHome> createState() => _PreviewHomeState();
-}
-
-class _PreviewHomeState extends State<PreviewHome> {
-  int page = 0;
-  bool connected = false, busy = false, tun = false, webRtc = true, antiSanctions = true;
-  String type = 'VLESS', core = 'BPB Core', routing = 'Default', dns = '1.1.1.1';
-  final profiles = <String>['Default', 'Backup'];
-  final logs = <String>['Preview initialized', 'Mock services loaded', 'Ready to explore'];
-
-  void notify(String s) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s)));
-  Future<void> toggle() async {
-    if (busy) return;
-    setState(() => busy = true);
-    await Future<void>.delayed(const Duration(milliseconds: 600));
-    if (!mounted) return;
-    setState(() { connected = !connected; busy = false; });
-    logs.insert(0, connected ? 'Preview connection enabled' : 'Preview connection stopped');
-    notify(connected ? 'Preview only · No VPN tunnel was created' : 'Preview disconnected');
-  }
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: const Row(mainAxisSize: MainAxisSize.min, children: [
-        _Mark(), SizedBox(width: 9),
-        Text.rich(TextSpan(children: [
-          TextSpan(text: 'BPB VPN', style: TextStyle(fontWeight: FontWeight.w700)),
-          TextSpan(text: ' (NotDev)', style: TextStyle(fontSize: 13)),
-        ])),
-      ]),
-      actions: [
-        IconButton(tooltip: 'Logs', onPressed: () => setState(() => page = 2), icon: const Icon(Icons.bug_report_rounded, color: Color(0xFFEF5350))),
-        IconButton(tooltip: 'View config', onPressed: () => setState(() => page = 3), icon: const Icon(Icons.data_object_rounded, color: Color(0xFF26A69A))),
-        IconButton(tooltip: 'Settings', onPressed: () => setState(() => page = 1), icon: const Icon(Icons.settings_rounded, color: Color(0xFF4C8BF5))),
-      ],
+    theme: buildTheme(Brightness.light, _themeColor),
+    darkTheme: buildTheme(Brightness.dark, _themeColor),
+    themeMode: _themeMode,
+    home: _PreviewHome(
+      onOpenV2Ray: _openV2Ray,
+      onOpenSettings: () => Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => _PreviewSettings(
+          themeMode: _themeMode,
+          themeColor: _themeColor,
+          onThemeMode: (v) => setState(() => _themeMode = v),
+          onThemeColor: (v) => setState(() => _themeColor = v),
+          onOpenV2Ray: _openV2Ray,
+        ),
+      )),
     ),
-    body: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 760), child: IndexedStack(index: page, children: [home(), settings(), logsPage(), configPage()]))),
-    bottomNavigationBar: NavigationBar(selectedIndex: page, onDestinationSelected: (v) => setState(() => page = v), destinations: const [
-      NavigationDestination(icon: Icon(Icons.home_rounded), label: 'Home'),
-      NavigationDestination(icon: Icon(Icons.tune_rounded), label: 'Settings'),
-      NavigationDestination(icon: Icon(Icons.article_rounded), label: 'Logs'),
-      NavigationDestination(icon: Icon(Icons.code_rounded), label: 'Config'),
-    ]),
   );
 
-  Widget home() => ListView(key: const PageStorageKey('home'), padding: const EdgeInsets.all(12), children: [
-    card(Column(children: [
-      Row(children: [
-        const Icon(Icons.wifi_tethering_rounded, color: Color(0xFF4C8BF5)),
-        const SizedBox(width: 10),
-        const Expanded(child: Text('Connections', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800))),
-        PopupMenuButton<String>(initialValue: type, onSelected: (v) => setState(() => type = v),
-          itemBuilder: (_) => ['VLESS','WARP','MASQUE','Aether','SSH','Tor','Psiphon','Serverless'].map((v) => PopupMenuItem(value: v, child: Text(v))).toList(),
-          child: selector(type)),
-      ]),
-      const SizedBox(height: 12),
-      choiceRow('Core', ['BPB Core','Aether'], core, (v) => setState(() => core = v)),
-      choiceRow('Routing', ['Default','Global','Direct'], routing, (v) => setState(() => routing = v)),
-    ])),
-    const SizedBox(height: 10),
-    card(Column(children: [
-      const SizedBox(height: 8),
-      AnimatedContainer(duration: const Duration(milliseconds: 200), width: 112, height: 112,
-        decoration: BoxDecoration(shape: BoxShape.circle, color: busy ? Colors.blueGrey : connected ? const Color(0xFF168A49) : const Color(0xFFB52D3A),
-          boxShadow: [BoxShadow(color: (connected ? const Color(0xFF39FF75) : const Color(0xFFFF4D5A)).withValues(alpha: .22), blurRadius: 26, spreadRadius: 3)]),
-        child: IconButton(tooltip: 'Connect / disconnect (preview)', onPressed: toggle,
-          icon: busy ? const SizedBox(width: 32, height: 32, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white)) : const Icon(Icons.power_settings_new_rounded, size: 50, color: Colors.white))),
-      const SizedBox(height: 14),
-      Text(busy ? 'CONNECTING' : connected ? 'CONNECTED' : 'DISCONNECTED', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: connected ? const Color(0xFF39FF75) : null)),
-      const SizedBox(height: 4),
-      Text('Preview mode · VPN connection is simulated', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
-      const SizedBox(height: 18),
-      SegmentedButton<bool>(segments: const [
-        ButtonSegment(value: false, label: Text('Proxy'), icon: Icon(Icons.swap_horiz_rounded)),
-        ButtonSegment(value: true, label: Text('TUN'), icon: Icon(Icons.language_rounded)),
-      ], selected: {tun}, onSelectionChanged: (v) => setState(() => tun = v.first), showSelectedIcon: false),
-      const SizedBox(height: 16),
-      Row(children: [
-        Expanded(child: metric('My IP', connected ? '198.51.100.24' : '—', Icons.public_rounded)),
-        const SizedBox(width: 8), Expanded(child: metric('Ping', connected ? '42 ms' : '—', Icons.speed_rounded)),
-        const SizedBox(width: 8), Expanded(child: metric('Duration', connected ? '00:12:34' : '—', Icons.timer_rounded)),
-      ]),
-      const SizedBox(height: 10),
-      Row(children: [
-        Expanded(child: metric('Download', connected ? '2.4 MB/s' : '0 B/s', Icons.download_rounded)),
-        const SizedBox(width: 8), Expanded(child: metric('Upload', connected ? '640 KB/s' : '0 B/s', Icons.upload_rounded)),
-      ]),
-    ])),
-    const SizedBox(height: 10),
-    card(const Row(children: [Icon(Icons.info_outline_rounded, color: Color(0xFF4C8BF5)), SizedBox(width: 10), Expanded(child: Text('Interactive UI preview. Connect, TUN and traffic values are simulated.'))])),
-  ]);
-
-  Widget settings() => ListView(key: const PageStorageKey('settings'), padding: const EdgeInsets.all(12), children: [
-    Text('Settings', style: Theme.of(context).textTheme.headlineSmall),
-    card(Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Text('Appearance', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
-      SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('Dark theme'), value: widget.mode == ThemeMode.dark, onChanged: (v) => widget.onMode(v ? ThemeMode.dark : ThemeMode.light)),
-      const Text('Accent color'),
-      Wrap(spacing: 8, children: ThemeColor.values.map((c) => ChoiceChip(label: Text(c.label), selected: widget.accent == c, onSelected: (_) => widget.onAccent(c))).toList()),
-    ])),
-    const SizedBox(height: 10),
-    card(Column(children: [
-      SwitchListTile(contentPadding: EdgeInsets.zero, secondary: const Icon(Icons.security_rounded), title: const Text('WebRTC Leak Protection'), subtitle: const Text('Preview preference only'), value: webRtc, onChanged: (v) => setState(() => webRtc = v)),
-      const Divider(height: 1),
-      SwitchListTile(contentPadding: EdgeInsets.zero, secondary: const Icon(Icons.shield_rounded), title: const Text('Anti-sanctions'), subtitle: const Text('Mock setting'), value: antiSanctions, onChanged: (v) => setState(() => antiSanctions = v)),
-    ])),
-    const SizedBox(height: 10),
-    card(Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Text('DNS', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
-      DropdownButtonFormField<String>(initialValue: dns, decoration: const InputDecoration(labelText: 'Remote DNS'),
-        items: const [DropdownMenuItem(value: '1.1.1.1', child: Text('1.1.1.1')), DropdownMenuItem(value: '8.8.8.8', child: Text('8.8.8.8')), DropdownMenuItem(value: '9.9.9.9', child: Text('9.9.9.9'))],
-        onChanged: (v) => setState(() => dns = v ?? dns)),
-    ])),
-    const SizedBox(height: 10),
-    card(Column(children: [
-      ListTile(leading: const Icon(Icons.link_rounded), title: const Text('Chain Proxy'), subtitle: const Text('Sample profiles'), trailing: const Icon(Icons.chevron_right_rounded), onTap: manageProfiles),
-      ListTile(leading: const Icon(Icons.account_tree_rounded), title: const Text('Routing'), trailing: const Icon(Icons.chevron_right_rounded), onTap: () => notify('Routing screen preview')),
-      ListTile(leading: const Icon(Icons.cable_rounded), title: const Text('Tor Bridges'), trailing: const Icon(Icons.chevron_right_rounded), onTap: () => notify('Tor settings preview')),
-      ListTile(leading: const Icon(Icons.volunteer_activism_rounded), title: const Text('Donation'), trailing: const Icon(Icons.chevron_right_rounded), onTap: () => notify('Donation page preview')),
-    ])),
-    const SizedBox(height: 10),
-    card(const ListTile(leading: Icon(Icons.info_outline_rounded), title: Text('About BPB VPN'), subtitle: Text('BPB VPN (NotDev) · Web UI Preview'))),
-  ]);
-
-  Widget logsPage() => ListView(key: const PageStorageKey('logs'), padding: const EdgeInsets.all(16), children: [
-    Text('Logs', style: Theme.of(context).textTheme.headlineSmall),
-    card(Column(children: [
-      Row(children: [const Expanded(child: Text('Preview log')), IconButton(onPressed: () => setState(logs.clear), icon: const Icon(Icons.delete_outline_rounded))]),
-      for (final item in logs) ListTile(dense: true, leading: const Icon(Icons.circle, size: 8, color: Color(0xFF39B978)), title: Text(item)),
-    ])),
-  ]);
-
-  Widget configPage() => ListView(key: const PageStorageKey('config'), padding: const EdgeInsets.all(16), children: [
-    Text('Configuration', style: Theme.of(context).textTheme.headlineSmall),
-    card(Column(children: [
-      const ListTile(title: Text('Sample profiles')),
-      for (final item in profiles) ListTile(title: Text(item), trailing: IconButton(onPressed: () => setState(() => profiles.remove(item)), icon: const Icon(Icons.delete_outline_rounded))),
-      Align(alignment: Alignment.centerRight, child: FilledButton.icon(onPressed: addProfile, icon: const Icon(Icons.add), label: const Text('Add profile'))),
-    ])),
-    const SizedBox(height: 10),
-    card(const SelectableText('{\n  "preview": true,\n  "connection": "simulated",\n  "core": "mock"\n}', style: TextStyle(fontFamily: 'monospace'))),
-  ]);
-
-  void manageProfiles() => showModalBottomSheet<void>(context: context, showDragHandle: true, builder: (ctx) => SafeArea(child: ListView(shrinkWrap: true, padding: const EdgeInsets.all(16), children: [
-    const Text('Chain Proxy profiles', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-    for (final item in profiles) ListTile(title: Text(item), trailing: IconButton(icon: const Icon(Icons.delete_outline_rounded), onPressed: () { setState(() => profiles.remove(item)); Navigator.pop(ctx); })),
-    FilledButton.icon(onPressed: () { Navigator.pop(ctx); addProfile(); }, icon: const Icon(Icons.add), label: const Text('Add profile')),
-  ])));
-
-  Future<void> addProfile() async {
-    final input = TextEditingController();
-    final value = await showDialog<String>(context: context, builder: (ctx) => AlertDialog(
-      title: const Text('Add sample profile'),
-      content: TextField(controller: input, autofocus: true, decoration: const InputDecoration(labelText: 'Profile name')),
-      actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(ctx, input.text.trim()), child: const Text('Add'))],
+  void _openV2Ray() {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => const V2rayManagerPage(),
     ));
-    input.dispose();
-    if (value == null || value.isEmpty) return;
-    setState(() => profiles.add(value));
-    notify('Sample profile added');
   }
-
-  Widget card(Widget child) => Card(
-    margin: EdgeInsets.zero,
-    color: Theme.of(context).colorScheme.surfaceContainer.withValues(alpha: .82),
-    shape: roundedShape(kHeroRadius, side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: .65), width: .75)),
-    elevation: 0,
-    child: Padding(padding: const EdgeInsets.all(18), child: child),
-  );
-
-  Widget selector(String value) => DecoratedBox(
-    decoration: BoxDecoration(color: Theme.of(context).colorScheme.secondaryContainer, borderRadius: BorderRadius.circular(20)),
-    child: Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), child: Row(mainAxisSize: MainAxisSize.min, children: [Text(value, style: const TextStyle(fontWeight: FontWeight.w700)), const SizedBox(width: 5), const Icon(Icons.expand_more_rounded, size: 18)])),
-  );
-
-  Widget choiceRow(String label, List<String> options, String value, ValueChanged<String> changed) => Padding(
-    padding: const EdgeInsets.only(bottom: 6),
-    child: Row(children: [
-      Expanded(child: Text(label, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant))),
-      Wrap(spacing: 4, children: options.map((v) => ChoiceChip(label: Text(v), selected: value == v, onSelected: (_) => changed(v))).toList()),
-    ]),
-  );
-
-  Widget metric(String label, String value, IconData icon) => DecoratedBox(
-    decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: .55), borderRadius: BorderRadius.circular(14)),
-    child: Padding(padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 10), child: Column(children: [
-      Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(icon, size: 14), const SizedBox(width: 4), Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)))]),
-      const SizedBox(height: 4),
-      FittedBox(fit: BoxFit.scaleDown, child: Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600))),
-    ])),
-  );
 }
 
-class _Mark extends StatelessWidget {
-  const _Mark();
+class _PreviewHome extends StatefulWidget {
+  final VoidCallback onOpenV2Ray, onOpenSettings;
+  const _PreviewHome({required this.onOpenV2Ray, required this.onOpenSettings});
   @override
-  Widget build(BuildContext context) => const SizedBox(width: 25, height: 25, child: Stack(children: [
-    Positioned(left: 1, bottom: 1, child: CircleAvatar(radius: 9, backgroundColor: Color(0xFF0874E8))),
-    Positioned(right: 3, top: 0, child: CircleAvatar(radius: 5, backgroundColor: Color(0xFF8ADFFF))),
-    Positioned(right: 0, bottom: 4, child: CircleAvatar(radius: 3.5, backgroundColor: Color(0xFF168BFF))),
-  ]));
+  State<_PreviewHome> createState() => _PreviewHomeState();
+}
+
+class _PreviewHomeState extends State<_PreviewHome> {
+  bool _panelOpen = false;
+  bool _connected = false;
+  String _backend = 'BPB';
+  String _type = 'VLESS';
+  String _core = 'BPB Core';
+  String _mode = 'Default';
+  String _exit = 'Default';
+  bool _tun = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Scaffold(
+      appBar: AppBar(
+        title: Row(mainAxisSize: MainAxisSize.min, children: [
+          const CustomPaint(size: Size(24, 24), painter: _BpbMarkPainter()),
+          const SizedBox(width: 6),
+          const Text.rich(TextSpan(children: [
+            TextSpan(text: 'BPB VPN', style: TextStyle(fontWeight: FontWeight.w600)),
+            TextSpan(text: ' (NotDev)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+          ])),
+        ]),
+        actions: [
+          IconButton(tooltip: 'Settings', onPressed: widget.onOpenSettings,
+            icon: const Icon(Symbols.settings_rounded, color: Color(0xFF4C8BF5))),
+        ],
+      ),
+      body: Stack(fit: StackFit.expand, children: [
+        Positioned.fill(child: IgnorePointer(child: ClipRect(child: ImageFiltered(
+          imageFilter: ui.ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          child: Image.asset('images/icon/bg.jpg', fit: BoxFit.cover,
+            alignment: const Alignment(0, -0.18),
+            errorBuilder: (_, _, _) => const SizedBox.shrink()),
+        )))),
+        SafeArea(bottom: false, child: SingleChildScrollView(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Column(children: [
+            const SizedBox(height: 6),
+            _connectionCard(context, scheme, theme),
+            const SizedBox(height: 10),
+            _statusCard(context, scheme, theme),
+          ]),
+        )),
+      ]),
+    );
+  }
+
+  Widget _connectionCard(BuildContext context, ColorScheme scheme, ThemeData theme) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 12),
+      shape: roundedShape(kHeroRadius, side: BorderSide(color: scheme.outlineVariant.withValues(alpha: .75), width: .75)),
+      color: scheme.surfaceContainer.withValues(alpha: .72),
+      elevation: 0,
+      clipBehavior: Clip.antiAlias,
+      child: Column(children: [
+        InkWell(
+          mouseCursor: WidgetStateMouseCursor.clickable,
+          onTap: () => setState(() => _panelOpen = !_panelOpen),
+          child: Padding(padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+            child: Row(children: [
+              Container(width: 36, height: 36,
+                decoration: BoxDecoration(color: scheme.primary.withValues(alpha: .12), borderRadius: BorderRadius.circular(12)),
+                child: Icon(Symbols.wifi_tethering_rounded, color: scheme.primary, size: 21)),
+              const SizedBox(width: 12),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Connections', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+                Text('Configure How to Connect and Routing Options', maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+              ])),
+              Icon(_panelOpen ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded, color: scheme.onSurfaceVariant),
+            ]),
+          ),
+        ),
+        if (_panelOpen) Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+          child: Column(children: [
+            Container(padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(color: scheme.surface.withValues(alpha: .55), borderRadius: BorderRadius.circular(13),
+                border: Border.all(color: scheme.outlineVariant.withValues(alpha: .65))),
+              child: Row(children: [
+                Expanded(child: _backendTab('BPB', _backend == 'BPB', () => setState(() => _backend = 'BPB'))),
+                const SizedBox(width: 4),
+                Expanded(child: _backendTab('V2Ray', _backend == 'V2Ray', () {
+                  setState(() => _backend = 'V2Ray');
+                  widget.onOpenV2Ray();
+                })),
+              ]),
+            ),
+            const SizedBox(height: 8),
+            _selectorRow(Symbols.category_rounded, const Color(0xFF4F9BFF), 'Type', _type,
+              ['VLESS', 'WARP', 'MASQUE', 'Aether', 'SSH', 'Tor', 'Psiphon', 'Serverless'],
+              (v) => setState(() => _type = v)),
+            _selectorRow(Symbols.memory_rounded, const Color(0xFF9B7CFF), 'Core', _core,
+              ['BPB Core', 'Aether'], (v) => setState(() => _core = v)),
+            _selectorRow(Symbols.tune_rounded, const Color(0xFF26BFA5), 'Mode', _mode,
+              ['Default', 'Global', 'Direct'], (v) => setState(() => _mode = v)),
+            _selectorRow(Symbols.exit_to_app_rounded, const Color(0xFFFFA34D), 'Exit Node', _exit,
+              ['Default', 'Chain proxy', 'Psiphon', 'Tor'], (v) => setState(() => _exit = v)),
+          ]),
+        ),
+      ]),
+    );
+  }
+
+  Widget _backendTab(String label, bool selected, VoidCallback onTap) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(color: selected ? scheme.primary.withValues(alpha: .18) : Colors.transparent,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(mouseCursor: WidgetStateMouseCursor.clickable, borderRadius: BorderRadius.circular(10), onTap: onTap,
+        child: Padding(padding: const EdgeInsets.symmetric(vertical: 9),
+          child: Center(child: Text(label, style: Theme.of(context).textTheme.labelLarge?.copyWith(
+            fontWeight: FontWeight.w800, color: selected ? scheme.primary : scheme.onSurfaceVariant))))));
+  }
+
+  Widget _selectorRow(IconData icon, Color color, String label, String selected,
+      List<String> options, ValueChanged<String> onSelected) {
+    final theme = Theme.of(context);
+    return SizedBox(height: 42, child: Row(children: [
+      Icon(icon, size: 20, color: color), const SizedBox(width: 8),
+      Expanded(child: Text(label, style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant))),
+      PopupMenuButton<String>(tooltip: 'Select $label', initialValue: selected, onSelected: onSelected,
+        itemBuilder: (_) => options.map((v) => PopupMenuItem(value: v, child: Text(v))).toList(),
+        child: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(color: theme.colorScheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(20)),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Text(selected, style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(width: 4), const Icon(Icons.expand_more_rounded, size: 18),
+          ])),
+      ),
+    ]));
+  }
+
+  Widget _statusCard(BuildContext context, ColorScheme scheme, ThemeData theme) {
+    final green = const Color(0xFF39FF75);
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 12),
+      color: Colors.transparent, surfaceTintColor: Colors.transparent, elevation: 0,
+      shape: roundedShape(kHeroRadius, side: BorderSide.none),
+      child: Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        child: Column(children: [
+          const SizedBox(height: 4),
+          AnimatedContainer(duration: const Duration(milliseconds: 180), width: 104, height: 104,
+            decoration: BoxDecoration(shape: BoxShape.circle,
+              color: _connected ? const Color(0xFF168A49) : const Color(0xFFB52D3A),
+              boxShadow: [BoxShadow(color: (_connected ? green : const Color(0xFFFF4D5A)).withValues(alpha: .22), blurRadius: 26, spreadRadius: 3)]),
+            child: IconButton(tooltip: 'Preview only', onPressed: () => setState(() => _connected = !_connected),
+              icon: const Icon(Icons.power_settings_new_rounded, size: 48, color: Colors.white))),
+          const SizedBox(height: 12),
+          Text(_connected ? 'CONNECTED' : 'DISCONNECTED', textAlign: TextAlign.center,
+            style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800, letterSpacing: .5,
+              color: _connected ? green : scheme.onSurface)),
+          const SizedBox(height: 4),
+          Text(_connected ? 'Preview connection active' : 'Tap to connect',
+            style: theme.textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant)),
+          const SizedBox(height: 18),
+          ConstrainedBox(constraints: const BoxConstraints(maxWidth: 560),
+            child: SegmentedButton<bool>(
+              segments: const [
+                ButtonSegment(value: false, label: Text('Proxy'), icon: Icon(Symbols.swap_horiz_rounded)),
+                ButtonSegment(value: true, label: Text('TUN'), icon: Icon(Symbols.language_rounded)),
+              ],
+              selected: {_tun}, onSelectionChanged: (v) => setState(() => _tun = v.first),
+              showSelectedIcon: false,
+              style: ButtonStyle(visualDensity: VisualDensity.compact,
+                padding: WidgetStateProperty.all(const EdgeInsets.symmetric(horizontal: 16, vertical: 12)),
+                shape: WidgetStateProperty.all(const StadiumBorder())),
+            )),
+          const SizedBox(height: 18),
+          Row(children: [
+            Expanded(child: _metric(Symbols.location_on_rounded, 'My IP', '—')),
+            const SizedBox(width: 8), Expanded(child: _metric(Symbols.speed_rounded, 'Ping', '—')),
+            const SizedBox(width: 8), Expanded(child: _metric(Symbols.timer_rounded, 'Duration', '—')),
+          ]),
+          const SizedBox(height: 8),
+          Row(children: [
+            Expanded(child: _speedMetric(Symbols.download_rounded, '0 B/s', const Color(0xFF39FF75))),
+            const SizedBox(width: 8), const Expanded(child: SizedBox.shrink()),
+            const SizedBox(width: 8), Expanded(child: _speedMetric(Symbols.upload_rounded, '0 B/s', const Color(0xFF8B7CFF))),
+          ]),
+        ]),
+      ),
+    );
+  }
+
+  Widget _metric(IconData icon, String label, String value) {
+    final theme = Theme.of(context);
+    return Container(padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 9),
+      decoration: BoxDecoration(color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: .48),
+        borderRadius: BorderRadius.circular(14), border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: .48), width: .7)),
+      child: Column(children: [
+        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(icon, size: 14, color: theme.colorScheme.onSurfaceVariant), const SizedBox(width: 4),
+          Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant))),
+        ]),
+        const SizedBox(height: 6), Text(value, textAlign: TextAlign.center),
+      ]),
+    );
+  }
+
+  Widget _speedMetric(IconData icon, String value, Color color) {
+    final theme = Theme.of(context);
+    return Container(height: 44, padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: .48),
+        borderRadius: BorderRadius.circular(14), border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: .48), width: .7)),
+      alignment: Alignment.center,
+      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Icon(icon, size: 16, color: color), const SizedBox(width: 6), Text(value, style: theme.textTheme.titleSmall),
+      ]),
+    );
+  }
+}
+
+class _PreviewSettings extends StatelessWidget {
+  final ThemeMode themeMode;
+  final ThemeColor themeColor;
+  final ValueChanged<ThemeMode> onThemeMode;
+  final ValueChanged<ThemeColor> onThemeColor;
+  final VoidCallback onOpenV2Ray;
+  const _PreviewSettings({required this.themeMode, required this.themeColor, required this.onThemeMode,
+    required this.onThemeColor, required this.onOpenV2Ray});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Settings')),
+      body: ListView(padding: const EdgeInsets.all(12), children: [
+        Card(child: Column(children: [
+          SwitchListTile(title: const Text('Dark theme'), value: themeMode == ThemeMode.dark,
+            onChanged: (v) => onThemeMode(v ? ThemeMode.dark : ThemeMode.light)),
+          ListTile(title: const Text('Accent color'), subtitle: Wrap(spacing: 8, children: [
+            for (final c in ThemeColor.values) ChoiceChip(label: Text(c.label), selected: themeColor == c, onSelected: (_) => onThemeColor(c)),
+          ])),
+        ])),
+        const SizedBox(height: 12),
+        Card(child: ListTile(
+          leading: const Icon(Symbols.hub_rounded, color: Color(0xFFFFA34D)),
+          title: const Text('V2Ray'),
+          subtitle: const Text('Manage V2Ray subscriptions and profiles'),
+          trailing: Icon(Icons.chevron_right_rounded, color: scheme.onSurfaceVariant),
+          onTap: onOpenV2Ray,
+        )),
+      ]),
+    );
+  }
+}
+
+class _BpbMarkPainter extends CustomPainter {
+  const _BpbMarkPainter();
+  @override
+  void paint(Canvas canvas, Size size) {
+    void circle(Offset center, double radius, List<Color> colors) {
+      final rect = Rect.fromCircle(center: center, radius: radius);
+      final paint = Paint()..shader = RadialGradient(
+        center: const Alignment(-.35, -.4), radius: 1.25, colors: colors,
+      ).createShader(rect);
+      canvas.drawCircle(center, radius, paint);
+    }
+    circle(Offset(size.width * .36, size.height * .65), size.width * .34,
+      const [Color(0xFF42B7FF), Color(0xFF0874E8), Color(0xFF0752B5)]);
+    circle(Offset(size.width * .66, size.height * .27), size.width * .17,
+      const [Color(0xFF8ADFFF), Color(0xFF36AFFF), Color(0xFF168BFF)]);
+    circle(Offset(size.width * .79, size.height * .57), size.width * .115,
+      const [Color(0xFF62C8FF), Color(0xFF168BFF), Color(0xFF0752B5)]);
+  }
+  @override
+  bool shouldRepaint(covariant _BpbMarkPainter oldDelegate) => false;
 }
