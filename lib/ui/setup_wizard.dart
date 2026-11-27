@@ -446,7 +446,7 @@ enum _Item {
   pages('Pages deployment'),
   warp('WARP registration'),
   masque('MASQUE registration'),
-  aether('Registering AETHER');
+  aether('Registering AETHER & scanning endpoints');
 
   final String label;
   const _Item(this.label);
@@ -557,7 +557,12 @@ class _InstallStepState extends State<_InstallStep> {
         case _Item.masque:
           await state.renewMasqueAccount();
         case _Item.aether:
+          // Finish all Aether preparation before Setup reports it as ready:
+          // register both identities, then scan and persist healthy endpoints
+          // for both protocols so the user can select either one immediately.
           await state.provisionAetherForSetup();
+          await state.scanAetherEndpoints('masque');
+          await state.scanAetherEndpoints('wg');
       }
       row.status = _Status.done;
     } catch (e) {
