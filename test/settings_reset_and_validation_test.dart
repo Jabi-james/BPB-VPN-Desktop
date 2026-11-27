@@ -147,7 +147,7 @@ void main() {
         (w) => w is ListPref && w.path == scenario.path,
       );
       final section = switch (scenario.path) {
-        'vless.cleanIps' => 'VLESS',
+        'vless.cleanIps' => 'Worker VLESS',
         'warp.endpoints' => 'WARP',
         'masque.endpoints' => 'MASQUE',
         _ => 'Global',
