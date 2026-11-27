@@ -1448,6 +1448,10 @@ void main() {
           'rewriteAddress': '127.0.0.1',
           'rewritePort': XrayConfigBuilder.exitDnsPort,
           'rules': [
+            {
+              'action': 'hijack',
+              'domain': ['geosite:ir'],
+            },
             {'action': 'direct'},
           ],
         });
