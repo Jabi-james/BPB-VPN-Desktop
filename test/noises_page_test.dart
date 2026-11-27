@@ -28,6 +28,9 @@ class _TestState extends AppState {
 }
 
 void main() {
+  // Saving shows a five-second toast; dismiss it so its timer cannot leak between tests.
+  tearDown(AppToast.hide);
+
   testWidgets('expression packet presets select, edit, generate and restore', (
     tester,
   ) async {
