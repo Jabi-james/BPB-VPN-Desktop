@@ -1410,12 +1410,16 @@ class AppState extends ChangeNotifier {
   Future<void> updateGeoAssets({
     void Function(String file, int received, int? total)? onProgress,
   }) async {
+    final country = profile.routing.geoCountry;
     final client = proxiedClient(isConnected ? LocalProxy.port : null);
     try {
       final files = await GeoAssetsDownloader(
         client,
-      ).download(onProgress: onProgress);
+      ).download(country: country, onProgress: onProgress);
       await VpnChannel.saveGeoAssets(files);
+      // Mark the pair as belonging to this country only after both files pass checksum
+      // validation and have been saved successfully. Until then Xray must not use the old pair.
+      write('routing.geoFilesCountry', country);
       await _prefs.setString(_kGeoAssetsUpdatedAt, DateTime.now().toUtc().toIso8601String());
     } on GeoAssetsException catch (e) {
       throw StateError(e.message);
