@@ -475,7 +475,9 @@ class AppState extends ChangeNotifier {
         await _prefs.setString(_kGeoAssetsCountry, 'unknown');
         try {
           await VpnChannel.saveGeoAssetsCountryMarker('unknown');
-        } catch (_) {}
+        } catch (_) {
+          // The device-local preference remains authoritative if the marker cannot be written.
+        }
         await _prefs.remove(_kGeoAssetsFingerprint);
         await _prefs.remove(_kGeoAssetsUpdatedAt);
       } else if (previousFingerprint == null) {
@@ -491,7 +493,9 @@ class AppState extends ChangeNotifier {
         await _prefs.setString(_kGeoAssetsCountry, 'unknown');
         try {
           await VpnChannel.saveGeoAssetsCountryMarker('unknown');
-        } catch (_) {}
+        } catch (_) {
+          // The device-local preference remains authoritative if the marker cannot be written.
+        }
         await _prefs.setString(_kGeoAssetsFingerprint, fingerprint);
         await _prefs.remove(_kGeoAssetsUpdatedAt);
       }
