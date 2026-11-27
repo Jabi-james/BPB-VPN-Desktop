@@ -7,7 +7,7 @@ void main() {
     final defaults = Profile.fromJson({});
     expect(defaults.routing.geoCountry, 'iran');
     expect(defaults.routing.geoFilesCountry, 'iran');
-    expect(RoutingPresets.bypass.keys, ['bittorrent']);
+    expect(RoutingPresets.bypass.keys.toList(), ['bittorrent']);
 
     final selectedChina = defaults.updated('routing.country', 'china');
     expect(selectedChina.routing.geoCountry, 'china');
