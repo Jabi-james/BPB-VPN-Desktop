@@ -458,6 +458,8 @@ class AppState extends ChangeNotifier {
     if (cleanStart) {
       await WebRtcLeakProtection.apply(false, _prefs);
       await _prefs.clear();
+      // Clean start leaves the on-disk Geo files untouched, so do not assume they are Iran.
+      await _prefs.setString(_kGeoAssetsCountry, 'unknown');
       await _secrets.delete(key: _secretAccountsKey);
     }
     _stored = Profile.fromJson(_decodeMap(_prefs.getString(_kProfile)))
