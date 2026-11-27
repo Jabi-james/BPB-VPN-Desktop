@@ -275,11 +275,16 @@ class AppState extends ChangeNotifier {
       availableModes.where(isModeSelectable).toList();
 
   /// The chosen type, or the first registered/available one when it can't be used yet.
-  CoreType get core =>
-      defaultTargetPlatform == TargetPlatform.windows &&
-          (mode == ConnectionMode.masque || mode == ConnectionMode.warp)
-      ? CoreType.values.asNameMap()[device.connectionCore] ?? CoreType.bpb
-      : CoreType.bpb;
+  CoreType get core {
+    if (defaultTargetPlatform != TargetPlatform.windows ||
+        (mode != ConnectionMode.masque && mode != ConnectionMode.warp)) {
+      return CoreType.bpb;
+    }
+    final saved = CoreType.values.asNameMap()[device.connectionCore] ?? CoreType.bpb;
+    if (isCoreRegistered(saved, mode)) return saved;
+    final alternative = saved == CoreType.bpb ? CoreType.aether : CoreType.bpb;
+    return isCoreRegistered(alternative, mode) ? alternative : saved;
+  }
 
   bool get showCoreSelector =>
       defaultTargetPlatform == TargetPlatform.windows &&
