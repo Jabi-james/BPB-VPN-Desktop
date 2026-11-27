@@ -46,12 +46,12 @@ class V2rayStore {
   }
   static Future<Map<String, String>> dns() async {
     final p = await SharedPreferences.getInstance();
-    return {'remote': p.getString('${_dnsKey}.remote') ?? '1.1.1.1', 'local': p.getString('${_dnsKey}.local') ?? 'localhost'};
+    return {'remote': p.getString('$_dnsKey.remote') ?? '1.1.1.1', 'local': p.getString('$_dnsKey.local') ?? 'localhost'};
   }
   static Future<void> saveDns(String remote, String local) async {
     final p = await SharedPreferences.getInstance();
-    await p.setString('${_dnsKey}.remote', remote);
-    await p.setString('${_dnsKey}.local', local);
+    await p.setString('$_dnsKey.remote', remote);
+    await p.setString('$_dnsKey.local', local);
   }
   static String _decodeBase64(String value) {
     var s = value.trim().replaceAll('-', '+').replaceAll('_', '/');
