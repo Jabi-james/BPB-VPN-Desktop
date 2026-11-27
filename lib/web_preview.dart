@@ -16,13 +16,11 @@ class PreviewApp extends StatefulWidget {
 }
 
 class _PreviewAppState extends State<PreviewApp> {
-  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   ThemeMode _themeMode = ThemeMode.dark;
   ThemeColor _themeColor = ThemeColor.blue;
 
   @override
   Widget build(BuildContext context) => MaterialApp(
-    navigatorKey: _navigatorKey,
     title: 'BPB VPN (NotDev)',
     debugShowCheckedModeBanner: false,
     theme: buildTheme(Brightness.light, _themeColor),
@@ -30,7 +28,7 @@ class _PreviewAppState extends State<PreviewApp> {
     themeMode: _themeMode,
     home: _PreviewHome(
       onOpenV2Ray: _openV2Ray,
-      onOpenSettings: () => _navigatorKey.currentState?.push(MaterialPageRoute(
+      onOpenSettings: (context) => Navigator.of(context).push(MaterialPageRoute(
         builder: (_) => _PreviewSettings(
           themeMode: _themeMode,
           themeColor: _themeColor,
@@ -42,15 +40,15 @@ class _PreviewAppState extends State<PreviewApp> {
     ),
   );
 
-  void _openV2Ray() {
-    _navigatorKey.currentState?.push(MaterialPageRoute(
+  void _openV2Ray(BuildContext context) {
+    Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => const V2rayManagerPage(),
     ));
   }
 }
 
 class _PreviewHome extends StatefulWidget {
-  final VoidCallback onOpenV2Ray, onOpenSettings;
+  final ValueChanged<BuildContext> onOpenV2Ray, onOpenSettings;
   const _PreviewHome({required this.onOpenV2Ray, required this.onOpenSettings});
   @override
   State<_PreviewHome> createState() => _PreviewHomeState();
@@ -81,7 +79,7 @@ class _PreviewHomeState extends State<_PreviewHome> {
           ])),
         ]),
         actions: [
-          IconButton(tooltip: 'Settings', onPressed: widget.onOpenSettings,
+          IconButton(tooltip: 'Settings', onPressed: () => widget.onOpenSettings(context),
             icon: const Icon(Symbols.settings_rounded, color: Color(0xFF4C8BF5))),
         ],
       ),
@@ -139,11 +137,11 @@ class _PreviewHomeState extends State<_PreviewHome> {
                 decoration: BoxDecoration(color: scheme.surface.withValues(alpha: .55), borderRadius: BorderRadius.circular(13),
                   border: Border.all(color: scheme.outlineVariant.withValues(alpha: .65))),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  SizedBox(width: 72, child: _backendTab('BPB', _backend == 'BPB', () => setState(() => _backend = 'BPB'))),
+                  SizedBox(width: 64, child: _backendTab('BPB', _backend == 'BPB', () => setState(() => _backend = 'BPB'))),
                   const SizedBox(width: 4),
-                  SizedBox(width: 72, child: _backendTab('V2Ray', _backend == 'V2Ray', () {
+                  SizedBox(width: 64, child: _backendTab('V2Ray', _backend == 'V2Ray', () {
                     setState(() => _backend = 'V2Ray');
-                    widget.onOpenV2Ray();
+                    widget.onOpenV2Ray(context);
                   })),
                 ]),
               ),
@@ -277,7 +275,7 @@ class _PreviewSettings extends StatelessWidget {
   final ThemeColor themeColor;
   final ValueChanged<ThemeMode> onThemeMode;
   final ValueChanged<ThemeColor> onThemeColor;
-  final VoidCallback onOpenV2Ray;
+  final ValueChanged<BuildContext> onOpenV2Ray;
   const _PreviewSettings({required this.themeMode, required this.themeColor, required this.onThemeMode,
     required this.onThemeColor, required this.onOpenV2Ray});
 
@@ -300,7 +298,7 @@ class _PreviewSettings extends StatelessWidget {
           title: const Text('V2Ray'),
           subtitle: const Text('Manage V2Ray subscriptions and profiles'),
           trailing: Icon(Icons.chevron_right_rounded, color: scheme.onSurfaceVariant),
-          onTap: onOpenV2Ray,
+          onTap: () => onOpenV2Ray(context),
         )),
       ]),
     );
