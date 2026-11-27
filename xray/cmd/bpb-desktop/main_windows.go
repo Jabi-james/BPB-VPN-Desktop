@@ -34,6 +34,7 @@ type request struct {
 	TorBridgeLine string `json:"torBridgeLine,omitempty"`
 	AetherConfigDir string `json:"aetherConfigDir,omitempty"`
 	AetherProtocol string `json:"aetherProtocol,omitempty"`
+	AetherOutputCount int `json:"aetherOutputCount,omitempty"`
 	AetherEnvironment map[string]string `json:"aetherEnvironment,omitempty"`
 	SSHConfig string `json:"sshConfig,omitempty"`
 }

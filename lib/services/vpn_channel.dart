@@ -264,6 +264,7 @@ class VpnChannel {
     required String protocol,
     required String configDir,
     required Map<String, String> environment,
+    required int outputCount,
   }) async {
     if (!Platform.isWindows) {
       throw UnsupportedError('Aether endpoint scanning is available on Windows only.');
@@ -273,6 +274,7 @@ class VpnChannel {
       'aetherProtocol': protocol,
       'aetherConfigDir': configDir,
       'aetherEnvironment': environment,
+      'aetherOutputCount': outputCount,
     }, timeout: const Duration(minutes: 6));
     if (result['ok'] != true) {
       throw StateError(result['error'] as String? ?? 'Aether endpoint scan failed.');

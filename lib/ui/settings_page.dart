@@ -1109,6 +1109,7 @@ class _AetherScannerPageState extends State<AetherScannerPage> {
   bool _stopping = false;
   bool _paused = false;
   bool _hasScanned = false;
+  int _outputCount = 10;
   String? _error;
   List<AetherScanResult> _results = const [];
   final Set<String> _selectedEndpoints = {};
@@ -1124,7 +1125,10 @@ class _AetherScannerPageState extends State<AetherScannerPage> {
       _paused = false;
     });
     try {
-      final results = await AppScope.of(context).scanAetherEndpoints(widget.protocol);
+      final results = await AppScope.of(context).scanAetherEndpoints(
+        widget.protocol,
+        outputCount: _outputCount,
+      );
       if (!mounted) return;
       setState(() {
         _results = results;
@@ -1196,23 +1200,53 @@ class _AetherScannerPageState extends State<AetherScannerPage> {
           const SizedBox(height: 16),
           SettingsCard(
             children: [
-              const ChoicePref('device.aether.scanMode', 'Scan mode', {
-                'turbo': 'Turbo',
-                'balanced': 'Balanced',
-                'thorough': 'Thorough',
-                'stealth': 'Stealth',
-                'ironclad': 'Ironclad',
-              }, icon: Symbols.speed_rounded),
-              const ChoicePref('device.aether.ipVersion', 'IP version', {
-                'v4': 'IPv4',
-                'v6': 'IPv6',
-                'both': 'IPv4 + IPv6',
-              }, icon: Symbols.language_rounded),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                child: Row(
+                  children: [
+                    Expanded(child: const ChoicePref('device.aether.scanMode', 'Scan mode', {
+                      'turbo': 'Turbo',
+                      'balanced': 'Balanced',
+                      'thorough': 'Thorough',
+                      'stealth': 'Stealth',
+                      'ironclad': 'Ironclad',
+                    }, icon: Symbols.speed_rounded)),
+                    const SizedBox(width: 8),
+                    Expanded(child: const ChoicePref('device.aether.ipVersion', 'IP version', {
+                      'v4': 'IPv4',
+                      'v6': 'IPv6',
+                      'both': 'IPv4 + IPv6',
+                    }, icon: Symbols.language_rounded)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: DropdownButtonFormField<int>(
+                        initialValue: _outputCount,
+                        decoration: const InputDecoration(
+                          labelText: 'Output count',
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                        items: [
+                          for (var count = 1; count <= 10; count++)
+                            DropdownMenuItem(value: count, child: Text('$count')),
+                        ],
+                        onChanged: _loading
+                            ? null
+                            : (value) {
+                                if (value != null) setState(() => _outputCount = value);
+                              },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 16),
           Wrap(
+            alignment: WrapAlignment.center,
             spacing: 8,
+            runSpacing: 8,
             children: [
               FilledButton.icon(
                 onPressed: _loading ? null : _scan,
@@ -1289,10 +1323,12 @@ class _AetherScannerPageState extends State<AetherScannerPage> {
                 ),
                 controlAffinity: ListTileControlAffinity.leading,
               ),
-            FilledButton.icon(
-              onPressed: () => _importSelected(state),
-              icon: const Icon(Icons.file_download_done_rounded),
-              label: const Text('Import selected endpoints'),
+            Center(
+              child: FilledButton.icon(
+                onPressed: () => _importSelected(state),
+                icon: const Icon(Icons.file_download_done_rounded),
+                label: const Text('Import selected endpoints'),
+              ),
             ),
           ],
         ],

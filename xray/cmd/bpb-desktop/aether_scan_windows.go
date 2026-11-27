@@ -55,9 +55,13 @@ func setAetherProcessPaused(pid int, paused bool) error {
 }
 
 // scanAetherWindows asks the official Aether core to verify endpoints with its own
-// MASQUE / WireGuard data-plane probes, then keeps the ten fastest successful results.
+// MASQUE / WireGuard data-plane probes, then keeps the requested number of fastest results.
 func scanAetherWindows(root string, req request, parent context.Context, controls <-chan string) ([]aetherScanHit, error) {
 	protocol := strings.ToLower(strings.TrimSpace(req.AetherProtocol))
+	outputCount := req.AetherOutputCount
+	if outputCount < 1 || outputCount > 10 {
+		outputCount = 10
+	}
 	if protocol != "masque" && protocol != "wg" {
 		return nil, fmt.Errorf("unsupported Aether scan protocol %q", protocol)
 	}
@@ -152,7 +156,7 @@ func scanAetherWindows(root string, req request, parent context.Context, control
 	var waitErr error
 	finished := false
 	paused := false
-	for !finished && len(found) < 10 {
+	for !finished && len(found) < outputCount {
 		select {
 		case action := <-controls:
 			switch action {
@@ -196,7 +200,7 @@ func scanAetherWindows(root string, req request, parent context.Context, control
 		}
 	}
 
-	if len(found) >= 10 && !finished {
+	if len(found) >= outputCount && !finished {
 		if cmd.Process != nil {
 			_ = cmd.Process.Kill()
 		}
@@ -207,7 +211,7 @@ func scanAetherWindows(root string, req request, parent context.Context, control
 		_ = cmd.Process.Kill()
 		waitErr = <-wait
 	}
-	// Drain lines already written before the process exited or was stopped at ten results.
+	// Drain lines already written before the process exited or was stopped at the requested count.
 	for line := range lines {
 		addCandidate(line)
 	}
@@ -225,8 +229,8 @@ func scanAetherWindows(root string, req request, parent context.Context, control
 		}
 		return nil, fmt.Errorf("Aether found no healthy %s endpoints", protocol)
 	}
-	if len(hits) > 10 {
-		hits = hits[:10]
+	if len(hits) > outputCount {
+		hits = hits[:outputCount]
 	}
 	return hits, nil
 }

@@ -441,86 +441,101 @@ class _CloudflareScannerPageState extends State<CloudflareScannerPage> {
             elevation: 0,
             clipBehavior: Clip.antiAlias,
             child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                spacing: 16,
-                children: [
-                  _DropdownSetting<String>(
-                    label: 'Mode',
-                    values: [
-                      'normal',
-                      _protocol == ScanProtocol.masqueH3 ||
-                              _protocol == ScanProtocol.warp
-                          ? 'noise'
-                          : 'fragment',
-                    ],
-                    value: _mode,
-                    itemLabel: (value) => switch (value) {
-                      'normal' => 'Normal',
-                      'fragment' => 'Fragment',
-                      'noise' => 'Obfuscated',
-                      _ => value,
-                    },
-                    enabled: !_running,
-                    onChanged: (value) => setState(() => _mode = value),
-                  ),
-                  _DropdownSetting<int>(
-                    label: 'Port',
-                    value: _port,
-                    values: _protocol.isWarpLike
-                        ? ScannerAssets.warpPorts
-                        : XrayConfigBuilder.httpsPorts,
-                    enabled: !_running,
-                    onChanged: (value) => setState(() => _port = value),
-                  ),
-                  _NumberInput(
-                    controller: _probeCount,
-                    label: 'Probes count',
-                    enabled: !_running,
-                  ),
-                  _NumberInput(
-                    controller: _probeInterval,
-                    label: 'Probes interval (ms)',
-                    enabled: !_running,
-                  ),
-                  _DropdownSetting<int>(
-                    label: 'Attempts count',
-                    value: _attemptCount,
-                    values: const [1, 2, 3, 4, 5],
-                    enabled: !_running,
-                    onChanged: (value) => setState(() => _attemptCount = value),
-                  ),
-                  _NumberInput(
-                    controller: _attemptInterval,
-                    label: 'Attempts interval (ms)',
-                    enabled: !_running,
-                  ),
-                  _NumberInput(
-                    controller: _outputCount,
-                    label: 'Outputs count',
-                    enabled: !_running,
-                  ),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Custom CIDRs'),
-                    value: _customCidrs,
-                    onChanged: _running
-                        ? null
-                        : (value) => setState(() => _customCidrs = value),
-                  ),
-                  if (_customCidrs)
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      enabled: !_loadingCidrs && !_running,
-                      title: Text('Select CIDRs'),
-                      trailing: const Icon(Symbols.chevron_right_rounded),
-                      subtitle: Text(
-                        '${_selectedCidrs.length} of ${_cidrs.length} CIDRs selected',
+              padding: const EdgeInsets.all(16),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final fieldWidth = (constraints.maxWidth - 24) / 3;
+                  return Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      SizedBox(width: fieldWidth, child: _DropdownSetting<String>(
+                        label: 'Mode',
+                        values: [
+                          'normal',
+                          _protocol == ScanProtocol.masqueH3 ||
+                                  _protocol == ScanProtocol.warp
+                              ? 'noise'
+                              : 'fragment',
+                        ],
+                        value: _mode,
+                        itemLabel: (value) => switch (value) {
+                          'normal' => 'Normal',
+                          'fragment' => 'Fragment',
+                          'noise' => 'Obfuscated',
+                          _ => value,
+                        },
+                        enabled: !_running,
+                        onChanged: (value) => setState(() => _mode = value),
+                      )),
+                      SizedBox(width: fieldWidth, child: _DropdownSetting<int>(
+                        label: 'Port',
+                        value: _port,
+                        values: _protocol.isWarpLike
+                            ? ScannerAssets.warpPorts
+                            : XrayConfigBuilder.httpsPorts,
+                        enabled: !_running,
+                        onChanged: (value) => setState(() => _port = value),
+                      )),
+                      SizedBox(width: fieldWidth, child: _NumberInput(
+                        controller: _probeCount,
+                        label: 'Probes count',
+                        enabled: !_running,
+                      )),
+                      SizedBox(width: fieldWidth, child: _NumberInput(
+                        controller: _probeInterval,
+                        label: 'Probes interval (ms)',
+                        enabled: !_running,
+                      )),
+                      SizedBox(width: fieldWidth, child: _DropdownSetting<int>(
+                        label: 'Attempts count',
+                        value: _attemptCount,
+                        values: const [1, 2, 3, 4, 5],
+                        enabled: !_running,
+                        onChanged: (value) => setState(() => _attemptCount = value),
+                      )),
+                      SizedBox(width: fieldWidth, child: _NumberInput(
+                        controller: _attemptInterval,
+                        label: 'Attempts interval (ms)',
+                        enabled: !_running,
+                      )),
+                      SizedBox(width: fieldWidth, child: _NumberInput(
+                        controller: _outputCount,
+                        label: 'Outputs count',
+                        enabled: !_running,
+                      )),
+                      SizedBox(width: fieldWidth),
+                      SizedBox(
+                        width: fieldWidth,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            SwitchListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: const Text('Custom CIDRs'),
+                              value: _customCidrs,
+                              onChanged: _running
+                                  ? null
+                                  : (value) => setState(() => _customCidrs = value),
+                            ),
+                            if (_customCidrs)
+                              ListTile(
+                                dense: true,
+                                contentPadding: EdgeInsets.zero,
+                                enabled: !_loadingCidrs && !_running,
+                                title: const Text('Select CIDRs'),
+                                trailing: const Icon(Symbols.chevron_right_rounded),
+                                subtitle: Text(
+                                  '${_selectedCidrs.length} of ${_cidrs.length} CIDRs selected',
+                                ),
+                                onTap: _loadingCidrs || _running ? null : _selectCidrs,
+                              ),
+                          ],
+                        ),
                       ),
-                      onTap: _loadingCidrs || _running ? null : _selectCidrs,
-                    ),
-                ],
+                    ],
+                  );
+                },
               ),
             ),
           ),
@@ -617,16 +632,18 @@ class _CloudflareScannerPageState extends State<CloudflareScannerPage> {
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 16, 12, 0),
-              child: FilledButton.icon(
-                icon: const Icon(Symbols.add_circle_rounded),
-                label: Text(
-                  _protocol == ScanProtocol.warp
-                      ? 'Add to endpoints'
-                      : _protocol.isMasque
-                      ? 'Add to endpoints'
-                      : 'Add to clean IPs',
+              child: Center(
+                child: FilledButton.icon(
+                  icon: const Icon(Symbols.add_circle_rounded),
+                  label: Text(
+                    _protocol == ScanProtocol.warp
+                        ? 'Add to endpoints'
+                        : _protocol.isMasque
+                        ? 'Add to endpoints'
+                        : 'Add to clean IPs',
+                  ),
+                  onPressed: () => _install(state),
                 ),
-                onPressed: () => _install(state),
               ),
             ),
           ],

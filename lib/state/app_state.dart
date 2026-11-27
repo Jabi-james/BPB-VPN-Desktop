@@ -1308,7 +1308,10 @@ class AppState extends ChangeNotifier {
       VpnChannel.cancelAetherEndpointScan();
 
   /// Runs Aether's own protocol verifier and returns measured endpoints.
-  Future<List<AetherScanResult>> scanAetherEndpoints(String protocol) async {
+  Future<List<AetherScanResult>> scanAetherEndpoints(
+    String protocol, {
+    int outputCount = 10,
+  }) async {
     if (defaultTargetPlatform != TargetPlatform.windows) {
       throw UnsupportedError('Aether endpoint scanning is available on Windows only.');
     }
@@ -1322,6 +1325,7 @@ class AppState extends ChangeNotifier {
       protocol: protocol,
       configDir: _aetherConfigDir,
       environment: _aetherEnvironmentFor(protocol, includeSavedEndpoint: false),
+      outputCount: outputCount.clamp(1, 10).toInt(),
     );
     if (results.isEmpty) throw StateError('Aether did not find any healthy endpoints.');
     return results;
