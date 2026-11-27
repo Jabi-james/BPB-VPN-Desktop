@@ -790,6 +790,7 @@ class XrayConfigBuilder {
     final config = _v23 = jsonDecode(domainFrontingV23) as Map<String, dynamic>;
 
     final routing = profile.routing;
+    final geoFilesReady = routing.geoFilesCountry == routing.geoCountry;
     final geo = _geoAssets();
     final List<String> bypassDomain = [];
     final List<String> bypassGeosite = [];
@@ -883,7 +884,7 @@ class XrayConfigBuilder {
 
         case 'bypass-domain':
           if (!_chainedExit) {
-            rule['domain'] = ['geosite:private', ...totalBypass];
+            rule['domain'] = [if (geoFilesReady) 'geosite:private', ...totalBypass];
           } else {
             routingRules.remove(rule);
           }
@@ -897,7 +898,7 @@ class XrayConfigBuilder {
 
         case 'bypass-ip':
           if (!_chainedExit) {
-            rule['ip'] = ['geoip:private', ...bypassIp];
+            rule['ip'] = [if (geoFilesReady) 'geoip:private', ...bypassIp];
           } else {
             routingRules.remove(rule);
           }
