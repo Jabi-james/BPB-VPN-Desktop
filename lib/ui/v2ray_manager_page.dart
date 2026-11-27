@@ -95,7 +95,7 @@ class _V2rayManagerPageState extends State<V2rayManagerPage> {
     if (item == null) return;
     final ok = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
       title: const Text('Delete subscription?'),
-      content: Text('Remove ' + item.name + ' from this device?'),
+      content: Text('Remove ${item.name} from this device?'),
       actions: [
         TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
         FilledButton(style: FilledButton.styleFrom(backgroundColor: const Color(0xFFD94B4B), foregroundColor: Colors.white),
@@ -170,7 +170,7 @@ class _V2rayManagerPageState extends State<V2rayManagerPage> {
                   : selected.url.isEmpty ? 'Add a subscription URL with the edit button. Server links will appear here in the next step.'
                   : 'This subscription is saved. Importing and parsing its server links will be added in the next step.',
                   style: theme.textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant), textAlign: TextAlign.center),
-              ]))))),
+              ])))))),
         ]),
       )),
     );
