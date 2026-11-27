@@ -24,6 +24,7 @@ import 'noises_page.dart';
 import 'per_app_page.dart';
 import 'prefs.dart';
 import 'routing_page.dart';
+import 'app_toast.dart';
 import 'tor_bridges_page.dart';
 import 'tor_custom_bridges_pref.dart';
 import 'ssh_settings_page.dart';
@@ -3073,7 +3074,6 @@ class _GeoAssetsTileState extends State<_GeoAssetsTile>
 
   Future<void> _update() async {
     final state = AppScope.read(context);
-    final messenger = ScaffoldMessenger.of(context);
     setState(() {
       _updating = true;
       _downloadingFile = null;
@@ -3092,21 +3092,16 @@ class _GeoAssetsTileState extends State<_GeoAssetsTile>
           });
         },
       );
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            state.isConnected
-                ? 'Geo assets updated. Reconnect to use them.'
-                : 'Geo assets updated successfully',
-          ),
-        ),
+      AppToast.show(
+        context,
+        state.isConnected
+            ? 'Geo files updated. Reconnect to use them.'
+            : 'Geo files updated successfully',
       );
     } on StateError catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+      AppToast.show(context, e.message);
     } catch (e) {
-      messenger.showSnackBar(
-        SnackBar(content: Text('Geo assets update failed: $e')),
-      );
+      AppToast.show(context, 'Geo assets update failed: $e');
     } finally {
       if (mounted) {
         setState(() {
@@ -3126,9 +3121,13 @@ class _GeoAssetsTileState extends State<_GeoAssetsTile>
         ? 'Preparing download...'
         : 'Downloading $_downloadingFile'
               '${_progress == null ? '' : ' · ${(_progress! * 100).round()}%'}';
-    final updatedAt = AppScope.of(context).geoAssetsUpdatedAt;
-    final updatedLabel = updatedAt == null
-        ? 'Latest Chocolate4U assets'
+    final appState = AppScope.of(context);
+    final routing = appState.profile.routing;
+    final updatedAt = appState.geoAssetsUpdatedAt;
+    final updatedLabel = routing.geoFilesCountry != routing.geoCountry
+        ? 'Please Update Geo Files'
+        : updatedAt == null
+        ? 'Iran · Chocolate4U'
         : 'Last updated: ${updatedAt.year.toString().padLeft(4, '0')}-'
               '${updatedAt.month.toString().padLeft(2, '0')}-'
               '${updatedAt.day.toString().padLeft(2, '0')} '
