@@ -874,7 +874,7 @@ if (\$match) { 'true' } else { 'false' }
       '${File(Platform.resolvedExecutable).parent.path}\\assets\\$_geoCountryMarkerName',
     );
     await file.parent.create(recursive: true);
-    await file.writeAsString('$country\\n', flush: true);
+    await file.writeAsString('$country\n', flush: true);
   }
 
   /// Fingerprint the installed pair so an app/portable update that replaces the assets
