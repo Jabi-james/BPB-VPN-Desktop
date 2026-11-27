@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_toast.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../services/tor_bridges.dart';
@@ -40,7 +41,7 @@ class _TorBridgesPageState extends State<TorBridgesPage> {
   void _install() {
     final added = AppScope.read(context).installTorBridges(_bridges!);
     final skipped = _bridges!.length - added;
-    ScaffoldMessenger.of(context).showSnackBar(
+    AppToast.showSnackBar(context, 
       SnackBar(
         content: Text(
           added == 0

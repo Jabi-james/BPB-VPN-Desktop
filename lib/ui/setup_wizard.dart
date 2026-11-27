@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'app_toast.dart';
 import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
@@ -235,10 +236,9 @@ TextSpan _bold(String text) => TextSpan(
 );
 
 Future<void> _openUrl(BuildContext context, String url) async {
-  final messenger = ScaffoldMessenger.of(context);
   if (!await VpnChannel.openUrl(url)) {
     await Clipboard.setData(ClipboardData(text: url));
-    messenger.showSnackBar(const SnackBar(content: Text('Link copied. Open it in your browser.')));
+    AppToast.showSnackBar(context, const SnackBar(content: Text('Link copied. Open it in your browser.')));
   }
 }
 

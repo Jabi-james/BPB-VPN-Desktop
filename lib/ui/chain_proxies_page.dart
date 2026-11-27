@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_toast.dart';
 import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -20,15 +21,14 @@ class ChainProxiesPage extends StatelessWidget {
   /// Adds the chain proxies in [text], or says why there are none.
   static void _import(BuildContext context, String? text, {String? fileName}) {
     if (text == null || text.trim().isEmpty) return;
-    final messenger = ScaffoldMessenger.of(context);
     try {
       final chains = parseChainProxies(text, fileName: fileName);
       AppScope.read(context).addChains(chains);
-      messenger.showSnackBar(
+      AppToast.showSnackBar(context, 
         SnackBar(content: Text(chains.length == 1 ? 'Added ${chains.single.name}' : 'Added ${chains.length} configs')),
       );
     } on FormatException catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+      AppToast.showSnackBar(context, SnackBar(content: Text(e.message)));
     }
   }
 
@@ -61,7 +61,6 @@ class ChainProxiesPage extends StatelessWidget {
       ),
     );
     if (source == null || !context.mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     final String? text;
     String? fileName;
@@ -77,11 +76,11 @@ class ChainProxiesPage extends StatelessWidget {
           fileName = file?.name;
       }
     } on PlatformException catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text("Couldn't read the file: ${e.message}")));
+      AppToast.showSnackBar(context, SnackBar(content: Text("Couldn't read the file: ${e.message}")));
       return;
     }
     if (source == 'clipboard' && (text == null || text.trim().isEmpty)) {
-      messenger.showSnackBar(const SnackBar(content: Text('The clipboard is empty')));
+      AppToast.showSnackBar(context, const SnackBar(content: Text('The clipboard is empty')));
       return;
     }
     if (context.mounted) _import(context, text, fileName: fileName);
@@ -145,7 +144,7 @@ class _ChainTile extends StatelessWidget {
 
   void _copy(BuildContext context) {
     Clipboard.setData(ClipboardData(text: chain.link));
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Link copied')));
+    AppToast.showSnackBar(context, const SnackBar(content: Text('Link copied')));
   }
 
   void _showQr(BuildContext context) => showDialog<void>(
