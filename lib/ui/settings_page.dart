@@ -364,7 +364,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
           const ConnectionGroupHeader(),
           const CoreGroupHeader('BPB Core'),
-          const SectionHeader('VLESS'),
+          const SectionHeader('Worker VLESS'),
           SettingsCard(
             children: [
               const _DeploymentTile(),
@@ -1476,7 +1476,7 @@ class _SettingsSectionsState extends State<_SettingsSections> {
     'Tor' => 'Tor routing and custom bridge settings',
     'Serverless' => 'DNS-based and serverless connection options',
     'Browser Security' => 'Browser leak protection and location privacy',
-    'VLESS' => 'Configure servers, TLS, routing and VLESS transport',
+    'Worker VLESS' => 'Configure servers, TLS, routing and VLESS transport',
     'MASQUE' => 'Configure MASQUE endpoints and transport options',
     'WARP' => 'Configure WireGuard endpoints and WARP behavior',
     _ => 'Open $title configuration',
@@ -1696,7 +1696,7 @@ Color _sectionColor(String title) => switch (title) {
   'Global' => const Color(0xFF3B82F6),
   'Connection' => const Color(0xFF0EA5E9),
   'Browser Security' => const Color(0xFF10B981),
-  'VLESS' => const Color(0xFF22A6B3),
+  'Worker VLESS' => const Color(0xFF22A6B3),
   'BPB Core' => const Color(0xFF64748B),
   'Aether Core' => const Color(0xFF8B5CF6),
   'MASQUE' => const Color(0xFFF28C28),
@@ -1732,7 +1732,7 @@ IconData _sectionIcon(String title) => switch (title) {
   'Global' => Icons.tune_rounded,
   'Connection' => Icons.hub_rounded,
   'Browser Security' => Icons.security_rounded,
-  'VLESS' => Icons.route_rounded,
+  'Worker VLESS' => Icons.route_rounded,
   'BPB Core' => Icons.memory_rounded,
   'Aether Core' => Icons.bubble_chart_rounded,
   'MASQUE' => Icons.shield_rounded,
