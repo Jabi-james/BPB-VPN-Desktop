@@ -92,19 +92,26 @@ class RoutingPage extends StatelessWidget {
               final selected = AppScope.of(context).profile.routing.geoCountry;
               return SettingsCard(
                 children: [
-                  for (final entry in geoCountries.entries)
-                    RadioListTile<String>(
-                      value: entry.key,
-                      groupValue: selected,
-                      title: Text(entry.value),
-                      dense: true,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                      onChanged: (value) {
-                        if (value == null || value == selected) return;
-                        AppScope.read(context).write('routing.country', value);
-                        AppToast.show(context, 'Please Update Geo Files');
-                      },
+                  RadioGroup<String>(
+                    groupValue: selected,
+                    onChanged: (value) {
+                      if (value == null || value == selected) return;
+                      AppScope.read(context).write('routing.country', value);
+                      AppToast.show(context, 'Please Update Geo Files');
+                    },
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        for (final entry in geoCountries.entries)
+                          RadioListTile<String>(
+                            value: entry.key,
+                            title: Text(entry.value),
+                            dense: true,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                          ),
+                      ],
                     ),
+                  ),
                 ],
               );
             }),
