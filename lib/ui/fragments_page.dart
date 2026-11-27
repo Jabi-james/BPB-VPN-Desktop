@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_toast.dart';
 import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
@@ -79,8 +80,7 @@ class _FragmentsPageState extends State<FragmentsPage> {
       _fragments.map((f) => f.toJson()).toList(),
     );
     setState(() => _dirty = false);
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Fragments saved')));
+    AppToast.showSnackBar(context, const SnackBar(content: Text('Fragments saved')));
   }
 
   Future<bool> _confirm(String title, String body, String action) async {
