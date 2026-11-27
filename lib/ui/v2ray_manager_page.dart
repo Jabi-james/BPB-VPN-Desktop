@@ -1,208 +1,129 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:material_symbols_icons/symbols.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'v2ray_store.dart';
 
 class V2rayManagerPage extends StatefulWidget {
-  const V2rayManagerPage({super.key});
-  @override
-  State<V2rayManagerPage> createState() => _V2rayManagerPageState();
+ const V2rayManagerPage({super.key});
+ @override State<V2rayManagerPage> createState()=>_V2rayManagerPageState();
 }
-
-class _Subscription {
-  final String id, name, url;
-  const _Subscription(this.id, this.name, this.url);
-  Map<String, String> toJson() => {'id': id, 'name': name, 'url': url};
-  static _Subscription? parse(Object? v) {
-    if (v is! Map || v['id'] is! String || v['name'] is! String) return null;
-    final id = v['id'] as String, name = (v['name'] as String).trim();
-    if (id.isEmpty || name.isEmpty) return null;
-    return _Subscription(id, name, v['url'] is String ? (v['url'] as String).trim() : '');
-  }
-}
-
-class _V2rayManagerPageState extends State<V2rayManagerPage> {
-  static const _key = 'v2ray.subscriptions.v1';
-  List<_Subscription> _items = [];
-  String? _selectedId;
-  bool _loading = true, _saving = false;
-  _Subscription? get _selected => _items.where((s) => s.id == _selectedId).firstOrNull;
-
-  @override
-  void initState() { super.initState(); _load(); }
-
-  Future<void> _load() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(_key);
-      var items = <_Subscription>[];
-      if (raw == null) {
-        items = [const _Subscription('default', 'Default', '')];
-        await prefs.setString(_key, jsonEncode(items.map((s) => s.toJson()).toList()));
-      } else {
-        final decoded = jsonDecode(raw);
-        if (decoded is List) items = decoded.map(_Subscription.parse).whereType<_Subscription>().toList();
-      }
-      if (!mounted) return;
-      setState(() { _items = items; _selectedId = items.firstOrNull?.id; _loading = false; });
-    } catch (_) { if (mounted) setState(() => _loading = false); }
-  }
-
-  Future<void> _save() async {
-    setState(() => _saving = true);
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_key, jsonEncode(_items.map((s) => s.toJson()).toList()));
-    } finally { if (mounted) setState(() => _saving = false); }
-  }
-
-  Future<void> _edit({_Subscription? item}) async {
-    final name = TextEditingController(text: item?.name ?? '');
-    final url = TextEditingController(text: item?.url ?? '');
-    final result = await showDialog<({String name, String url})>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(item == null ? 'Add subscription' : 'Edit subscription'),
-        content: SizedBox(width: 420, child: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(controller: name, autofocus: true, decoration: const InputDecoration(labelText: 'Name', prefixIcon: Icon(Symbols.label_outline_rounded))),
-          const SizedBox(height: 12),
-          TextField(controller: url, keyboardType: TextInputType.url, decoration: const InputDecoration(labelText: 'Subscription URL', hintText: 'https://example.com/sub', prefixIcon: Icon(Symbols.link_rounded))),
-        ])),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          FilledButton(onPressed: () {
-            if (name.text.trim().isNotEmpty) Navigator.pop(ctx, (name: name.text.trim(), url: url.text.trim()));
-          }, child: Text(item == null ? 'Add' : 'Save')),
-        ],
-      ),
-    );
-    name.dispose(); url.dispose();
-    if (result == null || !mounted) return;
-    setState(() {
-      if (item == null) {
-        final id = DateTime.now().microsecondsSinceEpoch.toString();
-        _items = [..._items, _Subscription(id, result.name, result.url)];
-        _selectedId = id;
-      } else {
-        _items = [for (final s in _items) if (s.id == item.id) _Subscription(s.id, result.name, result.url) else s];
-      }
-    });
-    await _save();
-  }
-
-  Future<void> _delete() async {
-    final item = _selected;
-    if (item == null) return;
-    final ok = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
-      title: const Text('Delete subscription?'),
-      content: Text('Remove ${item.name} from this device?'),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-        FilledButton(style: FilledButton.styleFrom(backgroundColor: const Color(0xFFD94B4B), foregroundColor: Colors.white),
-          onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
-      ],
-    ));
-    if (ok != true || !mounted) return;
-    setState(() {
-      final index = _items.indexWhere((s) => s.id == item.id);
-      _items = _items.where((s) => s.id != item.id).toList();
-      _selectedId = _items.isEmpty ? null : _items[index.clamp(0, _items.length - 1)].id;
-    });
-    await _save();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context), scheme = theme.colorScheme;
-    final selected = _selected;
-    return Scaffold(
-      appBar: AppBar(titleSpacing: 18, title: const Row(children: [
-        Icon(Symbols.hub_rounded, color: Color(0xFFFFA34D), size: 23), SizedBox(width: 10),
-        Text('V2Ray', style: TextStyle(fontWeight: FontWeight.w800)),
-      ])),
-      body: SafeArea(top: false, child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 8, 18, 20),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Row(children: [
-            Text('Subscriptions', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
-            const Spacer(),
-            IconButton.filledTonal(
-              tooltip: 'Test server delay (preview only)',
-              onPressed: _loading || selected == null
-                  ? null
-                  : () => ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Preview only · No server request was sent.')),
-                    ),
-              icon: const Icon(Symbols.bolt_rounded),
-            ),
-            const SizedBox(width: 4),
-            IconButton.filledTonal(tooltip: 'Edit selected subscription', onPressed: selected == null ? null : () => _edit(item: selected), icon: const Icon(Symbols.edit_rounded)),
-            const SizedBox(width: 4),
-            IconButton.filledTonal(tooltip: 'Add subscription', onPressed: _loading ? null : () => _edit(), icon: const Icon(Symbols.add_rounded)),
-            const SizedBox(width: 4),
-            IconButton(tooltip: 'Delete selected subscription', onPressed: selected == null ? null : _delete, icon: const Icon(Symbols.delete_outline_rounded)),
-          ]),
-          if (_saving) const LinearProgressIndicator(minHeight: 2),
-          const SizedBox(height: 8),
-          SizedBox(height: 42, child: _loading
-            ? const Align(alignment: Alignment.centerLeft, child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2)))
-            : ListView(scrollDirection: Axis.horizontal, children: [
-                for (final s in _items) Padding(padding: const EdgeInsets.only(right: 8),
-                  child: _SubscriptionTab(label: s.name, selected: s.id == _selectedId, onTap: () => setState(() => _selectedId = s.id))),
-              ])),
-          const SizedBox(height: 14),
-          Container(height: 44, padding: const EdgeInsets.symmetric(horizontal: 14),
-            decoration: BoxDecoration(color: scheme.surfaceContainerHighest.withValues(alpha: .55),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-              border: Border.all(color: scheme.outlineVariant.withValues(alpha: .65))),
-            child: Row(children: [
-              const Expanded(flex: 5, child: _ColumnHeading('Remark')),
-              const Expanded(flex: 4, child: _ColumnHeading('Address')),
-              SizedBox(width: 92, child: Align(alignment: Alignment.centerRight, child: _ColumnHeading('Delay (ms)'))),
-            ])),
-          Expanded(child: Container(
-            decoration: BoxDecoration(border: Border(
-              left: BorderSide(color: scheme.outlineVariant.withValues(alpha: .65)),
-              right: BorderSide(color: scheme.outlineVariant.withValues(alpha: .65)),
-              bottom: BorderSide(color: scheme.outlineVariant.withValues(alpha: .65))),
-              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12))),
-            child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 420),
-              child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Container(width: 62, height: 62, decoration: BoxDecoration(color: const Color(0xFFFFA34D).withValues(alpha: .12), borderRadius: BorderRadius.circular(18)),
-                  child: const Icon(Symbols.dns_rounded, size: 30, color: Color(0xFFFFA34D))),
-                const SizedBox(height: 16),
-                Text(_loading ? 'Loading subscriptions' : selected == null ? 'No subscription selected' : 'No configurations yet',
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800), textAlign: TextAlign.center),
-                const SizedBox(height: 7),
-                Text(selected == null ? 'Add a subscription with the + button to get started.'
-                  : selected.url.isEmpty ? 'Add a subscription URL with the edit button. Server links will appear here in the next step.'
-                  : 'This subscription is saved. Importing and parsing its server links will be added in the next step.',
-                  style: theme.textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant), textAlign: TextAlign.center),
-              ])))))),
-        ]),
-      )),
-    );
-  }
-}
-
-class _SubscriptionTab extends StatelessWidget {
-  final String label; final bool selected; final VoidCallback onTap;
-  const _SubscriptionTab({required this.label, required this.selected, required this.onTap});
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return InkWell(mouseCursor: WidgetStateMouseCursor.clickable, onTap: onTap, borderRadius: BorderRadius.circular(9),
-      child: Container(constraints: const BoxConstraints(minWidth: 76), padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-        decoration: BoxDecoration(color: selected ? scheme.primary.withValues(alpha: .13) : Colors.transparent,
-          borderRadius: BorderRadius.circular(9), border: selected ? Border.all(color: scheme.primary.withValues(alpha: .35)) : null),
-        child: Text(label, textAlign: TextAlign.center, style: Theme.of(context).textTheme.labelLarge?.copyWith(
-          color: selected ? scheme.primary : scheme.onSurfaceVariant, fontWeight: FontWeight.w700))));
-  }
-}
-
-class _ColumnHeading extends StatelessWidget {
-  final String label; const _ColumnHeading(this.label);
-  @override
-  Widget build(BuildContext context) => Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
-    style: Theme.of(context).textTheme.labelMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant, fontWeight: FontWeight.w800));
+class _V2rayManagerPageState extends State<V2rayManagerPage> with SingleTickerProviderStateMixin {
+ late final tabs=TabController(length:3,vsync:this);
+ List<V2raySubscription> subs=[]; List<V2rayProfile> profiles=[];
+ String? selected; bool loading=true,updating=false;
+ final remote=TextEditingController(text:'1.1.1.1'), local=TextEditingController(text:'localhost');
+ V2raySubscription? get active { for(final s in subs){if(s.id==selected)return s;} return null; }
+ @override void initState(){super.initState();load();}
+ @override void dispose(){tabs.dispose();remote.dispose();local.dispose();super.dispose();}
+ Future<void> load() async {
+  final s=await V2rayStore.subscriptions(), p=await V2rayStore.profiles(), d=await V2rayStore.dns();
+  if(!mounted)return; setState((){subs=s;profiles=p;selected=s.isEmpty?null:s.first.id;remote.text=d['remote']!;local.text=d['local']!;loading=false;});
+ }
+ Future<void> persist() async {await V2rayStore.saveSubscriptions(subs);await V2rayStore.saveProfiles(profiles);}
+ void note(String s){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(s)));}
+ Future<bool> confirm(String title,String message) async => await showDialog<bool>(context:context,builder:(c)=>AlertDialog(title:Text(title),content:Text(message),actions:[
+  TextButton(onPressed:()=>Navigator.pop(c,false),child:const Text('Cancel')),
+  FilledButton(style:FilledButton.styleFrom(backgroundColor:const Color(0xFFD94B4B)),onPressed:()=>Navigator.pop(c,true),child:const Text('Delete'))]))==true;
+ Future<void> editSub([V2raySubscription? old]) async {
+  final n=TextEditingController(text:old?.name??''),u=TextEditingController(text:old?.url??'');
+  final v=await showDialog<({String n,String u})>(context:context,builder:(c)=>AlertDialog(title:Text(old==null?'Add subscription':'Edit subscription'),
+   content:SizedBox(width:440,child:Column(mainAxisSize:MainAxisSize.min,children:[
+    TextField(controller:n,decoration:const InputDecoration(labelText:'Remark / Name')),
+    const SizedBox(height:12),TextField(controller:u,decoration:const InputDecoration(labelText:'Subscription URL'),keyboardType:TextInputType.url),
+   ])),actions:[TextButton(onPressed:()=>Navigator.pop(c),child:const Text('Cancel')),
+    FilledButton(onPressed:()=>n.text.trim().isEmpty||u.text.trim().isEmpty?null:Navigator.pop(c,(n:n.text.trim(),u:u.text.trim())),child:const Text('Save'))]));
+  n.dispose();u.dispose();if(v==null||!mounted)return;
+  setState((){if(old==null){final id=DateTime.now().microsecondsSinceEpoch.toString();subs.add(V2raySubscription(id:id,name:v.n,url:v.u));selected=id;}
+   else{subs=subs.map((s)=>s.id==old.id?V2raySubscription(id:s.id,name:v.n,url:v.u):s).toList();}});
+  await V2rayStore.saveSubscriptions(subs);
+ }
+ Future<void> deleteSub(V2raySubscription s) async {
+  if(!await confirm('Delete subscription?','Delete ${s.name} and its imported configurations?'))return;
+  setState((){subs.removeWhere((x)=>x.id==s.id);profiles.removeWhere((p)=>p.subscriptionId==s.id);selected=subs.isEmpty?null:subs.first.id;});await persist();
+ }
+ Future<void> updateSub([V2raySubscription? item]) async {
+  final s=item??active;if(s==null){note('Add a subscription first.');return;}
+  setState(()=>updating=true);
+  try{
+   final r=await http.get(Uri.parse(s.url)).timeout(const Duration(seconds:25));
+   if(r.statusCode<200||r.statusCode>=300)throw Exception('HTTP ${r.statusCode}');
+   final parsed=V2rayStore.parseLinks(r.body,subscriptionId:s.id);
+   if(parsed.isEmpty)throw Exception('No supported VLESS, VMess, Trojan or Shadowsocks links found.');
+   setState((){profiles.removeWhere((p)=>p.subscriptionId==s.id);profiles.addAll(parsed);});
+   await persist();note('Updated ${s.name}: ${parsed.length} configurations.');
+  }catch(e){note('Update failed: $e. Browser CORS policy may block this subscription URL. Existing configs were kept.');}
+  finally{if(mounted)setState(()=>updating=false);}
+ }
+ Future<void> importClipboard() async {
+  final raw=(await Clipboard.getData(Clipboard.kTextPlain))?.text??'';
+  final list=V2rayStore.parseLinks(raw);
+  if(list.isEmpty){note('No supported V2Ray links or base64 subscription found in clipboard.');return;}
+  setState(()=>profiles.addAll(list));await V2rayStore.saveProfiles(profiles);note('${list.length} config(s) imported.');
+ }
+ Future<void> editProfile(V2rayProfile p) async {
+  final n=TextEditingController(text:p.name),r=TextEditingController(text:p.raw);
+  final v=await showDialog<({String n,String r})>(context:context,builder:(c)=>AlertDialog(title:const Text('Edit configuration'),
+   content:SizedBox(width:480,child:Column(mainAxisSize:MainAxisSize.min,children:[
+    TextField(controller:n,decoration:const InputDecoration(labelText:'Remark')),
+    const SizedBox(height:12),TextField(controller:r,minLines:3,maxLines:6,decoration:const InputDecoration(labelText:'Share link')),
+   ])),actions:[TextButton(onPressed:()=>Navigator.pop(c),child:const Text('Cancel')),
+    FilledButton(onPressed:()=>Navigator.pop(c,(n:n.text.trim(),r:r.text.trim())),child:const Text('Save'))]));
+  n.dispose();r.dispose();if(v==null||v.n.isEmpty)return;
+  final parsed=V2rayStore.parseLinks(v.r,subscriptionId:p.subscriptionId);if(parsed.isEmpty){note('Invalid or unsupported share link.');return;}
+  final q=parsed.first;setState(()=>profiles=profiles.map((x)=>x.id==p.id?V2rayProfile(id:x.id,name:v.n,address:q.address,protocol:q.protocol,raw:v.r,subscriptionId:x.subscriptionId):x).toList());
+  await V2rayStore.saveProfiles(profiles);
+ }
+ Future<void> deleteProfile(V2rayProfile p) async {if(!await confirm('Delete configuration?','Delete ${p.name}?'))return;setState(()=>profiles.removeWhere((x)=>x.id==p.id));await V2rayStore.saveProfiles(profiles);}
+ @override Widget build(BuildContext context){
+  final theme=Theme.of(context);final visible=profiles.where((p)=>p.subscriptionId.isEmpty||selected==null||p.subscriptionId==selected).toList();
+  return Scaffold(appBar:AppBar(title:const Row(children:[Icon(Symbols.hub_rounded,color:Color(0xFFFFA34D)),SizedBox(width:10),Text('V2Ray',style:TextStyle(fontWeight:FontWeight.w800))])),
+   body:SafeArea(top:false,child:Padding(padding:const EdgeInsets.fromLTRB(18,8,18,18),child:Column(children:[
+    Align(alignment:Alignment.centerLeft,child:Text('Connection settings',style:theme.textTheme.titleSmall)),
+    TabBar(controller:tabs,tabs:const[Tab(text:'Subscriptions'),Tab(text:'Edit Configs'),Tab(text:'DNS')]),
+    const SizedBox(height:12),Expanded(child:loading?const Center(child:CircularProgressIndicator()):TabBarView(controller:tabs,children:[
+     subscriptionTab(theme),configTab(theme,visible),dnsTab(theme)
+    ]))
+   ]))));
+ }
+ Widget subscriptionTab(ThemeData t)=>Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+  Row(children:[Text('Subscription groups',style:t.textTheme.titleMedium?.copyWith(fontWeight:FontWeight.w800)),const Spacer(),
+   IconButton.filledTonal(onPressed:()=>editSub(),icon:const Icon(Icons.add),tooltip:'Add'),
+   IconButton.filledTonal(onPressed:active==null?null:()=>editSub(active),icon:const Icon(Icons.edit_outlined),tooltip:'Edit'),
+   IconButton(onPressed:active==null?null:()=>deleteSub(active!),icon:const Icon(Icons.delete_outline),tooltip:'Delete')]),
+  Expanded(child:subs.isEmpty?empty('No subscriptions','Add a subscription URL, then update it to import server profiles.'):ListView.separated(itemCount:subs.length,separatorBuilder:(_,_)=>const SizedBox(height:6),itemBuilder:(_,i){
+   final s=subs[i];return Card(child:ListTile(selected:s.id==selected,onTap:()=>setState(()=>selected=s.id),leading:const Icon(Icons.rss_feed_rounded),
+    title:Text(s.name),subtitle:Text(s.url,maxLines:1,overflow:TextOverflow.ellipsis),
+    trailing:IconButton(onPressed:updating?null:()=>updateSub(s),icon:const Icon(Icons.refresh_rounded),tooltip:'Update subscription')));
+  })),
+  FilledButton.icon(onPressed:updating||active==null?null:()=>updateSub(),icon:const Icon(Icons.sync),label:Text(updating?'Updating…':'Update selected subscription')),
+  const SizedBox(height:7),OutlinedButton.icon(onPressed:importClipboard,icon:const Icon(Icons.content_paste),label:const Text('Import from clipboard')),
+  const SizedBox(height:7),Text('Browser CORS restrictions may block some subscription hosts. Failed updates are reported; existing configurations are retained.',style:t.textTheme.bodySmall)
+ ]);
+ Widget configTab(ThemeData t,List<V2rayProfile> list)=>Column(children:[
+  Row(children:[Text('Edit Configs',style:t.textTheme.titleMedium?.copyWith(fontWeight:FontWeight.w800)),const Spacer(),
+   DropdownButton<String?>(value:selected,hint:const Text('All groups'),items:[const DropdownMenuItem<String?>(value:null,child:Text('All groups')),...subs.map((s)=>DropdownMenuItem<String?>(value:s.id,child:Text(s.name)))],
+    onChanged:(v)=>setState(()=>selected=v))]),
+  Expanded(child:list.isEmpty?empty('No configurations','Import links from clipboard or select and update a subscription.'):ListView.separated(itemCount:list.length,separatorBuilder:(_,_)=>const SizedBox(height:7),itemBuilder:(_,i){
+   final p=list[i];return Card(child:Padding(padding:const EdgeInsets.all(12),child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+    Row(children:[Icon(Icons.dns_rounded,color:t.colorScheme.primary),const SizedBox(width:10),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+     Text(p.name,maxLines:1,overflow:TextOverflow.ellipsis,style:t.textTheme.titleSmall?.copyWith(fontWeight:FontWeight.w800)),
+     Text('${p.protocol} · ${p.address}',maxLines:1,overflow:TextOverflow.ellipsis,style:t.textTheme.bodySmall)]))]),
+    Row(mainAxisAlignment:MainAxisAlignment.end,children:[TextButton.icon(onPressed:()=>deleteProfile(p),icon:const Icon(Icons.delete_outline),label:const Text('Delete')),
+     const SizedBox(width:8),FilledButton.tonalIcon(onPressed:()=>editProfile(p),icon:const Icon(Icons.edit_outlined),label:const Text('Edit'))])
+   ])));
+  }))
+ ]);
+ Widget dnsTab(ThemeData t)=>ListView(padding:const EdgeInsets.only(top:12),children:[
+  Text('DNS settings',style:t.textTheme.titleMedium?.copyWith(fontWeight:FontWeight.w800)),
+  const SizedBox(height:8),const Text('Saved separately from BPB DNS settings.'),
+  const SizedBox(height:18),TextField(controller:remote,decoration:const InputDecoration(labelText:'Remote DNS',hintText:'1.1.1.1')),
+  const SizedBox(height:14),TextField(controller:local,decoration:const InputDecoration(labelText:'Local DNS',hintText:'localhost')),
+  const SizedBox(height:18),FilledButton.icon(onPressed:()async{await V2rayStore.saveDns(remote.text.trim(),local.text.trim());note('V2Ray DNS settings saved.');},icon:const Icon(Icons.save_outlined),label:const Text('Save DNS settings'))
+ ]);
+ Widget empty(String title,String body)=>Center(child:Padding(padding:const EdgeInsets.all(24),child:Column(mainAxisSize:MainAxisSize.min,children:[
+  Icon(Icons.dns_outlined,size:42,color:Theme.of(context).colorScheme.onSurfaceVariant),const SizedBox(height:12),
+  Text(title,style:Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight:FontWeight.w800)),
+  const SizedBox(height:6),Text(body,textAlign:TextAlign.center)
+ ])));
 }
