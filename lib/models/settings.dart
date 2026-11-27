@@ -941,7 +941,7 @@ class RoutingSettings {
       geoCountry: const {'iran', 'china', 'russia'}.contains(j['country'])
           ? j['country'] as String
           : d.geoCountry,
-      geoFilesCountry: const {'iran', 'china', 'russia'}.contains(j['geoFilesCountry'])
+      geoFilesCountry: const {'iran', 'china', 'russia', 'unknown'}.contains(j['geoFilesCountry'])
           ? j['geoFilesCountry'] as String
           : d.geoFilesCountry,
       bypass: RuleGroup.parse(j['bypass'], d.bypass),
