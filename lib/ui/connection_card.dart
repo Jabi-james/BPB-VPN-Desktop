@@ -90,6 +90,7 @@ class ConnectionCardState extends State<ConnectionCard> {
                           selector: ChipMenu(
                             values: CoreType.values, selected: state.core,
                             label: (core) => core.label, onSelected: state.setCore,
+                            isValueEnabled: (core) => state.isCoreRegistered(core, state.mode),
                             enabled: !state.isBusy)),
                       if (state.hasModeOption)
                         const _Row(icon: Symbols.tune_rounded, color: Color(0xFF26BFA5), label: 'Mode',
