@@ -242,7 +242,7 @@ class _CloudflareIpResolver {
                 address.isLoopback ||
                 address.isLinkLocal ||
                 address.isMulticast ||
-                address.isUnspecified) {
+                address.rawAddress.every((byte) => byte == 0)) {
               continue;
             }
             final recordTtl = raw['TTL'] is num ? (raw['TTL'] as num).toInt() : 300;
