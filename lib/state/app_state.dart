@@ -465,6 +465,14 @@ class AppState extends ChangeNotifier {
       _prefs,
     );
     device = DeviceSettings.fromJson(_decodeMap(_prefs.getString(_kDevice)));
+    if (Platform.isWindows) {
+      // Keep existing installs working; the Setup row awaits this same operation and reports its result.
+      final attempt = VpnChannel.provisionAetherIdentities(_aetherConfigDir);
+      _aetherProvisioning = attempt;
+      unawaited(attempt.catchError((_) {
+        if (identical(_aetherProvisioning, attempt)) _aetherProvisioning = null;
+      }));
+    }
     if (_prefs.containsKey('configOverrides')) {
       await _prefs.remove('configOverrides');
     }
@@ -506,10 +514,14 @@ class AppState extends ChangeNotifier {
     }
     final previous = _aetherProvisioning;
     if (previous != null) {
-      // Share an in-flight attempt, or reuse its successful result.
-      // A failed attempt is cleared by its original caller so the next user retry can run.
-      await previous;
-      return;
+      try {
+        // Share an in-flight attempt, or reuse its successful result.
+        await previous;
+        return;
+      } catch (_) {
+        // Startup provisioning may have failed; let the visible Setup step retry it.
+        if (identical(_aetherProvisioning, previous)) _aetherProvisioning = null;
+      }
     }
     final attempt = VpnChannel.provisionAetherIdentities(_aetherConfigDir);
     _aetherProvisioning = attempt;
