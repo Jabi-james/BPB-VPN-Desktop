@@ -24,6 +24,7 @@ class ConnectionCard extends StatefulWidget {
 class ConnectionCardState extends State<ConnectionCard> {
   final LayerLink _link = LayerLink();
   OverlayEntry? _panelEntry;
+  String _selectedBackend = 'BPB';
 
   void collapse() {
     final entry = _panelEntry;
@@ -84,44 +85,56 @@ class ConnectionCardState extends State<ConnectionCard> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      StatefulBuilder(
-                        builder: (tabContext, setTabState) => Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: scheme.surface.withValues(alpha: 0.55),
-                              borderRadius: BorderRadius.circular(13),
-                              border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.65)),
-                            ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: _BackendTab(
-                                    label: 'BPB',
-                                    selected: true,
-                                    onTap: () {},
-                                  ),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: scheme.surface.withValues(alpha: 0.55),
+                            borderRadius: BorderRadius.circular(13),
+                            border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.65)),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _BackendTab(
+                                  label: 'BPB',
+                                  selected: _selectedBackend == 'BPB',
+                                  onTap: () {
+                                    _selectedBackend = 'BPB';
+                                    _panelEntry?.markNeedsBuild();
+                                  },
                                 ),
-                                const SizedBox(width: 4),
-                                Expanded(
-                                  child: _BackendTab(
-                                    label: 'V2Ray',
-                                    selected: false,
-                                    onTap: () {
-                                      final navigator = Navigator.of(tabContext);
-                                      collapse();
-                                      navigator.push(MaterialPageRoute(
-                                        builder: (_) => const V2rayManagerPage(),
-                                      ));
-                                    },
-                                  ),
+                              ),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: _BackendTab(
+                                  label: 'V2Ray',
+                                  selected: _selectedBackend == 'V2Ray',
+                                  onTap: () {
+                                    _selectedBackend = 'V2Ray';
+                                    _panelEntry?.markNeedsBuild();
+                                  },
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
+                      if (_selectedBackend == 'V2Ray')
+                        ConstrainedBox(
+                          constraints: BoxConstraints(maxHeight: media.size.height * 0.62),
+                          child: V2rayHomePanel(
+                            onOpenSettings: () {
+                              final navigator = Navigator.of(overlayContext);
+                              collapse();
+                              navigator.push(MaterialPageRoute(
+                                builder: (_) => const V2rayManagerPage(),
+                              ));
+                            },
+                          ),
+                        )
+                      else ...[
                       _Row(icon: Symbols.category_rounded, color: const Color(0xFF4F9BFF), label: 'Type',
                         selector: const _TypeSelector()),
                       if (state.showCoreSelector)
@@ -162,6 +175,7 @@ class ConnectionCardState extends State<ConnectionCard> {
                             subtitleBadges: (c) => ChainInfo.of(c.link)?.tags ?? const [],
                             onSelected: state.setExitChain,
                             enabled: !state.isBusy && state.usableChains.length > 1)),
+                      ],
                     ],
                   ),
                 ),
