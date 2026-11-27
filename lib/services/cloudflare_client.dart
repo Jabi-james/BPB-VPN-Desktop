@@ -109,7 +109,7 @@ class CloudflareClient extends http.BaseClient {
         final resolved = await _CloudflareIpResolver.resolve(host);
         final candidates = <String>{
           ...resolved,
-          if (_fallbackDial[host] case final fallback?) fallback,
+          ?_fallbackDial[host],
         };
         for (final ip in candidates) {
           final dialAddress = ip.contains(':') ? '[$ip]:443' : '$ip:443';
