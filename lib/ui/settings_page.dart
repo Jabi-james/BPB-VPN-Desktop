@@ -2095,9 +2095,19 @@ class _RulesTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
+    final routing = state.profile.routing;
     final enabled = [
       for (final e in labels.entries)
         if (state.readBool('routing.$group.presets.${e.key}')) e.value,
+    ];
+    final countrySummary = group == 'bypass'
+        ? routing.geoFilesCountry != routing.geoCountry
+            ? 'Please Update Geo Files'
+            : '${RoutingPage.geoCountries[routing.geoCountry] ?? 'Country'} Geo Rules'
+        : null;
+    final presetSummary = [
+      if (countrySummary != null) countrySummary,
+      if (enabled.isNotEmpty) enabled.join(', '),
     ];
     final custom =
         state.readList('routing.$group.domains').length +
@@ -2107,7 +2117,7 @@ class _RulesTile extends StatelessWidget {
       title: Text(title),
       subtitle: Text(
         [
-          enabled.isEmpty ? 'No presets' : enabled.join(', '),
+          presetSummary.isEmpty ? 'No presets' : presetSummary.join(', '),
           if (custom > 0) '$custom custom',
         ].join(' · '),
         maxLines: 2,
