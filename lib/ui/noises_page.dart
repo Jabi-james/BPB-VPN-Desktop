@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'app_toast.dart';
 import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
@@ -114,8 +115,7 @@ class _NoisesPageState extends State<NoisesPage> {
       'max': int.parse(_resetMax.text.trim()),
     });
     setState(() => _dirty = false);
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('UDP noises saved')));
+    AppToast.showSnackBar(context, const SnackBar(content: Text('UDP noises saved')));
   }
 
   Future<bool> _confirmDiscard() async {
