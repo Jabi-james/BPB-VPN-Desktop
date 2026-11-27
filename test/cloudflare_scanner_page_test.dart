@@ -347,10 +347,9 @@ void main() {
       tester.getTopLeft(row3.first).dy - tester.getBottomLeft(row2.first).dy,
       12,
     );
-    expect(
-      tester.getTopLeft(find.text('Custom CIDRs')).dy,
-      greaterThan(tester.getBottomLeft(row3.last).dy),
-    );
+    final customCidrsTop = tester.getTopLeft(find.text('Custom CIDRs')).dy;
+    expect(customCidrsTop, greaterThan(tester.getTopLeft(row3.first).dy));
+    expect(customCidrsTop, lessThan(tester.getBottomLeft(row3.first).dy));
   });
 
   testWidgets('custom CIDRs persist on the page and selected entries lead', (
