@@ -1,11 +1,12 @@
 // ignore_for_file: use_build_context_synchronously
 
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'app_toast.dart';
 import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:screen_capturer/screen_capturer.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../models/settings.dart';
@@ -156,10 +157,49 @@ Future<String?> _scanDesktopQr() async {
     hidden = true;
     // Give DWM time to remove the BPB window before the desktop capture.
     await Future<void>.delayed(const Duration(milliseconds: 350));
-    final captured = await screenCapturer.capture(mode: CaptureMode.screen);
-    final bytes = captured?.imageBytes;
-    if (bytes == null || bytes.isEmpty) return null;
-    return decodeDesktopQr(bytes);
+    final captureDirectory = await Directory.systemTemp.createTemp('bpb-qr-scan-');
+    try {
+      final capturePath = '${captureDirectory.path}${Platform.pathSeparator}desktop.png';
+      const script = r'''
+Add-Type -AssemblyName System.Drawing
+Add-Type -AssemblyName System.Windows.Forms
+$bounds = [System.Windows.Forms.SystemInformation]::VirtualScreen
+if ($bounds.Width -le 0 -or $bounds.Height -le 0) { throw 'No screen is available for capture.' }
+$bitmap = [System.Drawing.Bitmap]::new($bounds.Width, $bounds.Height)
+$graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+try {
+  $graphics.CopyFromScreen($bounds.Left, $bounds.Top, 0, 0, $bitmap.Size)
+  $bitmap.Save($env:BPB_QR_CAPTURE_PATH, [System.Drawing.Imaging.ImageFormat]::Png)
+} finally {
+  $graphics.Dispose()
+  $bitmap.Dispose()
+}
+''';
+      final result = await Process.run(
+        'powershell.exe',
+        ['-NoProfile', '-NonInteractive', '-STA', '-Command', script],
+        environment: {'BPB_QR_CAPTURE_PATH': capturePath},
+      );
+      if (result.exitCode != 0) {
+        throw StateError('Windows screen capture failed: ${result.stderr}');
+      }
+      final screenshot = File(capturePath);
+      if (!await screenshot.exists()) return null;
+      final bytes = await screenshot.readAsBytes();
+      if (bytes.isEmpty) return null;
+      return decodeDesktopQr(bytes);
+    } finally {
+      try {
+        if (await captureDirectory.exists()) {
+          await captureDirectory.delete(recursive: true);
+        }
+      } finally {
+        if (hidden) {
+          await windowManager.show();
+          await windowManager.focus();
+        }
+      }
+    }
   } finally {
     if (hidden) {
       await windowManager.show();
