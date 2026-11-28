@@ -129,7 +129,7 @@ class ChainProxiesPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'Traffic exits through the chain proxy when Chain proxy is selected as the exit node.\\n'
+                  'Traffic exits through the chain proxy when Chain proxy is selected as the exit node.\n'
                   'WireGuard and Hysteria protocols work over WARP and MASQUE only.',
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                 ),
