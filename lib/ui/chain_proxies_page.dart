@@ -4,11 +4,13 @@ import 'package:flutter/material.dart';
 import 'app_toast.dart';
 import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:screen_capturer/screen_capturer.dart';
+import 'package:window_manager/window_manager.dart';
 
 import '../models/settings.dart';
 import '../services/chain_proxy.dart';
+import '../services/desktop_qr_scanner.dart';
 import '../services/vpn_channel.dart';
 import '../state/app_state.dart';
 import 'chip_menu.dart';
@@ -71,7 +73,7 @@ class ChainProxiesPage extends StatelessWidget {
         case 'clipboard':
           text = (await Clipboard.getData(Clipboard.kTextPlain))?.text;
         case 'qr':
-          text = await navigator.push<String>(MaterialPageRoute(builder: (_) => const _QrScanPage()));
+          text = await _scanDesktopQr();
         default:
           final file = await VpnChannel.pickFile();
           text = file?.content;
@@ -79,6 +81,13 @@ class ChainProxiesPage extends StatelessWidget {
       }
     } on PlatformException catch (e) {
       AppToast.showSnackBar(context, SnackBar(content: Text("Couldn't read the file: ${e.message}")));
+      return;
+    } catch (e) {
+      AppToast.showSnackBar(context, SnackBar(content: Text('Desktop QR scan failed: $e')));
+      return;
+    }
+    if (source == 'qr' && (text == null || text.trim().isEmpty)) {
+      AppToast.showSnackBar(context, const SnackBar(content: Text('No QR code found on the desktop screen')));
       return;
     }
     if (source == 'clipboard' && (text == null || text.trim().isEmpty)) {
@@ -136,6 +145,27 @@ class ChainProxiesPage extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+
+/// Hides BPB temporarily, captures the Windows desktop, decodes a QR code and restores BPB.
+Future<String?> _scanDesktopQr() async {
+  var hidden = false;
+  try {
+    await windowManager.hide();
+    hidden = true;
+    // Give DWM time to remove the BPB window before the desktop capture.
+    await Future<void>.delayed(const Duration(milliseconds: 350));
+    final captured = await screenCapturer.capture(mode: CaptureMode.screen);
+    final bytes = captured?.imageBytes;
+    if (bytes == null || bytes.isEmpty) return null;
+    return decodeDesktopQr(bytes);
+  } finally {
+    if (hidden) {
+      await windowManager.show();
+      await windowManager.focus();
+    }
   }
 }
 
@@ -231,35 +261,3 @@ class _ChainTile extends StatelessWidget {
   }
 }
 
-/// The camera, until it sees a QR code; pops with its text.
-class _QrScanPage extends StatefulWidget {
-  const _QrScanPage();
-
-  @override
-  State<_QrScanPage> createState() => _QrScanPageState();
-}
-
-class _QrScanPageState extends State<_QrScanPage> {
-  final _controller = MobileScannerController(formats: const [BarcodeFormat.qrCode]);
-  bool _done = false;
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Scan QR code')),
-    body: MobileScanner(
-      controller: _controller,
-      onDetect: (capture) {
-        final text = capture.barcodes.map((b) => b.rawValue).nonNulls.firstOrNull;
-        if (_done || text == null) return;
-        _done = true;
-        Navigator.of(context).pop(text);
-      },
-    ),
-  );
-}
