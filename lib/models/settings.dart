@@ -709,6 +709,8 @@ class SshSettings {
   final String password;
   final String privateKey;
   final String passphrase;
+  /// SHA256 fingerprint of the SSH server's host public key.
+  final String hostKey;
   final int tcpKeepAliveInterval;
   final int keepAliveInterval;
 
@@ -719,6 +721,7 @@ class SshSettings {
     this.password = '',
     this.privateKey = '',
     this.passphrase = '',
+    this.hostKey = '',
     this.tcpKeepAliveInterval = 15,
     this.keepAliveInterval = 15,
   });
@@ -733,6 +736,7 @@ class SshSettings {
       password: _str(j['password'], d.password),
       privateKey: _str(j['privateKey'], d.privateKey),
       passphrase: _str(j['passphrase'], d.passphrase),
+      hostKey: _str(j['hostKey'], d.hostKey).trim(),
       tcpKeepAliveInterval: _int(j['tcpKeepAliveInterval'], d.tcpKeepAliveInterval),
       keepAliveInterval: _int(j['keepAliveInterval'], d.keepAliveInterval),
     );
@@ -745,6 +749,7 @@ class SshSettings {
     'password': password,
     'privateKey': privateKey,
     'passphrase': passphrase,
+    'hostKey': hostKey,
     'tcpKeepAliveInterval': tcpKeepAliveInterval,
     'keepAliveInterval': keepAliveInterval,
   };

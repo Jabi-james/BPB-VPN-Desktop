@@ -25,6 +25,7 @@ class _SshSettingsPageState extends State<SshSettingsPage> {
   late final TextEditingController _password;
   late final TextEditingController _key;
   late final TextEditingController _passphrase;
+  late final TextEditingController _hostKey;
   late final TextEditingController _keepAlive;
   late final TextEditingController _tcpKeepAlive;
   bool _dirty = false;
@@ -40,6 +41,7 @@ class _SshSettingsPageState extends State<SshSettingsPage> {
     _password = TextEditingController(text: _initial.password)..addListener(_updateDirty);
     _key = TextEditingController(text: _initial.privateKey)..addListener(_updateDirty);
     _passphrase = TextEditingController(text: _initial.passphrase)..addListener(_updateDirty);
+    _hostKey = TextEditingController(text: _initial.hostKey)..addListener(_updateDirty);
     _keepAlive = TextEditingController(text: '${_initial.keepAliveInterval}')..addListener(_updateDirty);
     _tcpKeepAlive = TextEditingController(
       text: '${_initial.tcpKeepAliveInterval}',
@@ -57,6 +59,7 @@ class _SshSettingsPageState extends State<SshSettingsPage> {
     _password.dispose();
     _key.dispose();
     _passphrase.dispose();
+    _hostKey.dispose();
     _keepAlive.dispose();
     _tcpKeepAlive.dispose();
     super.dispose();
@@ -71,6 +74,7 @@ class _SshSettingsPageState extends State<SshSettingsPage> {
     state.write('ssh.password', _password.text);
     state.write('ssh.privateKey', _key.text.trim());
     state.write('ssh.passphrase', _passphrase.text);
+    state.write('ssh.hostKey', _hostKey.text.trim());
     state.write('ssh.keepAliveInterval', int.parse(_keepAlive.text));
     state.write(
       'ssh.tcpKeepAliveInterval',
@@ -81,7 +85,7 @@ class _SshSettingsPageState extends State<SshSettingsPage> {
       setState(() => _dirty = false);
       widget.onSaveStateChanged?.call(_save, false);
       if (widget.embedded) {
-        AppToast.showSnackBar(context, 
+        AppToast.showSnackBar(context,
           const SnackBar(content: Text('SSH settings saved')),
         );
       }
@@ -96,6 +100,7 @@ class _SshSettingsPageState extends State<SshSettingsPage> {
         _password.text != _initial.password ||
         _key.text.trim() != _initial.privateKey ||
         _passphrase.text != _initial.passphrase ||
+        _hostKey.text.trim() != _initial.hostKey ||
         _keepAlive.text != '${_initial.keepAliveInterval}' ||
         _tcpKeepAlive.text != '${_initial.tcpKeepAliveInterval}';
     if (_dirty != dirty && mounted) {
@@ -187,6 +192,15 @@ class _SshSettingsPageState extends State<SshSettingsPage> {
                     validator: _required,
                   ),
                   TextFormField(
+                    controller: _hostKey,
+                    decoration: const InputDecoration(
+                      labelText: 'SSH host key fingerprint (SHA256)',
+                      helperText: 'Verify this value from your hosting provider or server console. Do not trust a fingerprint copied from an unverified connection.',
+                    ),
+                    autocorrect: false,
+                    validator: _hostKeyValidator,
+                  ),
+                  TextFormField(
                     controller: _password,
                     decoration: InputDecoration(
                       labelText: 'Password',
@@ -267,6 +281,15 @@ class _SshSettingsPageState extends State<SshSettingsPage> {
 
   String? _required(String? value) =>
       value == null || value.trim().isEmpty ? 'Required' : null;
+
+  String? _hostKeyValidator(String? value) {
+    final fingerprint = value?.trim() ?? '';
+    if (fingerprint.isEmpty) return 'Required to verify the SSH server identity';
+    if (!RegExp(r'^SHA256:[A-Za-z0-9+/]{43}$').hasMatch(fingerprint)) {
+      return 'Enter a valid SHA256 fingerprint (SHA256: followed by 43 characters)';
+    }
+    return null;
+  }
 
   String? _number(String? value, int min, int max) {
     final number = int.tryParse(value ?? '');

@@ -10,6 +10,7 @@ import (
 	"log"
 	"net"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -29,8 +30,24 @@ type Config struct {
 	Password             string `json:"password"`
 	PrivateKey           string `json:"privateKey"`
 	Passphrase           string `json:"passphrase"`
+	HostKey              string `json:"hostKey"`
 	KeepAliveInterval    int    `json:"keepAliveInterval"`
 	TCPKeepAliveInterval int    `json:"tcpKeepAliveInterval"`
+}
+
+// validHostKeyFingerprint accepts the unpadded SHA256 fingerprint format emitted by
+// golang.org/x/crypto/ssh.FingerprintSHA256.
+func validHostKeyFingerprint(value string) bool {
+	if !strings.HasPrefix(value, "SHA256:") || len(value) != len("SHA256:")+43 {
+		return false
+	}
+	for _, r := range value[len("SHA256:"):] {
+		if !(r >= 'A' && r <= 'Z' || r >= 'a' && r <= 'z' ||
+			r >= '0' && r <= '9' || r == '+' || r == '/') {
+			return false
+		}
+	}
+	return true
 }
 
 // Server owns the SSH connection, SOCKS listener, and reconnect loop.
@@ -50,6 +67,9 @@ func Start(c Config) (*Server, error) {
 	if c.Password == "" && c.PrivateKey == "" {
 		return nil, errors.New("SSH password or private key is required")
 	}
+	if !validHostKeyFingerprint(strings.TrimSpace(c.HostKey)) {
+		return nil, errors.New("a valid SHA256 SSH host key fingerprint is required; verify it from a trusted server console")
+	}
 	server := net.JoinHostPort(c.Host, strconv.Itoa(c.Port))
 	socks, err := net.Listen("tcp", socksListenAddress)
 	if err != nil {
@@ -58,7 +78,7 @@ func Start(c Config) (*Server, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	s, err := newSession(config{
 		Server: server, User: c.User, Password: c.Password,
-		PrivateKey: c.PrivateKey, Passphrase: c.Passphrase,
+		PrivateKey: c.PrivateKey, Passphrase: c.Passphrase, HostKey: strings.TrimSpace(c.HostKey),
 		KeepAliveInterval:    c.KeepAliveInterval,
 		TCPKeepAliveInterval: c.TCPKeepAliveInterval,
 	})
