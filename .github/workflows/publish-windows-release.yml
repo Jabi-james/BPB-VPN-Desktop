@@ -87,10 +87,9 @@ jobs:
             }
 
             core.setOutput('version', versionMatch[1]);
-            core.setOutput('build', String(run.run_number));
             core.setOutput('source_sha', run.head_sha);
             core.setOutput('run_url', run.html_url);
-            core.setOutput('tag', 'v' + versionMatch[1] + '-build.' + run.run_number);
+            core.setOutput('tag', 'v' + versionMatch[1]);
 
       - name: Download selected Windows installer artifact
         uses: actions/download-artifact@v4
@@ -115,7 +114,6 @@ jobs:
         shell: pwsh
         env:
           VERSION: ${{ steps.metadata.outputs.version }}
-          BUILD: ${{ steps.metadata.outputs.build }}
         run: |
           $ErrorActionPreference = "Stop"
           $out = Join-Path $env:RUNNER_TEMP "release-assets"
@@ -158,7 +156,6 @@ jobs:
           SOURCE_REPO: Jabi-james/BPB-VPN-Desktop
           TAG: ${{ steps.metadata.outputs.tag }}
           VERSION: ${{ steps.metadata.outputs.version }}
-          BUILD: ${{ steps.metadata.outputs.build }}
           SOURCE_SHA: ${{ steps.metadata.outputs.source_sha }}
           SOURCE_RUN_URL: ${{ steps.metadata.outputs.run_url }}
         run: |
@@ -201,7 +198,6 @@ jobs:
           ## BPB VPN for Windows
 
           - **Version:** $VERSION
-          - **Build:** $BUILD
           - **Architecture:** Windows x64
 
           ### What's Changed
@@ -223,6 +219,6 @@ jobs:
             "$assets/bpb-vpn-windows-x64-installer.exe" \
             "$assets/bpb-vpn-windows-x64.zip" \
             --repo "$DEST_REPO" \
-            --title "BPB VPN $VERSION Build $BUILD" \
+            --title "BPB VPN $VERSION" \
             --notes-file "$notes" \
             --target main
