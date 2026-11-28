@@ -263,3 +263,14 @@ func TestSocksHandshakeTimeout(t *testing.T) {
 		t.Fatalf("read: %v, want the server to close the stalled connection", err)
 	}
 }
+func TestStartRequiresValidHostKeyFingerprint(t *testing.T) {
+	base := Config{Host: "127.0.0.1", Port: 22, User: "u", Password: "p"}
+	if _, err := Start(base); err == nil || !strings.Contains(err.Error(), "fingerprint") {
+		t.Fatalf("Start without a fingerprint: %v, want a fingerprint validation error", err)
+	}
+	base.HostKey = "SHA256:invalid"
+	if _, err := Start(base); err == nil || !strings.Contains(err.Error(), "fingerprint") {
+		t.Fatalf("Start with an invalid fingerprint: %v, want a fingerprint validation error", err)
+	}
+}
+
