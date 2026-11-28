@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:bpb/models/settings.dart';
 import 'package:bpb/services/xray_config.dart';
+import 'package:bpb/services/geoip_cidr_extractor.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Tags (country_code) in a geosite.dat / geoip.dat: a protobuf list whose entries
@@ -53,6 +54,15 @@ void main() {
 
       final geosite = datTags(geositeFile.path);
       final geoip = datTags(geoipFile.path);
+
+      expect(geoip, contains('cloudflare'));
+      final extractedCloudflare = GeoIpCidrExtractor.extractCloudflareCidrs(
+        geoipFile.readAsBytesSync(),
+      );
+      final bundledVlessCidrs = File(
+        'assets/scanner/vless-cidrs.txt',
+      ).readAsLinesSync().map((line) => line.trim()).where((line) => line.isNotEmpty).toList();
+      expect(bundledVlessCidrs, extractedCloudflare);
 
       // Every routing preset on.
       Map<String, dynamic> all(Map<String, bool> presets) => {
