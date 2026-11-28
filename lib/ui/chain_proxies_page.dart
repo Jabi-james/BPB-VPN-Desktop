@@ -129,7 +129,7 @@ class ChainProxiesPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'Traffic exits through the chain proxy when Chain proxy is selected as the exit node.\n'
+                  'Traffic exits through the chain proxy when Chain proxy is selected as the exit node.\\n'
                   'WireGuard and Hysteria protocols work over WARP and MASQUE only.',
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                 ),
@@ -148,23 +148,37 @@ class ChainProxiesPage extends StatelessWidget {
   }
 }
 
-
-/// Hides BPB temporarily, captures the Windows desktop, decodes a QR code and restores BPB.
+/// Hides BPB temporarily, captures the primary desktop work area, decodes a QR code and restores BPB.
 Future<String?> _scanDesktopQr() async {
   var hidden = false;
   try {
     await windowManager.hide();
     hidden = true;
-    // Give DWM time to remove the BPB window before the desktop capture.
-    await Future<void>.delayed(const Duration(milliseconds: 350));
+    // Match v2rayN's screen-scan delay before taking the desktop screenshot.
+    await Future<void>.delayed(const Duration(milliseconds: 200));
     final captureDirectory = await Directory.systemTemp.createTemp('bpb-qr-scan-');
     try {
       final capturePath = '${captureDirectory.path}${Platform.pathSeparator}desktop.png';
       const script = r'''
+Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public static class BpbDpiAwareness {
+  [DllImport("user32.dll", SetLastError = true)]
+  public static extern bool SetProcessDpiAwarenessContext(IntPtr value);
+  [DllImport("user32.dll", SetLastError = true)]
+  public static extern bool SetProcessDPIAware();
+}
+"@
+# Use physical desktop coordinates, including high-DPI displays.
+if (-not [BpbDpiAwareness]::SetProcessDpiAwarenessContext([IntPtr](-4))) {
+  [void][BpbDpiAwareness]::SetProcessDPIAware()
+}
 Add-Type -AssemblyName System.Drawing
 Add-Type -AssemblyName System.Windows.Forms
-$bounds = [System.Windows.Forms.SystemInformation]::VirtualScreen
-if ($bounds.Width -le 0 -or $bounds.Height -le 0) { throw 'No screen is available for capture.' }
+# v2rayN captures the primary monitor's work area rather than the entire virtual desktop.
+$bounds = [System.Windows.Forms.SystemInformation]::WorkingArea
+if ($bounds.Width -le 0 -or $bounds.Height -le 0) { throw 'No screen work area is available for capture.' }
 $bitmap = [System.Drawing.Bitmap]::new($bounds.Width, $bounds.Height)
 $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
 try {
@@ -292,4 +306,3 @@ class _ChainTile extends StatelessWidget {
     );
   }
 }
-
