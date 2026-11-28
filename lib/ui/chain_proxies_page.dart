@@ -65,7 +65,6 @@ class ChainProxiesPage extends StatelessWidget {
       ),
     );
     if (source == null || !context.mounted) return;
-    final navigator = Navigator.of(context);
     final String? text;
     String? fileName;
     try {
