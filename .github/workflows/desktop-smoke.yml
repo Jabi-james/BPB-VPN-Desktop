@@ -121,6 +121,9 @@ jobs:
         shell: bash
         run: bash scripts/fetch_geo.sh
 
+      - name: Generate VLESS scanner CIDRs from geoip:cloudflare
+        run: dart run tool/generate_vless_cidrs.dart android/app/src/main/assets/geoip.dat assets/scanner/vless-cidrs.txt
+
       - name: Fetch Tor bridges required by the setup wizard
         shell: bash
         run: bash scripts/fetch_tor_bridges.sh
