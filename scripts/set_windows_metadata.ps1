@@ -14,7 +14,7 @@ $rcSource = [regex]::Replace($rcSource, '(?m)^[ \t]*VALUE "FileDescription".*\r?
 $rcSource = [regex]::Replace($rcSource, '(?m)^[ \t]*VALUE "FileVersion".*\r?\n', '')
 $rcSource = [regex]::Replace($rcSource, '(?m)^[ \t]*VALUE "Comments".*\r?\n', '')
 $rcSource = [regex]::Replace($rcSource, '(?m)^[ \t]*VALUE "ProductName".*$', '            VALUE "ProductName", "BPB VPN Desktop\0"')
-$rcSource = [regex]::Replace($rcSource, '(?m)^[ \t]*VALUE "ProductVersion".*$', '            VALUE "ProductVersion", "1.3.0\0"')
+$rcSource = [regex]::Replace($rcSource, '(?m)^[ \t]*VALUE "ProductVersion".*$', '            VALUE "ProductVersion", "1.3.2\0"')
 
 $lines = $rcSource -split "\r?\n"
 $updatedLines = [System.Collections.Generic.List[string]]::new()
@@ -32,14 +32,14 @@ $rcSource = $updatedLines -join [Environment]::NewLine
 # Runner.rc from Flutter 3.47.7 indents these directives by one space.
 # Match optional horizontal indentation so the fixed numeric versions are actually updated.
 $rcSource = [regex]::Replace($rcSource, '(?m)^[ \t]*FILEVERSION[ \t]+.*$', ' FILEVERSION 0,0,0,0')
-$rcSource = [regex]::Replace($rcSource, '(?m)^[ \t]*PRODUCTVERSION[ \t]+.*$', ' PRODUCTVERSION 1,3,0,0')
+$rcSource = [regex]::Replace($rcSource, '(?m)^[ \t]*PRODUCTVERSION[ \t]+.*$', ' PRODUCTVERSION 1,3,2,0')
 
 if ($rcSource -match 'VALUE "FileDescription"|VALUE "FileVersion"|VALUE "Comments"' -or
     !$rcSource.Contains('VALUE "ProductName", "BPB VPN Desktop\0"') -or
-    !$rcSource.Contains('VALUE "ProductVersion", "1.3.0\0"') -or
+    !$rcSource.Contains('VALUE "ProductVersion", "1.3.2\0"') -or
     !$rcSource.Contains('VALUE "CompanyName", "NotDev\0"') -or
     $rcSource -notmatch '(?m)^[ \t]*FILEVERSION 0,0,0,0$' -or
-    $rcSource -notmatch '(?m)^[ \t]*PRODUCTVERSION 1,3,0,0$') {
+    $rcSource -notmatch '(?m)^[ \t]*PRODUCTVERSION 1,3,2,0$') {
     throw "Windows VERSIONINFO metadata did not match the requested BPB fields."
 }
 
@@ -47,7 +47,7 @@ if ($rcSource -match 'VALUE "FileDescription"|VALUE "FileVersion"|VALUE "Comment
 $written = Get-Content $rc -Raw
 if ($written -notmatch '(?s)VALUE "ProductVersion", "1\.3\.0\\0".*?VALUE "CompanyName", "NotDev\\0"' -or
     $written -notmatch '(?m)^[ \t]*FILEVERSION 0,0,0,0$' -or
-    $written -notmatch '(?m)^[ \t]*PRODUCTVERSION 1,3,0,0$') {
+    $written -notmatch '(?m)^[ \t]*PRODUCTVERSION 1,3,2,0$') {
     throw "Windows VERSIONINFO metadata was not written exactly as requested."
 }
-Write-Host "Configured Runner.rc: CompanyName=NotDev, ProductName=BPB VPN Desktop, ProductVersion=1.3.0; FileVersion string is absent; fixed versions are File=0.0.0.0 and Product=1.3.0.0."
+Write-Host "Configured Runner.rc: CompanyName=NotDev, ProductName=BPB VPN Desktop, ProductVersion=1.3.2; FileVersion string is absent; fixed versions are File=0.0.0.0 and Product=1.3.2.0."
