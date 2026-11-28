@@ -3,6 +3,8 @@ name: Publish Windows Release
 on:
   push:
     branches: [main]
+    paths:
+      - .github/workflows/publish-windows-release.yml
   workflow_dispatch:
     inputs:
       run_id:
@@ -21,19 +23,14 @@ permissions:
 
 jobs:
   publish:
-    if: >-
-      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.confirm_publish == true) ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/main' &&
-       github.event.head_commit.message == 'chore(release): trigger approved 1.3.2 publication')
-    env:
-      SELECTED_RUN_ID: ${{ github.event_name == 'workflow_dispatch' && inputs.run_id || '46135603056' }}
+    if: github.event_name == 'push' || inputs.confirm_publish == true
     runs-on: windows-latest
     steps:
       - name: Validate selected successful build and its artifacts
         id: metadata
         uses: actions/github-script@v7
         env:
-          RUN_ID: ${{ env.SELECTED_RUN_ID }}
+          RUN_ID: ${{ inputs.run_id || '46135603056' }}
         with:
           script: |
             const runIdText = process.env.RUN_ID || '';
@@ -104,7 +101,7 @@ jobs:
           name: bpb-windows-installer
           path: ${{ runner.temp }}/bpb-installer
           repository: ${{ github.repository }}
-          run-id: ${{ env.SELECTED_RUN_ID }}
+          run-id: ${{ inputs.run_id || '46135603056' }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Download selected Windows portable artifact
