@@ -44,6 +44,13 @@ void main() {
     expect(decodeDesktopQr(_qrPng(link)), link);
   });
 
+  test('retries QR decoding after mirroring the desktop screenshot horizontally', () {
+    const link = 'vless://11111111-2222-4333-8444-555555555555@example.com:443#Desktop';
+    final mirrored = img.decodePng(_qrPng(link))!;
+    img.flipHorizontal(mirrored);
+    expect(decodeDesktopQr(Uint8List.fromList(img.encodePng(mirrored))), link);
+  });
+
   test('returns null when the screenshot has no valid QR image', () {
     expect(decodeDesktopQr(Uint8List.fromList([1, 2, 3, 4])), isNull);
   });
