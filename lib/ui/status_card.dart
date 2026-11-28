@@ -538,8 +538,8 @@ class _PowerButtonState extends State<_PowerButton> {
                     color: fill.withValues(
                       alpha: state.isConnected ? 0.55 : 0.35,
                     ),
-                    blurRadius: state.isConnected ? 64 : 48,
-                    spreadRadius: 2,
+                    blurRadius: state.isConnected ? 96 : 72,
+                    spreadRadius: 3,
                     offset: const Offset(0, 10),
                   ),
                   // Tight contact shadow under the button.
@@ -599,21 +599,21 @@ class _PowerGlow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-    width: size + 40,
-    height: size + 40,
+    width: size + 60,
+    height: size + 60,
     child: DecoratedBox(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
             color: color.withValues(alpha: 0.30),
-            blurRadius: 56,
-            spreadRadius: 4,
+            blurRadius: 84,
+            spreadRadius: 6,
           ),
           BoxShadow(
             color: color.withValues(alpha: 0.15),
-            blurRadius: 24,
-            spreadRadius: 2,
+            blurRadius: 36,
+            spreadRadius: 3,
           ),
         ],
       ),
