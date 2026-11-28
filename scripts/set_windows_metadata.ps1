@@ -45,7 +45,7 @@ if ($rcSource -match 'VALUE "FileDescription"|VALUE "FileVersion"|VALUE "Comment
 
 [System.IO.File]::WriteAllText($rc, $rcSource, [System.Text.UTF8Encoding]::new($false))
 $written = Get-Content $rc -Raw
-if ($written -notmatch '(?s)VALUE "ProductVersion", "1\.3\.0\\0".*?VALUE "CompanyName", "NotDev\\0"' -or
+if ($written -notmatch '(?s)VALUE "ProductVersion", "1\.3\.2\\0".*?VALUE "CompanyName", "NotDev\\0"' -or
     $written -notmatch '(?m)^[ \t]*FILEVERSION 0,0,0,0$' -or
     $written -notmatch '(?m)^[ \t]*PRODUCTVERSION 1,3,2,0$') {
     throw "Windows VERSIONINFO metadata was not written exactly as requested."
