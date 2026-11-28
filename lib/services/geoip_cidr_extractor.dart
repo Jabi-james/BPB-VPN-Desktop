@@ -130,12 +130,16 @@ class _ProtoReader {
     switch (wire) {
       case 0:
         readVarint();
+        break;
       case 1:
         readSlice(8);
+        break;
       case 2:
         readSlice(readVarint());
+        break;
       case 5:
         readSlice(4);
+        break;
       default:
         throw FormatException('Unsupported protobuf wire type: $wire.');
     }
