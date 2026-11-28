@@ -51,6 +51,22 @@ void main() {
     expect(decodeDesktopQr(Uint8List.fromList(img.encodePng(mirrored))), link);
   });
 
+  test('decodes a QR embedded in a full desktop-sized screenshot', () {
+    const link = 'vless://11111111-2222-4333-8444-555555555555@example.com:443#Desktop';
+    final qr = img.decodePng(_qrPng(link))!;
+    final desktop = img.Image(width: 1920, height: 1080, numChannels: 4);
+    img.fillRect(
+      desktop,
+      x1: 0,
+      y1: 0,
+      x2: desktop.width - 1,
+      y2: desktop.height - 1,
+      color: img.ColorRgba8(74, 92, 116, 255),
+    );
+    img.compositeImage(desktop, qr, dstX: 720, dstY: 390);
+    expect(decodeDesktopQr(Uint8List.fromList(img.encodePng(desktop))), link);
+  });
+
   test('returns null when the screenshot has no valid QR image', () {
     expect(decodeDesktopQr(Uint8List.fromList([1, 2, 3, 4])), isNull);
   });
