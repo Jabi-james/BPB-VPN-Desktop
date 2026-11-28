@@ -189,15 +189,8 @@ try {
       if (bytes.isEmpty) return null;
       return decodeDesktopQr(bytes);
     } finally {
-      try {
-        if (await captureDirectory.exists()) {
-          await captureDirectory.delete(recursive: true);
-        }
-      } finally {
-        if (hidden) {
-          await windowManager.show();
-          await windowManager.focus();
-        }
+      if (await captureDirectory.exists()) {
+        await captureDirectory.delete(recursive: true);
       }
     }
   } finally {
