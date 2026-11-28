@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
@@ -503,13 +502,11 @@ class _PowerButtonState extends State<_PowerButton> {
         clipBehavior: Clip.none,
         alignment: Alignment.center,
         children: [
-          _PowerHalo(
+          _PowerGlow(
             size: widget.size,
-            color: state.status == VpnStatus.connected
-                ? _green
-                : state.status == VpnStatus.disconnected ? _red : _connecting,
+            color: fill,
           ),
-          if (state.isConnected) _EnergyRing(size: widget.size),
+          if (state.isConnected) _PowerPulse(size: widget.size),
           if (busy)
             Positioned.fill(
               child: CircularProgressIndicator(
@@ -592,24 +589,30 @@ class _PowerButtonState extends State<_PowerButton> {
 }
 
 
-class _PowerHalo extends StatelessWidget {
+/// Soft, colour-matched glow kept visible for every button state.
+class _PowerGlow extends StatelessWidget {
   final double size;
   final Color color;
 
-  const _PowerHalo({required this.size, required this.color});
+  const _PowerGlow({required this.size, required this.color});
 
   @override
   Widget build(BuildContext context) => SizedBox(
-    width: size + 16,
-    height: size + 16,
+    width: size + 20,
+    height: size + 20,
     child: DecoratedBox(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: color.withValues(alpha: 0.22),
+            color: color.withValues(alpha: 0.24),
             blurRadius: 28,
             spreadRadius: 2,
+          ),
+          BoxShadow(
+            color: color.withValues(alpha: 0.12),
+            blurRadius: 12,
+            spreadRadius: 1,
           ),
         ],
       ),
@@ -617,125 +620,63 @@ class _PowerHalo extends StatelessWidget {
   );
 }
 
-/// A rotating, irregular green/cyan energy ring. It is rendered only for a
-/// confirmed connection, never while connecting or disconnected.
-class _EnergyRing extends StatefulWidget {
+/// A restrained green pulse that expands a little, then fades completely.
+class _PowerPulse extends StatefulWidget {
   final double size;
-  const _EnergyRing({required this.size});
+  const _PowerPulse({required this.size});
 
   @override
-  State<_EnergyRing> createState() => _EnergyRingState();
+  State<_PowerPulse> createState() => _PowerPulseState();
 }
 
-class _EnergyRingState extends State<_EnergyRing>
+class _PowerPulseState extends State<_PowerPulse>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _rotation = AnimationController(
+  late final AnimationController _pulse = AnimationController(
     vsync: this,
-    duration: const Duration(seconds: 9),
+    duration: const Duration(milliseconds: 1800),
   )..repeat();
 
   @override
   void dispose() {
-    _rotation.dispose();
+    _pulse.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) => IgnorePointer(
     child: SizedBox(
-      width: widget.size + 48,
-      height: widget.size + 48,
+      width: widget.size + 28,
+      height: widget.size + 28,
       child: AnimatedBuilder(
-        animation: _rotation,
-        builder: (context, _) => CustomPaint(
-          painter: _EnergyRingPainter(_rotation.value),
-        ),
+        animation: _pulse,
+        builder: (context, _) {
+          final t = Curves.easeOut.transform(_pulse.value);
+          final diameter = widget.size * (1.025 + 0.15 * t);
+          final opacity = 0.34 * (1 - t);
+          return Center(
+            child: Container(
+              width: diameter,
+              height: diameter,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: _green.withValues(alpha: opacity),
+                  width: 2.4,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: _green.withValues(alpha: opacity * 0.42),
+                    blurRadius: 10 + 8 * t,
+                    spreadRadius: 1 + 2 * t,
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     ),
   );
-}
-
-class _EnergyRingPainter extends CustomPainter {
-  final double rotation;
-  const _EnergyRingPainter(this.rotation);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width * 0.405;
-    canvas.save();
-    canvas.translate(center.dx, center.dy);
-    canvas.rotate(rotation * math.pi * 2);
-
-    Path makeArc(double phase, double amplitude, double offset) {
-      final path = Path();
-      const steps = 240;
-      for (var i = 0; i <= steps; i++) {
-        final a = i / steps * math.pi * 2;
-        final noise = math.sin(a * 7 + phase) * amplitude +
-            math.sin(a * 13 - phase * 0.7) * amplitude * 0.48 +
-            math.sin(a * 23 + phase * 1.4) * amplitude * 0.22;
-        final r = radius + offset + noise;
-        final point = Offset(math.cos(a) * r, math.sin(a) * r);
-        if (i == 0) {
-          path.moveTo(point.dx, point.dy);
-        } else {
-          path.lineTo(point.dx, point.dy);
-        }
-      }
-      return path;
-    }
-
-    final outerGlow = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 7
-      ..strokeCap = StrokeCap.round
-      ..color = const Color(0xFF00F56A).withValues(alpha: 0.20)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 7);
-    final green = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.8
-      ..strokeCap = StrokeCap.round
-      ..color = const Color(0xFF20FF69).withValues(alpha: 0.88);
-    final cyan = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.8
-      ..strokeCap = StrokeCap.round
-      ..color = const Color(0xFF27E9D2).withValues(alpha: 0.72);
-
-    canvas.drawPath(makeArc(0.4, 4.8, 0), outerGlow);
-    canvas.drawPath(makeArc(0.4, 4.8, 0), green);
-    canvas.drawPath(makeArc(2.1, 3.2, -3.2), cyan);
-
-    // Short, jagged electrical branches around the circumference.
-    for (var i = 0; i < 34; i++) {
-      final a = i * math.pi * 2 / 34;
-      final reach = 7 + (i % 5) * 2.8;
-      final startR = radius + math.sin(i * 2.17) * 4;
-      final direction = (i.isEven ? 1.0 : -1.0);
-      final path = Path()
-        ..moveTo(math.cos(a) * startR, math.sin(a) * startR)
-        ..lineTo(
-          math.cos(a + direction * 0.045) * (startR + reach * 0.42),
-          math.sin(a + direction * 0.045) * (startR + reach * 0.42),
-        )
-        ..lineTo(
-          math.cos(a - direction * 0.025) * (startR + reach * 0.72),
-          math.sin(a - direction * 0.025) * (startR + reach * 0.72),
-        )
-        ..lineTo(
-          math.cos(a + direction * 0.035) * (startR + reach),
-          math.sin(a + direction * 0.035) * (startR + reach),
-        );
-      canvas.drawPath(path, i % 3 == 0 ? cyan : green);
-    }
-
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(covariant _EnergyRingPainter oldDelegate) =>
-      oldDelegate.rotation != rotation;
 }
 
 class _SpinningArtwork extends StatefulWidget {
