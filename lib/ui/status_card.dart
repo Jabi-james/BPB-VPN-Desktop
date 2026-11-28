@@ -536,9 +536,10 @@ class _PowerButtonState extends State<_PowerButton> {
                   // Coloured glow, stronger when connected.
                   BoxShadow(
                     color: fill.withValues(
-                      alpha: state.isConnected ? 0.5 : 0.3,
+                      alpha: state.isConnected ? 0.55 : 0.35,
                     ),
-                    blurRadius: state.isConnected ? 32 : 24,
+                    blurRadius: state.isConnected ? 96 : 72,
+                    spreadRadius: 3,
                     offset: const Offset(0, 10),
                   ),
                   // Tight contact shadow under the button.
@@ -598,21 +599,21 @@ class _PowerGlow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-    width: size + 20,
-    height: size + 20,
+    width: size + 60,
+    height: size + 60,
     child: DecoratedBox(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: color.withValues(alpha: 0.24),
-            blurRadius: 28,
-            spreadRadius: 2,
+            color: color.withValues(alpha: 0.30),
+            blurRadius: 84,
+            spreadRadius: 6,
           ),
           BoxShadow(
-            color: color.withValues(alpha: 0.12),
-            blurRadius: 12,
-            spreadRadius: 1,
+            color: color.withValues(alpha: 0.15),
+            blurRadius: 36,
+            spreadRadius: 3,
           ),
         ],
       ),

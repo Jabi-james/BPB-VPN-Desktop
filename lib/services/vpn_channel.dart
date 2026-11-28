@@ -996,9 +996,8 @@ if (\$match) { 'true' } else { 'false' }
       // Keep this in sync with the version field in pubspec.yaml until a desktop
       // release channel supplies package metadata.
       const version = String.fromEnvironment('BPB_APP_VERSION', defaultValue: '1.3.0');
-      const build = String.fromEnvironment('BPB_BUILD_NUMBER', defaultValue: '');
       return (
-        version: build.isEmpty ? version : '$version Build $build',
+        version: version,
         abis: const <String>[],
       );
     }

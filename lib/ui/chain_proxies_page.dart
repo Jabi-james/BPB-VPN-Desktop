@@ -1,14 +1,17 @@
 // ignore_for_file: use_build_context_synchronously
 
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'app_toast.dart';
 import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:window_manager/window_manager.dart';
 
 import '../models/settings.dart';
 import '../services/chain_proxy.dart';
+import '../services/desktop_qr_scanner.dart';
 import '../services/vpn_channel.dart';
 import '../state/app_state.dart';
 import 'chip_menu.dart';
@@ -63,7 +66,6 @@ class ChainProxiesPage extends StatelessWidget {
       ),
     );
     if (source == null || !context.mounted) return;
-    final navigator = Navigator.of(context);
     final String? text;
     String? fileName;
     try {
@@ -71,7 +73,7 @@ class ChainProxiesPage extends StatelessWidget {
         case 'clipboard':
           text = (await Clipboard.getData(Clipboard.kTextPlain))?.text;
         case 'qr':
-          text = await navigator.push<String>(MaterialPageRoute(builder: (_) => const _QrScanPage()));
+          text = await _scanDesktopQr();
         default:
           final file = await VpnChannel.pickFile();
           text = file?.content;
@@ -79,6 +81,13 @@ class ChainProxiesPage extends StatelessWidget {
       }
     } on PlatformException catch (e) {
       AppToast.showSnackBar(context, SnackBar(content: Text("Couldn't read the file: ${e.message}")));
+      return;
+    } catch (e) {
+      AppToast.showSnackBar(context, SnackBar(content: Text('Desktop QR scan failed: $e')));
+      return;
+    }
+    if (source == 'qr' && (text == null || text.trim().isEmpty)) {
+      AppToast.showSnackBar(context, const SnackBar(content: Text('No QR code found on the desktop screen')));
       return;
     }
     if (source == 'clipboard' && (text == null || text.trim().isEmpty)) {
@@ -136,6 +145,73 @@ class ChainProxiesPage extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// Hides BPB temporarily, captures the primary desktop work area, decodes a QR code and restores BPB.
+Future<String?> _scanDesktopQr() async {
+  var hidden = false;
+  try {
+    await windowManager.hide();
+    hidden = true;
+    // Match v2rayN's screen-scan delay before taking the desktop screenshot.
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    final captureDirectory = await Directory.systemTemp.createTemp('bpb-qr-scan-');
+    try {
+      final capturePath = '${captureDirectory.path}${Platform.pathSeparator}desktop.png';
+      const script = r'''
+Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public static class BpbDpiAwareness {
+  [DllImport("user32.dll", SetLastError = true)]
+  public static extern bool SetProcessDpiAwarenessContext(IntPtr value);
+  [DllImport("user32.dll", SetLastError = true)]
+  public static extern bool SetProcessDPIAware();
+}
+"@
+# Use physical desktop coordinates, including high-DPI displays.
+if (-not [BpbDpiAwareness]::SetProcessDpiAwarenessContext([IntPtr](-4))) {
+  [void][BpbDpiAwareness]::SetProcessDPIAware()
+}
+Add-Type -AssemblyName System.Drawing
+Add-Type -AssemblyName System.Windows.Forms
+# v2rayN captures the primary monitor's work area rather than the entire virtual desktop.
+$bounds = [System.Windows.Forms.SystemInformation]::WorkingArea
+if ($bounds.Width -le 0 -or $bounds.Height -le 0) { throw 'No screen work area is available for capture.' }
+$bitmap = [System.Drawing.Bitmap]::new($bounds.Width, $bounds.Height)
+$graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+try {
+  $graphics.CopyFromScreen($bounds.Left, $bounds.Top, 0, 0, $bitmap.Size)
+  $bitmap.Save($env:BPB_QR_CAPTURE_PATH, [System.Drawing.Imaging.ImageFormat]::Png)
+} finally {
+  $graphics.Dispose()
+  $bitmap.Dispose()
+}
+''';
+      final result = await Process.run(
+        'powershell.exe',
+        ['-NoProfile', '-NonInteractive', '-STA', '-Command', script],
+        environment: {'BPB_QR_CAPTURE_PATH': capturePath},
+      );
+      if (result.exitCode != 0) {
+        throw StateError('Windows screen capture failed: ${result.stderr}');
+      }
+      final screenshot = File(capturePath);
+      if (!await screenshot.exists()) return null;
+      final bytes = await screenshot.readAsBytes();
+      if (bytes.isEmpty) return null;
+      return decodeDesktopQr(bytes);
+    } finally {
+      if (await captureDirectory.exists()) {
+        await captureDirectory.delete(recursive: true);
+      }
+    }
+  } finally {
+    if (hidden) {
+      await windowManager.show();
+      await windowManager.focus();
+    }
   }
 }
 
@@ -229,37 +305,4 @@ class _ChainTile extends StatelessWidget {
       ),
     );
   }
-}
-
-/// The camera, until it sees a QR code; pops with its text.
-class _QrScanPage extends StatefulWidget {
-  const _QrScanPage();
-
-  @override
-  State<_QrScanPage> createState() => _QrScanPageState();
-}
-
-class _QrScanPageState extends State<_QrScanPage> {
-  final _controller = MobileScannerController(formats: const [BarcodeFormat.qrCode]);
-  bool _done = false;
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Scan QR code')),
-    body: MobileScanner(
-      controller: _controller,
-      onDetect: (capture) {
-        final text = capture.barcodes.map((b) => b.rawValue).nonNulls.firstOrNull;
-        if (_done || text == null) return;
-        _done = true;
-        Navigator.of(context).pop(text);
-      },
-    ),
-  );
 }
