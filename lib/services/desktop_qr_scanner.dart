@@ -5,8 +5,8 @@ import 'package:zxing2/qrcode.dart';
 
 /// Decodes a QR code from a captured desktop image.
 ///
-/// This mirrors v2rayN's decode sequence: decode the captured bitmap once,
-/// then retry after a horizontal flip when the first pass finds nothing.
+/// Follows v2rayN's sequence: decode the captured bitmap, then retry after a
+/// horizontal flip when the first pass does not find a QR code.
 String? decodeDesktopQr(Uint8List imageBytes) {
   try {
     final image = img.decodeImage(imageBytes);
@@ -30,12 +30,18 @@ String? decodeDesktopQr(Uint8List imageBytes) {
 }
 
 String? _decodeBitmap(img.Image image) {
-  final rgba = image.convert(numChannels: 4);
-  final source = RGBLuminanceSource(
-    rgba.width,
-    rgba.height,
-    rgba.getBytes(order: img.ChannelOrder.abgr).buffer.asInt32List(),
-  );
-  final bitmap = BinaryBitmap(GlobalHistogramBinarizer(source));
-  return QRCodeReader().decode(bitmap).text;
+  try {
+    final rgba = image.convert(numChannels: 4);
+    final source = RGBLuminanceSource(
+      rgba.width,
+      rgba.height,
+      rgba.getBytes(order: img.ChannelOrder.abgr).buffer.asInt32List(),
+    );
+    // ZXing.Net's default bitmap reader uses hybrid thresholding.
+    final bitmap = BinaryBitmap(HybridBinarizer(source));
+    return QRCodeReader().decode(bitmap).text;
+  } catch (_) {
+    // A failed first pass must not prevent v2rayN's mirrored retry.
+    return null;
+  }
 }
