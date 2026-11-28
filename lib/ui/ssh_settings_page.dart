@@ -85,7 +85,7 @@ class _SshSettingsPageState extends State<SshSettingsPage> {
       setState(() => _dirty = false);
       widget.onSaveStateChanged?.call(_save, false);
       if (widget.embedded) {
-        AppToast.showSnackBar(context, 
+        AppToast.showSnackBar(context,
           const SnackBar(content: Text('SSH settings saved')),
         );
       }
@@ -285,16 +285,7 @@ class _SshSettingsPageState extends State<SshSettingsPage> {
   String? _hostKeyValidator(String? value) {
     final fingerprint = value?.trim() ?? '';
     if (fingerprint.isEmpty) return 'Required to verify the SSH server identity';
-    if (!RegExp(r'^SHA256:[A-Za-z0-9+/]{43}(String? value, int min, int max) {
-    final number = int.tryParse(value ?? '');
-    return number == null || number < min || number > max
-        ? 'Enter a value from $min to $max'
-        : null;
-  }
-}
-
-enum _LeaveChoice { save, discard, cancel }
-).hasMatch(fingerprint)) {
+    if (!RegExp(r'^SHA256:[A-Za-z0-9+/]{43}$').hasMatch(fingerprint)) {
       return 'Enter a valid SHA256 fingerprint (SHA256: followed by 43 characters)';
     }
     return null;
